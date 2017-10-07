@@ -29,7 +29,7 @@ Just run coqc on those files to load them up.
 
 You can look at the files to see how it is calling PUMPKIN, if you would
 like to try it on some of your own proofs.
-Also, if you look at patcher.ml4, there is some auxiliary commands you
+Also, if you look at patcher.ml4, there are some auxiliary commands you
 can call to do things like invert terms and factor them into sequences
 of terms. Just keep in mind that this is an initial proof-of-concept tool.
 
