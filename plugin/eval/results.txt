@@ -1,0 +1,340 @@
+Welcome to Coq 8.5pl3 (February 2017)
+----
+
+SUCCESS
+Defined patch1_v1
+Finished transaction in 0. secs (0.u,0.s) (successful)
+----
+
+1 lifted candidates
+SUCCESS
+Defined patch1_v2
+Finished transaction in 0.002 secs (0.004u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch1_v3
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+1 lifted candidates
+SUCCESS
+Defined patch1_v4
+Finished transaction in 0.003 secs (0.004u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch2_v1
+Finished transaction in 0. secs (0.u,0.s) (successful)
+----
+
+1 lifted candidates
+SUCCESS
+Defined patch2_v2
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch2_v3
+Finished transaction in 0.001 secs (0.003u,0.s) (successful)
+----
+
+1 lifted candidates
+SUCCESS
+Defined patch2_v4
+Finished transaction in 0.002 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch3_v1
+Finished transaction in 0. secs (0.004u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch3_v2
+Finished transaction in 0. secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch3_v3
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch3_v4
+Finished transaction in 0.001 secs (0.004u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch4_v1
+Finished transaction in 0. secs (0.u,0.s) (successful)
+----
+
+1 lifted candidates
+SUCCESS
+Defined patch4_v2
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 1 candidates
+FAILURE
+Defined patch4_v1_rev
+Finished transaction in 0. secs (0.u,0.s) (successful)
+----
+
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+searched backwards
+inverting 1 candidates
+FAILURE
+Defined patch4_v2_rev
+Finished transaction in 0.003 secs (0.u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch7_v1
+Finished transaction in 0.001 secs (0.004u,0.s) (successful)
+----
+
+1 lifted candidates
+SUCCESS
+Defined patch7_v2
+Finished transaction in 0.003 secs (0.004u,0.s) (successful)
+----
+
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch7_v1_rev
+Finished transaction in 0.002 secs (0.u,0.s) (successful)
+----
+
+1 lifted candidates
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch7_v2_rev
+Finished transaction in 0.006 secs (0.u,0.008s) (successful)
+----
+
+SUCCESS
+Defined patch5_v1
+Finished transaction in 0.003 secs (0.004u,0.s) (successful)
+----
+
+1 lifted candidates
+16 lifted candidates
+SUCCESS
+Defined patch5_v2
+Finished transaction in 0.006 secs (0.004u,0.004s) (successful)
+----
+
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch5_v1_rev
+Finished transaction in 0.049 secs (0.044u,0.004s) (successful)
+----
+
+1 lifted candidates
+16 lifted candidates
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch5_v2_rev
+Finished transaction in 0.02 secs (0.019u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch6_v1
+Finished transaction in 0.002 secs (0.004u,0.s) (successful)
+----
+
+1 lifted candidates
+SUCCESS
+Defined patch6_v2
+Finished transaction in 0.01 secs (0.012u,0.s) (successful)
+----
+
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch6_v1_rev
+Finished transaction in 0.004 secs (0.004u,0.s) (successful)
+----
+
+1 lifted candidates
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch6_v2_rev
+Finished transaction in 0.018 secs (0.016u,0.s) (successful)
+----
+
+1 lifted candidates
+24 lifted candidates
+SUCCESS
+Defined patch8_v1
+Finished transaction in 0.001 secs (0.004u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch8_v2
+Finished transaction in 0. secs (0.u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch8_v3
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch8_v4
+Finished transaction in 0.001 secs (0.004u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch8_v5
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch8_v6
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch9_v1
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch9_v2
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+1 lifted candidates
+96 lifted candidates
+SUCCESS
+Defined patch9_v3
+Finished transaction in 0.002 secs (0.004u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch9_v4
+Finished transaction in 0. secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch9_v1_rev
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch9_v2_rev
+Finished transaction in 0.001 secs (0.004u,0.s) (successful)
+----
+
+1 lifted candidates
+96 lifted candidates
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch9_v3_rev
+Finished transaction in 0.002 secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch9_v4_rev
+Finished transaction in 0.003 secs (0.004u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch10_v1
+Finished transaction in 0. secs (0.u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch10_v2
+Finished transaction in 0.001 secs (0.004u,0.s) (successful)
+----
+
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch10_v1_rev
+Finished transaction in 0.002 secs (0.004u,0.s) (successful)
+----
+
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch10_v2_rev
+Finished transaction in 0.002 secs (0.u,0.s) (successful)
+----
+
+SUCCESS
+Defined patch11_v1
+Finished transaction in 0.001 secs (0.u,0.s) (successful)
+----
+
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch11_v2
+Finished transaction in 0.007 secs (0.008u,0.s) (successful)
+----
+
+searched backwards
+inverting 1 candidates
+SUCCESS
+Defined patch11_v1_rev
+Finished transaction in 0.002 secs (0.004u,0.s) (successful)
+----
+
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+1 lifted candidates
+searched backwards
+inverting 0 candidates
+FAILURE
+Defined patch11_v2_rev
+Finished transaction in 0.007 secs (0.008u,0.s) (successful)
