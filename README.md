@@ -17,8 +17,6 @@ The plugin works for Coq 8.5pl3. If you would like to extend it to handle
 Coq 8.6 or 8.7, go for it. I plan to support 8.7 in the future,
 especially with the new plugin API.
 
-## Plugin
-
 cd plugin
 make
 
