@@ -17,8 +17,10 @@ The plugin works for Coq 8.5pl3. If you would like to extend it to handle
 Coq 8.6 or 8.7, go for it. I plan to support 8.7 in the future,
 especially with the new plugin API.
 
+```
 cd plugin
 make
+```
 
 # Using PUMPKIN
 
@@ -43,4 +45,4 @@ There are also some useful debugging functions at the top of search.ml;
 if you are modifying the tool, you may want to use those.
 
 Minor note: .ml4 files don't appear to work with  a lot of emacs OCaml plugins.
-You can run tuareg-mode manually on ml4 files.
+You can run tuareg-mode manually on .ml4 files.
