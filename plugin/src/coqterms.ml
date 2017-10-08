@@ -195,11 +195,6 @@ let type_of_inductive (env : env) (mutind_body : mutual_inductive_body) (ind_bod
   let mutind_spec = (mutind_body, ind_body) in
   Inductive.type_of_inductive env (mutind_spec, univ_instance)
 
-(* Determines whether an inductive type refers to itself *)
-let is_recursive (ind_body : one_inductive_body) =
-  let recargs = ind_body.mind_recargs in
-  Rtree.is_infinite (fun r1 r2 -> r1 = r2) recargs
-
 (* Don't support mutually inductive or coinductive types yet (TODO) *)
 let check_inductive_supported (mutind_body : mutual_inductive_body) : unit =
   let ind_bodies = mutind_body.mind_packets in

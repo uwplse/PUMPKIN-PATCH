@@ -190,20 +190,6 @@ let expand_inductive_params (n : int) (c : proof_cat) : proof_cat =
       expand (n' - 1) (expand_terminal c')
   in expand n c
 
-(*
- * Expand an inductive type
- *
- * Currently this functionality is not used
- * May either extend to use this, or delete this and its dependencies later
- *)
-let expand_inductive (env : env) (trm : types) (c : proof_cat) : proof_cat =
-  let c_exp = expand_inductive_conclusions_fully (expand_terminal c) in
-  let ((i, i_index), _) = destInd trm in
-  let mutind_body = lookup_mutind_body i env in
-  let ind_bodies = mutind_body.mind_packets in
-  let ind_body = ind_bodies.(i_index) in
-  merge_inductive (is_recursive ind_body) mutind_body.mind_nparams c_exp
-
 (* Check if an o is the type of an applied inductive hypothesis in c *)
 let applies_ih (en : env) (p : types) (c : proof_cat) : context_object -> bool =
   and_p

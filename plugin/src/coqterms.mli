@@ -79,9 +79,6 @@ val lookup_mutind_body : mutual_inductive -> env -> mutual_inductive_body
 (* Get the type of a mutually inductive type *)
 val type_of_inductive : env -> mutual_inductive_body -> one_inductive_body -> types
 
-(* Determines whether an inductive type refers to itself *)
-val is_recursive : one_inductive_body -> bool
-
 (*
  * Error if the type is mutually inductive or coinductive
  * Remove calls to this when we implement support for these types
