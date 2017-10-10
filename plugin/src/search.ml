@@ -1126,10 +1126,8 @@ let return_patch (opts : options) (env : env) (patches : types list) =
  * Search in one direction, and if we fail try the other direction.
  * If we find patches, return the head for now, since any patch will do.
  *)
-let search_for_patch (default : types) (cut : cut_lemma option) (d : proof_cat_diff) : types =
+let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : types =
   Printf.printf "%s\n\n" "----";
-  let d = add_goals d in
-  let opts = configure_search d cut in
   let change = get_change opts in
   let d = if is_fixpoint_case change then reverse d else d in  (* explain *)
   let d = update_search_goals opts d (erase_goals d) in

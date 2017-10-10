@@ -10,5 +10,5 @@ open Searchopts
  * Return the default patch if we cannot find a patch
  * Otherwise, return any patch we can find
  *)
-val search_for_patch : types -> cut_lemma option -> proof_cat_diff -> types
+val search_for_patch : types -> options -> goal_proof_diff -> types
 

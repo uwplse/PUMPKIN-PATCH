@@ -35,12 +35,14 @@ open Reduce
 (*
  * Lookup the definitions, then apply a function to their difference
  *)
-let apply_to_difference f (env : env) (d1 : types) (d2 : types) : 'a =
+let apply_to_difference f (env : env) (d1 : types) (d2 : types) cut : 'a =
   let trm1 = unwrap_definition env d1 in
   let trm2 = unwrap_definition env d2 in
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
-  f (difference c1 c2 no_assumptions)
+  let d = add_goals (difference c1 c2 no_assumptions) in
+  let opts = configure_search d cut in
+  f opts d
 
 (* Common inversion functionality *)
 let invert_patch n env evm patch =
@@ -78,8 +80,8 @@ let patch n d_old d_new try_invert a search =
 let patch_proof n d_old d_new =
   patch n d_old d_new false ()
     (fun env evm old_term new_term _ ->
-      let search = search_for_patch old_term None in
-      apply_to_difference search env old_term new_term)
+      let search = search_for_patch old_term in
+      apply_to_difference search env old_term new_term None)
 
 (* The Patch Definition command functionality *)
 let patch_definition n d_old d_new cut =
@@ -87,8 +89,8 @@ let patch_definition n d_old d_new cut =
     (fun env evm old_term new_term _ ->
       let cut_term = intern env evm cut in
       let lemma = build_cut_lemma env cut_term in
-      let search = search_for_patch old_term (Some lemma) in
-      apply_to_difference search env old_term new_term)
+      let search = search_for_patch old_term in
+      apply_to_difference search env old_term new_term (Some lemma))
 
 (*
  * The Patch Theorem command functionality
