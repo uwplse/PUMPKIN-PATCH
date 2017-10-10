@@ -32,12 +32,17 @@ open Reduce
 
 (* --- Auxiliary functionality for top-level functions --- *)
 
+let intern_defs d1 d2 =
+  let (evm, env) = Lemmas.get_current_context() in
+  let d1 = intern env evm d1 in
+  let d2 = intern env evm d2 in
+  (unwrap_definition env d1, unwrap_definition env d2)
+
 (*
  * Lookup the definitions, then apply a function to their difference
  *)
-let configure (env : env) (d1 : types) (d2 : types) cut =
-  let trm1 = unwrap_definition env d1 in
-  let trm2 = unwrap_definition env d2 in
+let configure trm1 trm2 cut =
+  let (_, env) = Lemmas.get_current_context() in
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
   let d = add_goals (difference c1 c2 no_assumptions) in
@@ -55,11 +60,9 @@ let invert_patch n env evm patch =
     failwith "Could not find a well-typed inverted term"
 
 (* Common patch command functionality *)
-let patch n d_old d_new try_invert a search =
+let patch n old_term new_term try_invert a search =
   let (evm, env) = Lemmas.get_current_context() in
-  let old_term = intern env evm d_old in
-  let new_term = intern env evm d_new in
-  let patch = try_reduce env (search env evm old_term new_term a) in
+  let patch = try_reduce env (search env evm a) in
   let prefix = Id.to_string n in
   define_term n env evm patch;
   Printf.printf "Defined %s\n" prefix;
@@ -77,21 +80,26 @@ let patch n d_old d_new try_invert a search =
 
 (* The Patch Proof command functionality *)
 let patch_proof n d_old d_new =
-  patch n d_old d_new false ()
-    (fun env evm old_term new_term _ ->
-      let search = search_for_patch old_term in
-      let (d, opts) = configure env old_term new_term None in
-      search opts d)
+  let (old_term, new_term) = intern_defs d_old d_new in
+  let (d, opts) = configure old_term new_term None in
+  let kind_of_change = get_change opts in
+  let try_invert = not (is_conclusion kind_of_change) in
+  patch n old_term new_term try_invert ()
+    (fun env evm _ ->
+      search_for_patch old_term opts d)
 
 (* The Patch Definition command functionality *)
 let patch_definition n d_old d_new cut =
-  patch n d_old d_new true ()
-    (fun env evm old_term new_term _ ->
-      let cut_term = intern env evm cut in
-      let lemma = build_cut_lemma env cut_term in
-      let search = search_for_patch old_term in
-      let (d, opts) = configure env old_term new_term (Some lemma) in
-      search opts d)
+  let (old_term, new_term) = intern_defs d_old d_new in
+  let (evm, env) = Lemmas.get_current_context() in
+  let cut_term = intern env evm cut in
+  let lemma = build_cut_lemma env cut_term in
+  let (d, opts) = configure old_term new_term (Some lemma) in
+  let kind_of_change = get_change opts in
+  let try_invert = not (is_conclusion kind_of_change) in
+  patch n old_term new_term try_invert ()
+    (fun env evm _ ->
+      search_for_patch old_term opts d)
 
 (*
  * The Patch Theorem command functionality
@@ -101,8 +109,9 @@ let patch_definition n d_old d_new cut =
  * It just might be useful in the future, so feel free to play with it
  *)
 let patch_theorem n d_old d_new t =
-  patch n d_old d_new false t
-    (fun env evm old_term new_term t ->
+  let (old_term, new_term) = intern_defs d_old d_new in
+  patch n old_term new_term false t
+    (fun env evm t ->
       let theorem = intern env evm t in
       let t_trm = lookup_definition env theorem in
       update_theorem env old_term new_term t_trm)
