@@ -35,14 +35,13 @@ open Reduce
 (*
  * Lookup the definitions, then apply a function to their difference
  *)
-let apply_to_difference f (env : env) (d1 : types) (d2 : types) cut : 'a =
+let configure (env : env) (d1 : types) (d2 : types) cut =
   let trm1 = unwrap_definition env d1 in
   let trm2 = unwrap_definition env d2 in
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
   let d = add_goals (difference c1 c2 no_assumptions) in
-  let opts = configure_search d cut in
-  f opts d
+  (d, configure_search d cut)
 
 (* Common inversion functionality *)
 let invert_patch n env evm patch =
@@ -81,7 +80,8 @@ let patch_proof n d_old d_new =
   patch n d_old d_new false ()
     (fun env evm old_term new_term _ ->
       let search = search_for_patch old_term in
-      apply_to_difference search env old_term new_term None)
+      let (d, opts) = configure env old_term new_term None in
+      search opts d)
 
 (* The Patch Definition command functionality *)
 let patch_definition n d_old d_new cut =
@@ -90,7 +90,8 @@ let patch_definition n d_old d_new cut =
       let cut_term = intern env evm cut in
       let lemma = build_cut_lemma env cut_term in
       let search = search_for_patch old_term in
-      apply_to_difference search env old_term new_term (Some lemma))
+      let (d, opts) = configure env old_term new_term (Some lemma) in
+      search opts d)
 
 (*
  * The Patch Theorem command functionality
