@@ -32,16 +32,15 @@ open Reduce
 
 (* --- Auxiliary functionality for top-level functions --- *)
 
-let intern_defs d1 d2 =
+(* Intern terms corresponding to two definitions *)
+let intern_defs d1 d2 : types * types =
   let (evm, env) = Lemmas.get_current_context() in
   let d1 = intern env evm d1 in
   let d2 = intern env evm d2 in
   (unwrap_definition env d1, unwrap_definition env d2)
 
-(*
- * Lookup the definitions, then apply a function to their difference
- *)
-let configure trm1 trm2 cut =
+(* Initialize diff & search configuration *)
+let configure trm1 trm2 cut : goal_proof_diff * options =
   let (_, env) = Lemmas.get_current_context() in
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
@@ -127,8 +126,7 @@ let specialize n trm : unit =
   let (evm, env) = Lemmas.get_current_context() in
   define_term n env evm (specialize_term env (intern env evm trm))
 
-(* Generalize a term to apply to all properties *)
-(* TODO clean up and reconcile with other generalize_term function *)
+(* Abstract a term by a function *)
 let abstract n trm goal : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let c = lookup_definition env (intern env evm trm) in
