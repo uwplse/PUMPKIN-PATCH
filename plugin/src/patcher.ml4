@@ -172,9 +172,7 @@ let factor n trm : unit =
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
 | [ "Patch" "Proof" constr(d_old) constr(d_new) "as" ident(n)] ->
   [ patch_proof n d_old d_new None ]
-| [ "Patch" "Constructor" constr(d_old) constr(d_new) "cut" "by" constr(cut) "as" ident(n)] ->
-  [ patch_proof n d_old d_new (Some cut) ]
-| [ "Patch" "Definition" constr(d_old) constr(d_new) "cut" "by" constr(cut) "as" ident(n)] ->
+| [ "Patch" "Proof" constr(d_old) constr(d_new) "cut" "by" constr(cut) "as" ident(n)] ->
   [ patch_proof n d_old d_new (Some cut) ]
 | [ "Patch" "Theorem" constr(d_old) constr(d_new) constr(t) "as" ident(n)] ->
   [ patch_theorem n d_old d_new t ]

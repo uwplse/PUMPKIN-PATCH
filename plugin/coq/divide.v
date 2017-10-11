@@ -96,7 +96,9 @@ Print patch_mod.
 *)
 (* Above doesn't work because of rewrite location, but that's OK
   for now *)
-(* We isolate to just the location we care about *)
+(* We isolate to just the location we care about; this is an adaptation
+   until PUMPKIN supports more features
+ *)
 
 Theorem mod_divide_if_2: forall a b, b <> 0 -> a mod b = 0 -> (b|'a).
 Proof.
@@ -117,7 +119,7 @@ Definition cut :=
     b * r = a ->
     a = r * b.
 
-Patch Constructor mod_divide_if_2 mod_divide_if_2' cut by (fun (H : cut) a b => H (a / b) a b) as patch.
+Patch Proof mod_divide_if_2 mod_divide_if_2' cut by (fun (H : cut) a b => H (a / b) a b) as patch.
 Print patch.
 Print patch_inv.
 

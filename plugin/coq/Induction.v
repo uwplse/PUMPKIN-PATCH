@@ -322,7 +322,7 @@ Definition cut :=
     S (a + S (a + 0)) = S (S (a + (a + 0))).
 
 (* Patch *)
-Patch Definition blindfs_induction.bin_to_nat_pres_incr bin_to_nat_pres_incr cut by (fun (H : cut) b0 => H (bin_to_nat b0)) as patch.
+Patch Proof blindfs_induction.bin_to_nat_pres_incr bin_to_nat_pres_incr cut by (fun (H : cut) b0 => H (bin_to_nat b0)) as patch.
 Print patch.
 Print patch_inv.
 
@@ -533,17 +533,14 @@ Definition cut_alt :=
        S (bin_to_nat b') + S (bin_to_nat b') =
        S (S (bin_to_nat b' + bin_to_nat b')) *)
 
-(* TODO but for now we expect a specific cofmart
-Patch Definition marshall_induction.bin_to_nat_pres_incr_original bin_to_nat_pres_incr_alt cut by (fun (H : cut_alt) (b : bin) => H b) as patch_alt.
-*)
-
+(* Talia: For now we expect a specific format *)
 (* Talia: Then we can try patching that theorem: *)
 Definition cut :=
   forall (a b : nat),
     S a + S b = S (S (a + b)) ->
     S a + S (b + 0) = S (S (a + (b + 0))).
 
-Patch Definition marshall_induction.bin_to_nat_pres_incr bin_to_nat_pres_incr cut by (fun (H : cut) b => H (bin_to_nat b) (bin_to_nat b)) as patch.
+Patch Proof marshall_induction.bin_to_nat_pres_incr bin_to_nat_pres_incr cut by (fun (H : cut) b => H (bin_to_nat b) (bin_to_nat b)) as patch.
 Print patch.
 Print patch_inv.
 
