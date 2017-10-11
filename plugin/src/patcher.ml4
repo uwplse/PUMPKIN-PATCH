@@ -41,11 +41,13 @@ let intern_defs d1 d2 : types * types =
 
 (* Initialize diff & search configuration *)
 let configure trm1 trm2 cut : goal_proof_diff * options =
-  let (_, env) = Lemmas.get_current_context() in
+  let (evm, env) = Lemmas.get_current_context() in
+  let cut_term = Option.map (intern env evm) cut in
+  let lemma = Option.map (build_cut_lemma env) cut_term in
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
   let d = add_goals (difference c1 c2 no_assumptions) in
-  (d, configure_search d cut)
+  (d, configure_search d lemma)
 
 (* Common inversion functionality *)
 let invert_patch n env evm patch =
@@ -90,10 +92,7 @@ let patch_proof n d_old d_new =
 (* The Patch Definition command functionality *)
 let patch_definition n d_old d_new cut =
   let (old_term, new_term) = intern_defs d_old d_new in
-  let (evm, env) = Lemmas.get_current_context() in
-  let cut_term = intern env evm cut in
-  let lemma = build_cut_lemma env cut_term in
-  let (d, opts) = configure old_term new_term (Some lemma) in
+  let (d, opts) = configure old_term new_term (Some cut) in
   let kind_of_change = get_change opts in
   let try_invert = not (is_conclusion kind_of_change) in
   patch n old_term new_term try_invert ()
