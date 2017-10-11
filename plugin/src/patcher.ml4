@@ -79,20 +79,14 @@ let patch n old_term new_term try_invert a search =
 
 (* --- Commands --- *)
 
-(* The Patch Proof command functionality *)
-let patch_proof n d_old d_new =
+(*
+ * Command functionality for generating reusable patches
+ * Patch Proof, Patch Definition, and Patch Constructor all call this
+ * The latter two just pass extra guidance for now
+ *)
+let patch_proof n d_old d_new cut =
   let (old_term, new_term) = intern_defs d_old d_new in
-  let (d, opts) = configure old_term new_term None in
-  let kind_of_change = get_change opts in
-  let try_invert = not (is_conclusion kind_of_change) in
-  patch n old_term new_term try_invert ()
-    (fun env evm _ ->
-      search_for_patch old_term opts d)
-
-(* The Patch Definition command functionality *)
-let patch_definition n d_old d_new cut =
-  let (old_term, new_term) = intern_defs d_old d_new in
-  let (d, opts) = configure old_term new_term (Some cut) in
+  let (d, opts) = configure old_term new_term cut in
   let kind_of_change = get_change opts in
   let try_invert = not (is_conclusion kind_of_change) in
   patch n old_term new_term try_invert ()
@@ -177,11 +171,11 @@ let factor n trm : unit =
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
 | [ "Patch" "Proof" constr(d_old) constr(d_new) "as" ident(n)] ->
-  [ patch_proof n d_old d_new ]
+  [ patch_proof n d_old d_new None ]
 | [ "Patch" "Constructor" constr(d_old) constr(d_new) "cut" "by" constr(cut) "as" ident(n)] ->
-  [ patch_definition n d_old d_new cut ]
+  [ patch_proof n d_old d_new (Some cut) ]
 | [ "Patch" "Definition" constr(d_old) constr(d_new) "cut" "by" constr(cut) "as" ident(n)] ->
-  [ patch_definition n d_old d_new cut ]
+  [ patch_proof n d_old d_new (Some cut) ]
 | [ "Patch" "Theorem" constr(d_old) constr(d_new) constr(t) "as" ident(n)] ->
   [ patch_theorem n d_old d_new t ]
 END
