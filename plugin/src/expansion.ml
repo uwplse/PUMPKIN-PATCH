@@ -85,7 +85,7 @@ let expand_term (default : env -> types -> proof_cat) (o : context_object) : pro
   | App (f, args) ->
      (match kind_of_term f with
      | Lambda (n, t, b) ->
-        (* TODO bad heuristic for now, doesn't catch definitions *)
+        (* Does not yet delta-reduce *)
         if Array.length args > 0 then
           expand_app env (f, args)
         else
