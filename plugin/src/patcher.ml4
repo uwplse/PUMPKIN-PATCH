@@ -156,17 +156,16 @@ let abstract n trm goal : unit =
 let factor n trm : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let body = lookup_definition env (intern env evm trm) in
-  let path = factor_term env body in
+  let fs = reconstruct_factors (factor_term env body) in
   let prefix = Id.to_string n in
   try
     List.iteri
-      (fun i (en, t) ->
-        let lemma = reconstruct_lambda en t in
+      (fun i lemma ->
         let lemma_id_string = String.concat "_" [prefix; string_of_int i] in
         let lemma_id = Id.of_string lemma_id_string in
         define_term lemma_id env evm lemma;
         Printf.printf "Defined %s\n" lemma_id_string)
-      path
+      fs
   with _ -> failwith "Could not find lemmas"
 
 (* Patch command *)
