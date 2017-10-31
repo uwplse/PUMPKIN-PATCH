@@ -115,3 +115,16 @@ let factor_term (env : env) (trm : types) : factors =
 	let (n, _, t) = lookup_rel 1 env in
 	(pop_rel_context 1 env, mkLambda (n, t, body)))
     path_body
+
+(* --- Using factors --- *)
+
+(* Apply factors to reconstruct a single term *)
+let apply_factors (fs : factors) : types =
+  let (env, base) = List.hd fs in
+  let body =
+    List.fold_right
+      (fun (_, t) t_app ->
+	mkApp (shift t, Array.make 1 t_app))
+      (List.tl fs)
+      base
+  in reduce env (reconstruct_lambda env body)

@@ -18,3 +18,8 @@ type factors = (env * types) list
  * (e.g., [H : X, F : X -> Y, G : Y -> Z] where trm = G o F)
  *)
 val factor_term : env -> types -> factors
+
+(*
+ * Apply factors to reconstruct a single term
+ *)
+val apply_factors : factors -> types

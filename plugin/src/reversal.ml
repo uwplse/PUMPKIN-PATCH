@@ -18,21 +18,6 @@ open Factoring
 
 type inverter = (env * types) -> (env * types) option
 
-(* --- Auxiliary functions --- *)
-
-(*
- * Apply a type path to reconstruct a single term
- *)
-let apply_type_path (fs : factors) : types =
-  let (env, base) = List.hd fs in
-  let body =
-    List.fold_right
-      (fun (_, t) t_app ->
-	mkApp (shift t, Array.make 1 t_app))
-      (List.tl fs)
-      base
-  in reduce env (reconstruct_lambda env body)
-
 (* --- Inverting type paths --- *)
 
 (*
@@ -184,7 +169,7 @@ let invert_using (invert : inverter) (env : env) (trm : types) : types option =
   let fs = factor_term env trm in
   let inv_path = invert_type_path invert fs in
   if List.length inv_path > 0 then
-    Some (apply_type_path inv_path)
+    Some (apply_factors inv_path)
   else
     None
 
