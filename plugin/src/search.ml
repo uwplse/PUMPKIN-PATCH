@@ -105,7 +105,7 @@ let eval_with_terms_goals opts t_o t_n d =
 let factor env trm =
   List.map
     (fun (en, t) -> reconstruct_lambda en t)
-    (List.tl (List.rev (find_type_path env trm)))
+    (List.tl (List.rev (factor_term env trm)))
 
 (* --- Specialization --- *)
 

@@ -118,14 +118,14 @@ let rec find_path (env : env) (trm : types) : factors =
        []
 
 (*
- * Given a type trm, if the type is a function type
- * X -> Z, find the path through which it passes
+ * Given a term trm, if the type of trm is a function type
+ * X -> Z, find factors through which it passes
  * (e.g., [H : X, F : X -> Y, G : Y -> Z] where trm = G o F)
  *
  * First zoom in all the way, then use the auxiliary path-finding
  * function.
  *)
-let find_type_path (env : env) (trm : types) : factors =
+let factor_term (env : env) (trm : types) : factors =
   let (env_zoomed, trm_zoomed) = zoom_lambda_term env (reduce env trm) in
   let path_body = find_path env_zoomed trm_zoomed in
   List.map
@@ -311,8 +311,8 @@ let invert_patch (env, rp) : (env * types) option =
  * Use the supplied inverter to handle low-level inverses
  *)
 let invert_using (invert : inverter) (env : env) (trm : types) : types option =
-  let path = find_type_path env trm in
-  let inv_path = invert_type_path invert path in
+  let fs = factor_term env trm in
+  let inv_path = invert_type_path invert fs in
   if List.length inv_path > 0 then
     Some (apply_type_path inv_path)
   else

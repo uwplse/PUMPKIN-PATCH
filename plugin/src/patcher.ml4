@@ -155,7 +155,7 @@ let abstract n trm goal : unit =
 let factor n trm : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let body = lookup_definition env (intern env evm trm) in
-  let path = find_type_path env body in
+  let path = factor_term env body in
   let prefix = Id.to_string n in
   try
     List.iteri
