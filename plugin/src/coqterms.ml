@@ -147,6 +147,14 @@ let rec unwrap_definition (env : env) (trm : types) : types =
   with _ ->
     trm
 
+(* Zoom all the way into a lambda term *)
+let rec zoom_lambda_term (env : env) (trm : types) : env * types =
+  match kind_of_term trm with
+  | Lambda (n, t, b) ->
+     zoom_lambda_term (push_rel (n, None, t) env) b
+  | _ ->
+     (env, trm)
+
 (*
  * Reconstruct a lambda from an environment
  *)

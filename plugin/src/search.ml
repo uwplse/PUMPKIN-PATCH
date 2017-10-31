@@ -22,6 +22,7 @@ open Utilities
 open Hofs
 open Reversal
 open Searchopts
+open Factoring
 
 (* --- Debugging --- *)
 

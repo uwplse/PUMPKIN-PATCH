@@ -83,3 +83,8 @@ val map_flat : ('a -> 'b list) -> 'a list -> 'b list
  * defaulting to default if the list is empty
  *)
 val hd_f_default : 'a -> ('a list -> 'a list) -> 'a list -> 'a
+
+(*
+ * Filter a list of lists by only its non-empty lists
+ *)
+val filter_non_empty : 'a list list -> 'a list list

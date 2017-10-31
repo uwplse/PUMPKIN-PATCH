@@ -130,3 +130,7 @@ let hd_f_default (a : 'a) (f : 'a list -> 'a list) (l : 'a list) : 'a =
     else
       List.hd fl
 
+(* Filter a list of lists by only its non-empty lists *)
+let filter_non_empty (la : 'a list list) : 'a list list =
+  List.filter (fun l -> List.length l > 0) la
+

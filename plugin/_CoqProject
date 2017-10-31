@@ -39,6 +39,8 @@ src/expansion.mli
 src/expansion.ml
 src/proofdiff.mli
 src/proofdiff.ml
+src/factoring.mli
+src/factoring.ml
 src/reversal.mli
 src/reversal.ml
 src/searchopts.mli

@@ -62,6 +62,9 @@ val lookup_definition : env -> types -> types
  *)
 val unwrap_definition : env -> types -> types
 
+(* Zoom all the way into a lambda term *)
+val zoom_lambda_term : env -> types -> env * types
+
 (* Reconstruct a lambda from an environment to some body *)
 val reconstruct_lambda : env -> types -> types
 

@@ -14,128 +14,11 @@ open Hofs
 open Filters
 open Coqterms
 open Names
+open Factoring
 
 type inverter = (env * types) -> (env * types) option
-type factors = (env * types) list
 
 (* --- Auxiliary functions --- *)
-
-let filter_non_empty (la : 'a list list) : 'a list list =
-  List.filter (fun l -> List.length l > 0) la
-
-(* --- Zooming and focusing --- *)
-
-(*
- * Zoom all the way into a lambda term
- *)
-let rec zoom_lambda_term (env : env) (trm : types) : env * types =
-  match kind_of_term trm with
-  | Lambda (n, t, b) ->
-     zoom_lambda_term (push_rel (n, None, t) env) b
-  | _ ->
-     (env, trm)
-
-let assumption : types = mkRel 1
-
-(*
- * Apply the assumption (last term in the environment) in the term
- *)
-let focus (fs : factors) (trm : types) : types =
-  if List.length fs > 0 then
-    assumption
-  else
-    trm
-
-(*
- * Check if the term is the assumption (last term in the environment)
- *)
-let is_assumption (env : env) (trm : types) : bool =
-  convertible env trm assumption
-
-(*
- * Assume a term of type typ in an environment
- *)
-let assume (env : env) (n : name) (typ : types) : env =
-  let env_pop = pop_rel_context 1 env in
-  push_rel (n, None, typ) env_pop
-
-(* --- Find paths --- *)
-
-(*
- * Auxiliary path-finding function, once we are zoomed into a lambda
- * and the hypothesis we care about is the assumption (first term
- * in the environment).
- *
- * The type path is in reverse order for efficiency, and is really
- * a list of environments (assumptions) and terms. When we refer to 
- * "the end" it is the head of the list.
- *
- * The algorithm is as follows:
- * 1. If a term is the assumption, return a single path with 
- *    the environment and term, which is the identity path.
- * 2. Otherwise, if it is an application:
- *    a. Recursively get the type path for each argument.
- *    b. If there are multiple nonempty type paths, then we cannot abstract out
- *       the assumption in a single function, so return the identity path.
- *    c. Otherwise, get the only non-empty path, then:
- *       i. Focus in on each argument with the current assumption
- *       ii. Assume the conclusion of the element at the end of the path
- *       ii. Apply the function to the focused arguments in the environment
- *            with the new assumption, and add that to the end of the path
- *       iv. If applying the assumption at any point fails, return the empty
- *           path
- *
- * In other words, this is going as deep into the term as possible and
- * finding some Y for which X -> Y. It is then focusing in assuming Y,
- * and asking if there is some path from Y to the conclusion.
- *
- * It does not yet handle when Y depends on X. I think that case should
- * fail anyways, since that type path shouldn't be invertible.
- *)
-let rec find_path (env : env) (trm : types) : factors =
-  if is_assumption env trm then
-    [(env, trm)]
-  else
-    match kind_of_term trm with
-    | App (f, args) ->
-       let paths = Array.map (find_path env) args in
-       let nonempty_paths = filter_non_empty (Array.to_list paths) in
-       if List.length nonempty_paths > 1 then
-	 [(env, trm)]
-       else if List.length nonempty_paths = 1 then
-	 let path = List.hd nonempty_paths in
-	 let (env_arg, arg) = List.hd path in
-         let focus_arg i a = focus (Array.get paths i) a in
-         let args_focused = Array.mapi focus_arg args in
-	 try
-           let t = unshift (infer_type env_arg arg) in
-	   (assume env Anonymous t, mkApp (f, args_focused)) :: path
-	 with _ ->
-	   []
-       else
-	 []
-    | _ -> (* other terms not yet implemented *)
-       []
-
-(*
- * Given a term trm, if the type of trm is a function type
- * X -> Z, find factors through which it passes
- * (e.g., [H : X, F : X -> Y, G : Y -> Z] where trm = G o F)
- *
- * First zoom in all the way, then use the auxiliary path-finding
- * function.
- *)
-let factor_term (env : env) (trm : types) : factors =
-  let (env_zoomed, trm_zoomed) = zoom_lambda_term env (reduce env trm) in
-  let path_body = find_path env_zoomed trm_zoomed in
-  List.map
-    (fun (env, body) ->
-      if is_assumption env body then
-	(env, body)
-      else
-	let (n, _, t) = lookup_rel 1 env in
-	(pop_rel_context 1 env, mkLambda (n, t, body)))
-    path_body
 
 (*
  * Apply a type path to reconstruct a single term
@@ -153,18 +36,6 @@ let apply_type_path (fs : factors) : types =
 (* --- Inverting type paths --- *)
 
 (*
- * Swap the final hypothesis in an inverted type path so that
- * it has the type of the old conclusion instead of the old assumption
- *)
-let invert_final_hypothesis (fs : factors) : factors =
-  match fs with
-  | (env_inv, trm_inv) :: t when List.length t > 0 ->
-     let (n, h_inv, _) = destLambda (snd (last t)) in
-     (assume env_inv n h_inv, trm_inv) :: t
-  | _ ->
-     fs
-
-(*
  * Given a type path for a term and an inverter,
  * invert every term in the type path, and produce the inverse type path
  * by reversing it.
@@ -177,10 +48,9 @@ let invert_type_path (invert : inverter) (fs : factors) : factors =
   let inverse_options = List.map invert fs in
   if List.for_all Option.has_some inverse_options then
     let inverted = List.rev (List.map Option.get inverse_options) in
-    match inverted with (* swap final hypothesis *) (* TODO merge with above *)
+    match inverted with (* swap final hypothesis *)
     | (env_inv, trm_inv) :: t when List.length t > 0 ->
-       let (env_inv', trm_inv') = last t in
-       let (n, h_inv, _) = destLambda trm_inv' in
+       let (n, h_inv, _) = destLambda (snd (last t)) in
        let env_inv = push_rel (n, None, h_inv) (pop_rel_context 1 env_inv) in
        (env_inv, trm_inv) :: t
     | _ ->
@@ -283,27 +153,27 @@ let rec exploit_type_symmetry (env : env) (trm : types) : types list =
  * as a separate step.
  *)
 let invert_patch (env, rp) : (env * types) option =
-  if is_assumption env rp then
-    Some (env, rp)
-  else
-    let rp = reduce env rp in
-    let (n, old_goal_type, body) = destLambda rp in
-    let env_body = push_rel (n, None, old_goal_type) env in
-    let new_goal_type = unshift (reduce env_body (infer_type env_body body)) in
-    let rp_goal = all_conv_substs env (old_goal_type, new_goal_type) rp in
-    let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
-    let flipped = exploit_type_symmetry env rp_goal in
-    let flipped_wt = filter_by_type env goal_type flipped in
-    if List.length flipped_wt > 0 then
-      Some (env, List.hd flipped_wt)
-    else
-      let swap_map = build_swap_map env old_goal_type new_goal_type in
-      let swapped = all_conv_swaps_combs env swap_map rp_goal in
-      let swapped_wt = filter_by_type env goal_type swapped in
-      if List.length swapped_wt > 0 then
-	Some (env, List.hd swapped_wt)
-      else
-	None
+  let rp = reduce env rp in
+  match kind_of_term rp with
+  | Lambda (n, old_goal_type, body) ->
+     let env_body = push_rel (n, None, old_goal_type) env in
+     let new_goal_type = unshift (reduce env_body (infer_type env_body body)) in
+     let rp_goal = all_conv_substs env (old_goal_type, new_goal_type) rp in
+     let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
+     let flipped = exploit_type_symmetry env rp_goal in
+     let flipped_wt = filter_by_type env goal_type flipped in
+     if List.length flipped_wt > 0 then
+       Some (env, List.hd flipped_wt)
+     else
+       let swap_map = build_swap_map env old_goal_type new_goal_type in
+       let swapped = all_conv_swaps_combs env swap_map rp_goal in
+       let swapped_wt = filter_by_type env goal_type swapped in
+       if List.length swapped_wt > 0 then
+	 Some (env, List.hd swapped_wt)
+       else
+	 None
+  | _ ->
+     Some (env, rp)
 
 (*
  * Invert a term in an environment

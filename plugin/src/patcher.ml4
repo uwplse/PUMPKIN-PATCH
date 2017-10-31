@@ -17,6 +17,7 @@ open Lifting
 open Debruijn
 open Searchopts
 open Reduce
+open Factoring
 
 (*
  * Plugin for patching Coq proofs given a change.
