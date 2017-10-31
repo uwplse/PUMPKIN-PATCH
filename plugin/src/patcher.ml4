@@ -52,7 +52,7 @@ let configure trm1 trm2 cut : goal_proof_diff * options =
 
 (* Common inversion functionality *)
 let invert_patch n env evm patch =
-  let inverted = invert_patches invert_patch env [patch] in
+  let inverted = invert_patches invert_factor env [patch] in
   try
     let patch_inv = List.hd inverted in
     let _ = infer_type env patch_inv in

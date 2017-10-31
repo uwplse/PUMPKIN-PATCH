@@ -6,11 +6,11 @@ open Environ
 type inverter
 
 (*
- * Try to invert a single simple patch
+ * Try to invert a single factor
  * Try both exploiting type symmetry (as in eq_ind), and also
  * strategically swapping arguments with convertible types
  *)
-val invert_patch : inverter
+val invert_factor : inverter
 
 (*
  * Try to invert a list of terms in an environment

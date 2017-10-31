@@ -21,15 +21,14 @@ type inverter = (env * types) -> (env * types) option
 (* --- Inverting type paths --- *)
 
 (*
- * Given a type path for a term and an inverter,
- * invert every term in the type path, and produce the inverse type path
- * by reversing it.
+ * Given the factors for a term and an inverter,
+ * invert every factor, and produce the inverse factors by reversing it.
  *
  * That is, take [X; X -> Y; Y -> Z] and produce [Z; Z -> Y; Y -> X].
  *
- * If inverting any term along the way fails, produce the empty path.
+ * If inverting any term along the way fails, produce the empty list.
  *)
-let invert_type_path (invert : inverter) (fs : factors) : factors =
+let invert_factors (invert : inverter) (fs : factors) : factors =
   let inverse_options = List.map invert fs in
   if List.for_all Option.has_some inverse_options then
     let inverted = List.rev (List.map Option.get inverse_options) in
@@ -111,7 +110,7 @@ let rec exploit_type_symmetry (env : env) (trm : types) : types list =
     trm
 
 (*
- * Try to exploit symmetry and reverse a simple patch, (like a single
+ * Try to exploit symmetry and reverse a single factor (like a single
  * rewrite) so that it goes from old -> new instead of new -> old.
  *
  * The current algorithm is as follows:
@@ -137,7 +136,7 @@ let rec exploit_type_symmetry (env : env) (trm : types) : types list =
  * and will increase candidates significantly, so for now we leave it
  * as a separate step.
  *)
-let invert_patch (env, rp) : (env * types) option =
+let invert_factor (env, rp) : (env * types) option =
   let rp = reduce env rp in
   match kind_of_term rp with
   | Lambda (n, old_goal_type, body) ->
@@ -163,13 +162,13 @@ let invert_patch (env, rp) : (env * types) option =
 (*
  * Invert a term in an environment
  * Recursively invert function composition
- * Use the supplied inverter to handle low-level inverses
+ * Use the supplied inverter to handle factors
  *)
 let invert_using (invert : inverter) (env : env) (trm : types) : types option =
   let fs = factor_term env trm in
-  let inv_path = invert_type_path invert fs in
-  if List.length inv_path > 0 then
-    Some (apply_factors inv_path)
+  let inv_fs = invert_factors invert fs in
+  if List.length inv_fs > 0 then
+    Some (apply_factors inv_fs)
   else
     None
 
