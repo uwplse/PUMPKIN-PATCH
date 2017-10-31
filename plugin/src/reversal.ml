@@ -12,8 +12,6 @@ open Substitution
 open Assumptions
 open Hofs
 open Filters
-open Coqterms
-open Names
 open Factoring
 
 type inverter = (env * types) -> (env * types) option
