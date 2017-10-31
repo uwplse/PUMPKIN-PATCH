@@ -97,17 +97,6 @@ let eval_with_terms_goals opts t_o t_n d =
   let update = update_search_goals opts d in
   update (erase_goals (eval_with_terms t_o t_n d))
 
-(* --- Factoring --- *)
-
-(*
- * Factors a term and reconstructs the hypotheses from env
- * The rest of factoring is find_type_path in inversion right now
- *)
-let factor env trm =
-  List.map
-    (fun (en, t) -> reconstruct_lambda en t)
-    (List.tl (List.rev (factor_term env trm)))
-
 (* --- Specialization --- *)
 
 (*
@@ -1087,8 +1076,9 @@ let return_patch (opts : options) (env : env) (patches : types list) =
   match get_change opts with
   | FixpointCase ((old_type, new_type), cut) ->
      let specialized = List.map (specialize_patch_arg env cut) patches in
-     let specialized_paths = flat_map (factor env) specialized in
-     let specialized_typs = List.map (infer_type env) specialized_paths in
+     let specialized_fs = List.map (factor_term env) specialized in
+     let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
+     let specialized_typs = List.map (infer_type env) specialized_fs_terms in
      let p_typs = List.map (get_prop_type env) specialized_typs in
      let generalized = (* can simplify / try fewer *)
        flat_map
@@ -1103,7 +1093,7 @@ let return_patch (opts : options) (env : env) (patches : types list) =
                    generalize_term strategies env c g)
                  goals)
              p_typs)
-         specialized_paths
+         specialized_fs_terms
      in List.hd generalized
   | ConclusionCase (Some cut) ->
      let patches = reduce_candidates remove_unused_hypos env patches in

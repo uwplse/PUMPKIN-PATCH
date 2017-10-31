@@ -119,6 +119,18 @@ let factor_term (env : env) (trm : types) : factors =
 
 (* --- Using factors --- *)
 
+(*
+ * Reconstruct factors as terms using hypotheses from the environment.
+ *
+ * This basically produces a friendly external form in the correct order,
+ * and using functions instead of closures. Inversion doesn't use this
+ * for efficiency, but top-level functions probably want to.
+ *)
+let reconstruct_factors (fs : factors) : types list =
+  List.map
+    (fun (en, t) -> reconstruct_lambda en t)
+    (List.tl (List.rev fs))
+
 (* Apply factors to reconstruct a single term *)
 let apply_factors (fs : factors) : types =
   let (env, base) = List.hd fs in
