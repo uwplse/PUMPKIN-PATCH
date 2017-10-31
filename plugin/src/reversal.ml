@@ -16,7 +16,7 @@ open Coqterms
 open Names
 
 type inverter = (env * types) -> (env * types) option
-type type_path = (env * types) list
+type factors = (env * types) list
 
 (* --- Auxiliary functions --- *)
 
@@ -40,8 +40,8 @@ let assumption : types = mkRel 1
 (*
  * Apply the assumption (last term in the environment) in the term
  *)
-let focus (path : type_path) (trm : types) : types =
-  if List.length path > 0 then
+let focus (fs : factors) (trm : types) : types =
+  if List.length fs > 0 then
     assumption
   else
     trm
@@ -92,7 +92,7 @@ let assume (env : env) (n : name) (typ : types) : env =
  * It does not yet handle when Y depends on X. I think that case should
  * fail anyways, since that type path shouldn't be invertible.
  *)
-let rec find_path (env : env) (trm : types) : type_path =
+let rec find_path (env : env) (trm : types) : factors =
   if is_assumption env trm then
     [(env, trm)]
   else
@@ -125,7 +125,7 @@ let rec find_path (env : env) (trm : types) : type_path =
  * First zoom in all the way, then use the auxiliary path-finding
  * function.
  *)
-let find_type_path (env : env) (trm : types) : type_path =
+let find_type_path (env : env) (trm : types) : factors =
   let (env_zoomed, trm_zoomed) = zoom_lambda_term env (reduce env trm) in
   let path_body = find_path env_zoomed trm_zoomed in
   List.map
@@ -140,13 +140,13 @@ let find_type_path (env : env) (trm : types) : type_path =
 (*
  * Apply a type path to reconstruct a single term
  *)
-let apply_type_path (path : type_path) : types =
-  let (env, base) = List.hd path in
+let apply_type_path (fs : factors) : types =
+  let (env, base) = List.hd fs in
   let body =
     List.fold_right
       (fun (_, t) t_app ->
 	mkApp (shift t, Array.make 1 t_app))
-      (List.tl path)
+      (List.tl fs)
       base
   in reduce env (reconstruct_lambda env body)
 
@@ -156,13 +156,13 @@ let apply_type_path (path : type_path) : types =
  * Swap the final hypothesis in an inverted type path so that
  * it has the type of the old conclusion instead of the old assumption
  *)
-let invert_final_hypothesis (p : type_path) : type_path =
-  match p with
+let invert_final_hypothesis (fs : factors) : factors =
+  match fs with
   | (env_inv, trm_inv) :: t when List.length t > 0 ->
      let (n, h_inv, _) = destLambda (snd (last t)) in
      (assume env_inv n h_inv, trm_inv) :: t
   | _ ->
-     p
+     fs
 
 (*
  * Given a type path for a term and an inverter,
@@ -173,11 +173,11 @@ let invert_final_hypothesis (p : type_path) : type_path =
  *
  * If inverting any term along the way fails, produce the empty path.
  *)
-let invert_type_path (invert : inverter) (p : type_path) : type_path =
-  let inverse_options = List.map invert p in
+let invert_type_path (invert : inverter) (fs : factors) : factors =
+  let inverse_options = List.map invert fs in
   if List.for_all Option.has_some inverse_options then
     let inverted = List.rev (List.map Option.get inverse_options) in
-    match inverted with (* swap final hypothesis *)
+    match inverted with (* swap final hypothesis *) (* TODO merge with above *)
     | (env_inv, trm_inv) :: t when List.length t > 0 ->
        let (env_inv', trm_inv') = last t in
        let (n, h_inv, _) = destLambda trm_inv' in
@@ -225,7 +225,7 @@ let build_swap_map (env : env) (o : types) (n : types) : swap_map =
  * Generalizing how to swap arguments is hard and will still probably involve
  * swaps above.
  *)
-let rec exploit_type_symmetry env trm =
+let rec exploit_type_symmetry (env : env) (trm : types) : types list =
   map_subterms_env_if_lazy
     (fun _ _ t -> isApp t && is_rewrite (fst (destApp t)))
     (fun en _ t ->

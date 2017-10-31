@@ -4,7 +4,7 @@ open Term
 open Environ
 
 type inverter
-type type_path = (env * types) list
+type factors = (env * types) list
 
 (*
  * Given a type trm, if the type is a function type
@@ -14,7 +14,7 @@ type type_path = (env * types) list
  * First zoom in all the way, then use the auxiliary path-finding
  * function.
  *)
-val find_type_path : env -> types -> type_path
+val find_type_path : env -> types -> factors
 
 (*
  * Try to invert a single simple patch
