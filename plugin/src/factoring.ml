@@ -66,8 +66,9 @@ let assume (env : env) (n : name) (typ : types) : env =
  * finding some Y for which X -> Y. It is then assuming Y,
  * and asking if there is some path from Y to the conclusion.
  *
- * It does not yet handle when Y depends on X. I think that case should
- * fail anyways, since that type path shouldn't be invertible.
+ * It does not yet handle when Y depends on X. That case should
+ * fail for inveresion, but we might want it if we use factoring for other
+ * purposes, like to simplify abstraction.
  *)
 let rec find_path (env : env) (trm : types) : factors =
   if is_assumption env trm then
