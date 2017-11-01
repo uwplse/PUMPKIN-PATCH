@@ -41,8 +41,8 @@ src/proofdiff.mli
 src/proofdiff.ml
 src/factoring.mli
 src/factoring.ml
-src/reversal.mli
-src/reversal.ml
+src/inverting.mli
+src/inverting.ml
 src/searchopts.mli
 src/searchopts.ml
 src/search.mli

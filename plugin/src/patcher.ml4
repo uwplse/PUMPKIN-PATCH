@@ -11,7 +11,7 @@ open Search
 open Constrexpr
 open Substitution
 open Printing
-open Reversal
+open Inverting
 open Theorem
 open Lifting
 open Debruijn

@@ -20,7 +20,7 @@ open Printing
 open Collections
 open Utilities
 open Hofs
-open Reversal
+open Inverting
 open Searchopts
 open Factoring
 
