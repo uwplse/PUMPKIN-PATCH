@@ -17,4 +17,4 @@ val invert_factor : inverter
  * Recursively invert function composition
  * Use the supplied inverter to handle low-level inverses
  *)
-val invert_patches : inverter -> env -> types list -> types list
+val invert_terms : inverter -> env -> types list -> types list

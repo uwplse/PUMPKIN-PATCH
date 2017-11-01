@@ -43,7 +43,7 @@ let invert_factors (invert : inverter) (fs : factors) : factors =
 (* --- Invert a term --- *)
 
 (*
- * Build a swap map of arguments to swap when trying to reverse a patch
+ * Build a swap map of arguments to swap when trying to invert a patch
  *
  * This doesn't handle every type yet, need to generalize
  * When we do, we should test for dependent conclusions or dependent
@@ -108,13 +108,13 @@ let rec exploit_type_symmetry (env : env) (trm : types) : types list =
     trm
 
 (*
- * Try to exploit symmetry and reverse a single factor (like a single
+ * Try to exploit symmetry and invert a single factor (like a single
  * rewrite) so that it goes from old -> new instead of new -> old.
  *
  * The current algorithm is as follows:
  * 1. If the term is the assumption, return the assumption
  * 2. Merge the environments and substitute the assumptions
- * 3. Get the goal type for the reversal
+ * 3. Get the goal type for the inverted term
  * 4. Try exploiting symmetry like eq_ind and eq_ind_r
  * 5. If that fails:
  *    a) See if we can swap some arguments in new_goal_type to get old_goal_type
@@ -130,7 +130,7 @@ let rec exploit_type_symmetry (env : env) (trm : types) : types list =
  * swap upward (if we would swap two types' terms, then also swap those terms).
  *
  * Finally, we may want to move this up to the search process itself,
- * since the reverse patch might show up as a subterm. That is difficult
+ * since the inverse patch might show up as a subterm. That is difficult
  * and will increase candidates significantly, so for now we leave it
  * as a separate step.
  *)
@@ -175,7 +175,7 @@ let invert_using (invert : inverter) (env : env) (trm : types) : types option =
  * Recursively invert function composition
  * Use the supplied inverter to handle low-level inverses
  *)
-let invert_patches invert (env : env) (ps : types list) : types list =
+let invert_terms invert (env : env) (ps : types list) : types list =
   List.map
     Option.get
     (List.filter Option.has_some (List.map (invert_using invert env) ps))
