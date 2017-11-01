@@ -137,8 +137,8 @@ let apply_factors (fs : factors) : types =
   let (env, base) = List.hd fs in
   let body =
     List.fold_right
-      (fun (_, t) t_app ->
-	mkApp (shift t, Array.make 1 t_app))
+      (fun (en, t) t_app ->
+        specialize_using specialize_no_reduce en (shift t) (Array.make 1 t_app))
       (List.tl fs)
       base
   in reduce_using reduce_remove_identities env (reconstruct_lambda env body)
