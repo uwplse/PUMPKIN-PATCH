@@ -38,6 +38,9 @@ val has_cut_type_strict : env -> cut_lemma -> types -> bool
  *)
 val has_cut_type_strict_rev : env -> cut_lemma -> types -> bool
 
+(* Test if a term has the type of the lemma or its reverse *)
+val has_cut_type_strict_sym : env -> cut_lemma -> types -> bool
+
 (*
  * Filter a list of terms to those that have the cut lemma type
  * These terms can have extra hypotheses

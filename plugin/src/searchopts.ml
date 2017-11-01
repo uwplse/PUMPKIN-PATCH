@@ -72,6 +72,10 @@ let has_cut_type_strict_rev env cut trm =
   with _ ->
     false
 
+(* Test if a term has the type of the lemma or its reverse *)
+let has_cut_type_strict_sym env cut trm =
+  has_cut_type_strict env cut trm || has_cut_type_strict_rev env cut trm
+
 (* Check if a type is loosely the cut lemma (can have extra hypotheses) *)
 let rec is_cut env lemma typ =
   match kinds_of_terms (lemma, typ) with

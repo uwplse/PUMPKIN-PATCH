@@ -119,7 +119,9 @@ let invert n trm : unit =
 (* Specialize a term *)
 let specialize n trm : unit =
   let (evm, env) = Lemmas.get_current_context() in
-  define_term n env evm (specialize_application env (intern env evm trm))
+  let reducer = specialize_body specialize_term in
+  let specialized = reduce_using reducer env (intern env evm trm) in
+  define_term n env evm specialized
 
 (* Abstract a term by a function *)
 let abstract n trm goal : unit =

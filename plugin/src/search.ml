@@ -98,30 +98,6 @@ let eval_with_terms_goals opts t_o t_n d =
   let update = update_search_goals opts d in
   update (erase_goals (eval_with_terms t_o t_n d))
 
-(* --- Specialization --- *)
-
-(*
- * This is a specialization function that is currently
- * specialized (heh) to handle user-supplied arguments,
- * when the user guides search with an intermediate lemma and its arguments.
- * This should not be necessary with a better differencing component,
- * but for now it is. See: case studies 2 and 3.
- *
- * specialize is in coqterms.ml (will fix soon)
- * specialize_application is in specialization component
- *)
-let specialize_patch_arg env cut trm =
-  let rec specialize en tr app =
-    if has_cut_type_strict en cut tr || has_cut_type_strict_rev en cut tr then
-      specialize_application en (mkApp (app, Array.make 1 tr))
-    else
-      match kind_of_term tr with
-      | Lambda (n, t, b) ->
-         specialize (push_rel (n, None, t) en) b app
-      | _ ->
-         failwith "Could not specialize"
-  in specialize env trm (get_app cut)
-
 (* --- Type differencing --- *)
 
 (*
@@ -1077,7 +1053,10 @@ let return_patch (opts : options) (env : env) (patches : types list) =
   let flat_map f l = List.flatten (List.map f l) in
   match get_change opts with
   | FixpointCase ((old_type, new_type), cut) ->
-     let specialized = List.map (specialize_patch_arg env cut) patches in
+     let body_reducer = specialize_in (get_app cut) specialize_term in
+     let reduction_condition en tr = has_cut_type_strict_sym en cut tr in
+     let reducer = reduce_body_if reduction_condition body_reducer in
+     let specialized = List.map (reduce_using reducer env) patches in
      let specialized_fs = List.map (factor_term env) specialized in
      let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
      let specialized_typs = List.map (infer_type env) specialized_fs_terms in
