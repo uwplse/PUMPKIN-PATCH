@@ -1,4 +1,4 @@
-(* Functions for inverting symmetric patches *)
+(* --- Inversion Component --- *)
 
 open Term
 open Environ

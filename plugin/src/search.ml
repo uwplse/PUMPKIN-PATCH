@@ -13,6 +13,7 @@ open Lifting
 open Filters
 open Proofdiff
 open Reduce
+open Specialization
 open Lifting
 open Evaluation
 open Expansion
@@ -106,12 +107,13 @@ let eval_with_terms_goals opts t_o t_n d =
  * This should not be necessary with a better differencing component,
  * but for now it is. See: case studies 2 and 3.
  *
- * specialize and specialize_term are in coqterms.ml
+ * specialize is in coqterms.ml (will fix soon)
+ * specialize_application is in specialization component
  *)
 let specialize_patch_arg env cut trm =
   let rec specialize en tr app =
     if has_cut_type_strict en cut tr || has_cut_type_strict_rev en cut tr then
-      specialize_term en (mkApp (app, Array.make 1 tr))
+      specialize_application en (mkApp (app, Array.make 1 tr))
     else
       match kind_of_term tr with
       | Lambda (n, t, b) ->

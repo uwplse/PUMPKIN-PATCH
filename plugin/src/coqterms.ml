@@ -177,19 +177,6 @@ let rec reconstruct_prod (env : env) (b : types) : types =
     let env' = pop_rel_context 1 env in
     reconstruct_prod env' (mkProd (n, t, b))
 
-(*
- * Specialize a constant by some arguments
- *)
-let rec specialize_term (env : env) (t : types) : types =
-  match kind_of_term t with
-  | Lambda (n, t, b) ->
-     mkLambda (n, t, specialize_term (push_rel (n, None, t) env) b)
-  | App (f, args) ->
-     let f_body = unwrap_definition env f in
-     Reduction.nf_betaiota env (mkApp (f_body, args))
-  | _ ->
-     failwith "Term should be of the form (fun args => f args)"
-
 (* --- Inductive types --- *)
 
 (* Get the body of a mutually inductive type *)

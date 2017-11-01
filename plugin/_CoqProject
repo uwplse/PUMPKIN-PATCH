@@ -27,6 +27,8 @@ src/abstraction.mli
 src/abstraction.ml
 src/reduce.mli
 src/reduce.ml
+src/specialization.mli
+src/specialization.ml
 src/lifting.mli
 src/lifting.ml
 src/proofcat.mli

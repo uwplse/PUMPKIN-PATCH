@@ -17,6 +17,7 @@ open Lifting
 open Debruijn
 open Searchopts
 open Reduce
+open Specialization
 open Factoring
 
 (*
@@ -118,7 +119,7 @@ let invert n trm : unit =
 (* Specialize a term *)
 let specialize n trm : unit =
   let (evm, env) = Lemmas.get_current_context() in
-  define_term n env evm (specialize_term env (intern env evm trm))
+  define_term n env evm (specialize_application env (intern env evm trm))
 
 (* Abstract a term by a function *)
 let abstract n trm goal : unit =

@@ -71,9 +71,6 @@ val reconstruct_lambda : env -> types -> types
 (* Reconstruct a product from an environment to some body *)
 val reconstruct_prod : env -> types -> types
 
-(* Specialize a constant by some argumentsx *)
-val specialize_term : env -> types -> types
-
 (* --- Inductive types --- *)
 
 (* (To avoid confusing Coq naming) get the body of a mutually inductive type *)
