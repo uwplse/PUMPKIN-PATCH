@@ -41,6 +41,11 @@ val reduce_term : reducer
 (* --- Custom reducers --- *)
 
 (*
+ * Do not reduce
+ *)
+val do_not_reduce : reducer
+
+(*
  * Remove all applications of the identity function
  *)
 val remove_identities : reducer
@@ -69,6 +74,13 @@ val reduce_unfold_whd : reducer
  * Weak-head reduce a term if it is a let-in (conditional betaiotazeta, whd)
  *)
 val reduce_whd_if_let_in : reducer
+
+(* --- Custom specializers --- *)
+
+(*
+ * Specialize without reduction (so just apply function)
+ *)
+val specialize_no_reduce : specializer
 
 (* --- Combinators and converters --- *)
 

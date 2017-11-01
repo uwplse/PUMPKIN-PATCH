@@ -515,8 +515,6 @@ let search_args search_arg args_o args_n : candidates =
  * We need to improve semantic differencing for those cases,
  * For example, if one application passes through an intermediate lemma
  * but the other doesn't, this function has no clue what to do.
- *
- * TODO move mkApp into specialize, and add reduction
  *)
 let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
   let same_length o n = (Array.length o = Array.length n) in
@@ -561,7 +559,8 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
       | Conclusion ->
          let all_conv = List.for_all2 (convertible env) in
          if all_conv (Array.to_list args_o) (Array.to_list args_n) then
-           let combine_app = combine_cartesian (fun a b -> mkApp (a, b)) in
+           let specialize = specialize_using specialize_no_reduce env in
+           let combine_app = combine_cartesian specialize in
 	   let f = search_f opts (eval_with_terms_goals opts f_o f_n d) in
 	   let args = List.map (fun a_o -> [a_o]) (Array.to_list args_o)
            in combine_app f (combine_cartesian_append (Array.of_list args))
@@ -594,8 +593,6 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
  * that show up afterward, like hypothesis. The example in the paper
  * in Section 3 is a case where you can see an extra argument we don't
  * want to specialize by.
- *
- * TODO move mkApp into specialize, and reduce (if it isn't slow)
  *)
 let diff_final opts search_arg env_o env_n args_o args_n d =
   let final_arg_o = List.hd args_o in
@@ -607,8 +604,9 @@ let diff_final opts search_arg env_o env_n args_o args_n d =
             let a_o = eval_proof env_o arg_o in
             let a_n = eval_proof env_n arg_n in
             let d = add_goals (difference a_n a_o (assumptions d)) in
+            let specialize = specialize_using specialize_no_reduce env_o in
             List.map
-              (fun p -> mkApp (p, Array.make 1 arg_o))
+              (fun p -> specialize p (Array.make 1 arg_o))
               (search_arg opts d))
           ([final_arg_o])
           ([final_arg_n])))
@@ -619,10 +617,7 @@ let diff_final opts search_arg env_o env_n args_o args_n d =
  * then specialize to any final arguments (the reduction step
  * happens later for now).
  *
- * For changes in constructors or fixpoint cases,
- * don't specialize.
- *
- * TODO move mkApp into specialize, and reduce
+ * For changes in constructors or fixpoint cases, don't specialize.
  *)
 let search_app_ind search_ind search_arg opts d : candidates =
   let d_proofs = erase_goals d in
@@ -648,7 +643,8 @@ let search_app_ind search_ind search_arg opts d : candidates =
          let args_o = final_args_old in
          let args_n = final_args_new in
          let args = diff_final opts search_arg env_o env_n args_o args_n d in
-         combine_cartesian (fun a b -> mkApp (a, b)) f args
+         let specialize = specialize_using specialize_no_reduce env_o in
+         combine_cartesian specialize f args
        else
          f
   else

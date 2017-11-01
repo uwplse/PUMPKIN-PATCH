@@ -102,6 +102,10 @@ let specialize_term : specializer =
 
 (* --- Custom reducers --- *)
 
+(* Don't reduce *)
+let do_not_reduce (env : env) (trm : types) : types =
+  trm
+
 (* Remove all applications of the identity function *)
 let remove_identities (env : env) (trm : types) : types =
   map_term_if
@@ -163,4 +167,8 @@ let rec remove_unused_hypos (env : env) (trm : types) : types =
   | _ ->
      trm
 
+(* --- Custom specializers --- *)
 
+(* Specialize without reduction (so just apply) *)
+let specialize_no_reduce : specializer =
+  reducer_to_specializer do_not_reduce
