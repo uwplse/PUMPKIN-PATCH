@@ -63,7 +63,7 @@ let rec args_to (env : env) (f : types) (trm : types) : env * (types array) =
   | _ -> (* not yet implemented *)
      (env, Array.of_list [])
 
-(* 
+(*
  * Subtitute a term into a simple theorem
  * Try to update dependent types appropriately
  *
@@ -81,8 +81,9 @@ let update_theorem (env : env) (src : types) (dst : types) (trm : types) : types
   let (env, trm) = zoom_lambda_term env trm in
   let trm = reduce_using reduce_remove_identities env trm in
   let (env_args, args) = args_to env src trm in
-  let src_typ = infer_type env_args (mkApp (src, args)) in
-  let dst_typ = infer_type env_args (mkApp (dst, args)) in
+  let specialize = specialize_using specialize_no_reduce env_args in
+  let src_typ = infer_type env_args (specialize src args) in
+  let dst_typ = infer_type env_args (specialize dst args) in
   let (env_s, src_concl) = zoom_product_type env_args src_typ in
   let (env_d, dst_concl) = zoom_product_type env_args dst_typ in
   let num_hs = nb_rel env in

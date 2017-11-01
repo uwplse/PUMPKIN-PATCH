@@ -103,7 +103,8 @@ let patch_proof n d_old d_new cut =
  * It just might be useful in the future, so feel free to play with it
  *)
 let patch_theorem n d_old d_new t =
-  let (old_term, new_term) = intern_defs d_old d_new in
+  let (evm, env) = Lemmas.get_current_context() in
+  let (old_term, new_term) = (intern env evm d_old, intern env evm d_new) in
   patch n old_term new_term false t
     (fun env evm t ->
       let theorem = intern env evm t in
