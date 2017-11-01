@@ -16,7 +16,6 @@ open Theorem
 open Lifting
 open Debruijn
 open Searchopts
-open Reduce
 open Specialization
 open Factoring
 
@@ -65,7 +64,8 @@ let invert_patch n env evm patch =
 (* Common patch command functionality *)
 let patch n old_term new_term try_invert a search =
   let (evm, env) = Lemmas.get_current_context() in
-  let patch = try_reduce env (search env evm a) in
+  let reduce = reduce_using (try_reduce reduce_remove_identities) in
+  let patch = reduce env (search env evm a) in
   let prefix = Id.to_string n in
   define_term n env evm patch;
   Printf.printf "Defined %s\n" prefix;

@@ -3,7 +3,7 @@
 open Term
 open Environ
 open Coqterms
-open Reduce
+open Specialization
 open Names
 open Collections
 open Debruijn
@@ -106,7 +106,8 @@ let rec find_path (env : env) (trm : types) : factors =
  * function.
  *)
 let factor_term (env : env) (trm : types) : factors =
-  let (env_zoomed, trm_zoomed) = zoom_lambda_term env (reduce env trm) in
+  let r = reduce_using reduce_remove_identities in
+  let (env_zoomed, trm_zoomed) = zoom_lambda_term env (r env trm) in
   let path_body = find_path env_zoomed trm_zoomed in
   List.map
     (fun (env, body) ->
@@ -140,4 +141,4 @@ let apply_factors (fs : factors) : types =
 	mkApp (shift t, Array.make 1 t_app))
       (List.tl fs)
       base
-  in reduce env (reconstruct_lambda env body)
+  in reduce_using reduce_remove_identities env (reconstruct_lambda env body)

@@ -6,7 +6,7 @@ open Coqterms
 open Printing
 open Substitution
 open Debruijn
-open Reduce
+open Specialization
 
 (*
  * Zoom all the way into a lambda term
@@ -68,7 +68,7 @@ let rec args_to (env : env) (f : types) (trm : types) : env * (types array) =
  * Try to update dependent types appropriately
  *
  * For now, operates at two levels, so gets the argument where the
- * type is applied. 
+ * type is applied.
  * When we add path-finding to this, we can omit this part.
  *
  * Also assumes src, dst constants, which saves us from shifting for now.
@@ -79,7 +79,7 @@ let rec args_to (env : env) (f : types) (trm : types) : env * (types array) =
 let update_theorem (env : env) (src : types) (dst : types) (trm : types) : types =
   assert (isConst src && isConst dst);
   let (env, trm) = zoom_lambda_term env trm in
-  let trm = reduce env trm in
+  let trm = reduce_using reduce_remove_identities env trm in
   let (env_args, args) = args_to env src trm in
   let src_typ = infer_type env_args (mkApp (src, args)) in
   let dst_typ = infer_type env_args (mkApp (dst, args)) in

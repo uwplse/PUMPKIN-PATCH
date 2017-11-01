@@ -12,7 +12,6 @@ open Assumptions
 open Lifting
 open Filters
 open Proofdiff
-open Reduce
 open Specialization
 open Lifting
 open Evaluation
@@ -123,15 +122,17 @@ let rec get_goal_fix (env : env) (old_term : types) (new_term : types) : types l
          (get_goal_fix (push_rel (n1, None, t1) env) b1 b2)
     | _ ->
        let rec get_goal_reduced env old_term new_term =
-         let red_old = reduce_unfold_hd env old_term in
-         let red_new = reduce_unfold_hd env new_term in
+         let r = reduce_using reduce_unfold_whd env in
+         let red_old = r old_term in
+         let red_new = r new_term in
          match kinds_of_terms (red_old, red_new) with
          | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
             let args1 = Array.to_list args1 in
             let args2 = Array.to_list args2 in
             List.flatten (List.map2 (get_goal_reduced env) args1 args2)
          | _ when not (eq_constr red_old red_new) ->
-            [reduce_unfold env (mkProd (Anonymous, old_term, shift new_term))]
+            let r = reduce_using reduce_unfold env in
+            [r (mkProd (Anonymous, old_term, shift new_term))]
          | _ ->
             give_up
        in get_goal_reduced env old_term new_term
@@ -198,7 +199,7 @@ let get_lifting_goals p_typ (env : env) (o : types) (n : types) : types list =
       let goals = List.flatten (List.map2 (goals_for_fix env_fix) dso dsn) in
       let lambdas = List.map (reconstruct_lambda env_fix) goals in
       let apps = List.map (fun t -> mkApp (t, Array.make 1 n)) lambdas in
-      let red_goals = List.map (reduce env) apps in
+      let red_goals = reduce_all reduce_remove_identities env apps in
       List.map
         (fun goal ->
           let pi = 0 in
@@ -466,7 +467,7 @@ let find_difference opts (d : goal_term_diff) : types list =
   let (old_goal_type, old_term) = old_proof d_merge in
   let (new_goal_type, new_term) = new_proof d_merge in
   let candidates = build_app_candidates env_merge old_term new_term in
-  let reduced = List.map (reduce env_merge) candidates in
+  let reduced = reduce_all reduce_remove_identities env_merge candidates in
   let goal_type = mkProd (Anonymous, new_goal_type, shift old_goal_type) in
   let filter = filter_by_type env_merge goal_type in
   List.map
@@ -686,14 +687,9 @@ let simplify_letin (d : goal_proof_diff) : goal_proof_diff =
     let d_dest = dest_goals d in
     let ((_, old_env), _) = old_proof d_dest in
     let ((_, new_env), _) = new_proof d_dest in
-    let reduce_if_let_in env t =
-      if isLetIn t then
-        Reduction.whd_betaiotazeta env t
-      else
-        t
-    in
-    let o' = reduce_if_let_in old_env o in
-    let n' = reduce_if_let_in new_env n in
+    let r = reduce_using reduce_whd_if_let_in in
+    let o' = r old_env o in
+    let n' = r new_env n in
     eval_with_terms o' n' d
   else
     d
@@ -1023,7 +1019,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
            else
              (* 6c TODO explain, refactor, support better *)
              let (o, n) = proof_terms d in
-             let d_red = reduce_diff d in
+             let d_red = reduce_diff reduce_remove_identities d in
              let (o_red, n_red) = proof_terms d_red in
              if not ((eq_constr o o_red) && (eq_constr n n_red)) then
                search opts d_red
@@ -1035,7 +1031,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
 (* Given a configuration, return the appropriate search function *)
 let search_function (opts : options) (should_reduce : bool) =
   if should_reduce then
-    (fun opts d -> search opts (reduce_diff d))
+    (fun opts d -> search opts (reduce_diff reduce_remove_identities d))
   else
     search
 
@@ -1077,14 +1073,15 @@ let return_patch (opts : options) (env : env) (patches : types list) =
          specialized_fs_terms
      in List.hd generalized
   | ConclusionCase (Some cut) ->
-     let patches = reduce_candidates remove_unused_hypos env patches in
+     let patches = reduce_all remove_unused_hypos env patches in
      let generalized =
        flat_map
          (fun c ->
            let c_typs = List.map (infer_type env) [c] in
            let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
            let (_, _, b) = destLambda (get_app cut) in
-           let g = reduce env (get_lifting_goal_args 1 b) in
+           let r = reduce_using reduce_remove_identities env in
+           let g = r (get_lifting_goal_args 1 b) in
            generalize_term_args no_reduce_strategies env_cut (shift c) g)
          patches
      in List.hd generalized

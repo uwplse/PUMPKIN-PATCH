@@ -10,7 +10,7 @@ open Filters
 open Coqterms
 open Printing
 open Collections
-open Reduce
+open Specialization
 open Coqenvs
 open Utilities
 
@@ -21,7 +21,7 @@ type lift_dimension = Arguments | Property of types
 
 type lifting_strategy =
   {
-    reducer : reduction_strategy;
+    reducer : reducer;
     abstracter : abstraction_strategy;
     filter : types filter_strategy;
     to_lift : lift_dimension;
@@ -56,7 +56,7 @@ type lifting_options =
  *)
 let syntactic_full_reduce : lifting_strategy =
   {
-    reducer = reduce;
+    reducer = reduce_remove_identities;
     abstracter = syntactic_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -67,7 +67,7 @@ let syntactic_full_reduce : lifting_strategy =
  * Replace all convertible terms at the highest level with abstracted terms
  *)
 let syntactic_full_no_reduce : lifting_strategy =
-  {syntactic_full_reduce with reducer = do_not_reduce; }
+  {syntactic_full_reduce with reducer = remove_identities; }
 
 (*
  * Reduce first
@@ -76,7 +76,7 @@ let syntactic_full_no_reduce : lifting_strategy =
  *)
 let types_full_reduce : lifting_strategy =
   {
-    reducer = reduce;
+    reducer = reduce_remove_identities;
     abstracter = types_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -87,7 +87,7 @@ let types_full_reduce : lifting_strategy =
  * Replace all convertible terms at the highest level with abstracted terms
  *)
 let types_full_no_reduce : lifting_strategy =
-  { types_full_reduce with reducer = do_not_reduce; }
+  { types_full_reduce with reducer = remove_identities; }
 
 (*
  * Reduce first
@@ -96,7 +96,7 @@ let types_full_no_reduce : lifting_strategy =
  *)
 let pattern_full_reduce : lifting_strategy =
   {
-    reducer = reduce;
+    reducer = reduce_remove_identities;
     abstracter = pattern_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -108,7 +108,7 @@ let pattern_full_reduce : lifting_strategy =
  * Fall back to syntactic_full when the concrete argument is not a pattern
  *)
 let pattern_no_reduce : lifting_strategy =
-  { pattern_full_reduce with reducer = do_not_reduce; }
+  { pattern_full_reduce with reducer = remove_identities; }
 
 (*
  * Reduce first
@@ -116,7 +116,7 @@ let pattern_no_reduce : lifting_strategy =
  *)
 let syntactic_all_reduce : lifting_strategy =
   {
-    reducer = reduce;
+    reducer = reduce_remove_identities;
     abstracter = syntactic_all_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -127,7 +127,7 @@ let syntactic_all_reduce : lifting_strategy =
  * Replace all combinations of convertible subterms with abstracted terms
  *)
 let syntactic_all_no_reduce : lifting_strategy =
-  { syntactic_all_reduce with reducer = do_not_reduce; }
+  { syntactic_all_reduce with reducer = remove_identities; }
 
 (*
  * All strategies that reduce first
@@ -257,7 +257,8 @@ let get_concrete_prop (config : lift_config) (concrete : closure) : closure =
 let get_concrete config strategy : closure =
   let env = config.env in
   let args = config.args in
-  let base = reduce env (mkApp (config.f_base, Array.of_list args)) in
+  let s = reducer_to_specializer reduce_remove_identities in
+  let base = specialize_using s env config.f_base (Array.of_list args) in
   let concrete = (env, List.append args [base]) in
   match strategy.to_lift with
   | Arguments ->
@@ -283,17 +284,18 @@ let get_abstract_args config : closure =
 (* Get the abstract arguments that map to concrete arguments
    for a particular strategy, function, and arguments *)
 let get_abstract config concrete strategy : closure =
+  let s = reducer_to_specializer reduce_remove_identities in
   match strategy.to_lift with
   | Arguments ->
      let (env_abs, args_abs) = get_abstract_args config in
      let p = shift_by (List.length args_abs) config.f_base in
-     let base_abs = reduce env_abs (mkApp (p, Array.of_list args_abs)) in
+     let base_abs = specialize_using s env_abs p (Array.of_list args_abs) in
      (env_abs, List.append args_abs [base_abs])
   | Property _ ->
      let args_abs = config.args in
      let (env_p, args_p) = concrete in
      let p = mkRel (List.length args_p) in
-     let base_abs = reduce env_p (mkApp (p, Array.of_list args_abs)) in
+     let base_abs = specialize_using s env_p p (Array.of_list args_abs) in
      (env_p, List.append (p :: List.tl args_abs) [base_abs])
 
 (* Given a lifting strategy, get the lifting options for the
@@ -333,7 +335,7 @@ let lift_with_strategy (config : lift_config) strategy : types list =
   let opts = get_lift_opts config strategy in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
-  let reduced_cs = reduce_candidates strategy.reducer env config.cs in
+  let reduced_cs = reduce_all strategy.reducer env config.cs in
   let shift_concrete = shift_terms config.is_concrete strategy opts in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in

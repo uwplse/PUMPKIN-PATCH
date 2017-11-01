@@ -7,7 +7,7 @@ open Collections
 open Printing
 open Utilities
 open Debruijn
-open Reduce
+open Specialization
 open Substitution
 open Assumptions
 open Hofs
@@ -135,11 +135,12 @@ let rec exploit_type_symmetry (env : env) (trm : types) : types list =
  * as a separate step.
  *)
 let invert_factor (env, rp) : (env * types) option =
-  let rp = reduce env rp in
+  let r = reduce_using reduce_remove_identities in
+  let rp = r env rp in
   match kind_of_term rp with
   | Lambda (n, old_goal_type, body) ->
      let env_body = push_rel (n, None, old_goal_type) env in
-     let new_goal_type = unshift (reduce env_body (infer_type env_body body)) in
+     let new_goal_type = unshift (r env_body (infer_type env_body body)) in
      let rp_goal = all_conv_substs env (old_goal_type, new_goal_type) rp in
      let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
      let flipped = exploit_type_symmetry env rp_goal in

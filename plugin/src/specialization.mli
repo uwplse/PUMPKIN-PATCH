@@ -1,5 +1,14 @@
 (* --- Specialization Component --- *)
 
+(*
+ * The default approach (specialize_using specialize_term)
+ * is function application followed by betaiota reduction.
+ *
+ * We expose more advanced specialization approaches so that it is
+ * easy to customize how this is called, which is useful
+ * for future extension to the tool.
+ *)
+
 open Term
 open Environ
 
@@ -11,12 +20,67 @@ open Environ
 type reducer
 type specializer
 
-(* --- Specializers --- *)
+(* --- Top-level --- *)
 
-(* Specialize a term by some arguments, default approach *)
+val specialize_using : specializer -> env -> types -> types array -> types
+val reduce_using : reducer -> env -> types -> types
+val reduce_all : reducer -> env -> types list -> types list
+
+(* --- Defaults --- *)
+
+(*
+ * Default specializer
+ *)
 val specialize_term : specializer
 
-(* --- Reducers --- *)
+(*
+ * Default reducer
+ *)
+val reduce_term : reducer
+
+(* --- Custom reducers --- *)
+
+(*
+ * Remove all applications of the identity function
+ *)
+val remove_identities : reducer
+
+(*
+ * Remove unused hypotheses
+ *)
+val remove_unused_hypos : reducer
+
+(*
+ * Remove all applications of the identity function, then default reduce
+ *)
+val reduce_remove_identities : reducer
+
+(*
+ * Default reduce and also unfold definitions (delta-reduce, nf)
+ *)
+val reduce_unfold : reducer
+
+(*
+ * Default reduce and also unfold definitions (delta-reduce, whd)
+ *)
+val reduce_unfold_whd : reducer
+
+(*
+ * Weak-head reduce a term if it is a let-in (conditional betaiotazeta, whd)
+ *)
+val reduce_whd_if_let_in : reducer
+
+(* --- Combinators and converters --- *)
+
+(*
+ * Reduce with the first reducer, then with the second reducer
+ *)
+val chain_reduce : reducer -> reducer -> reducer
+
+(*
+ * Try to reduce, but let failure be OK
+ *)
+val try_reduce : reducer -> reducer
 
 (*
  * Specialize an applied function in a term body by its arguments.
@@ -47,8 +111,7 @@ val specialize_to : types array -> specializer -> reducer
  *)
 val specialize_in : types -> specializer -> reducer
 
-(* --- Top-level --- *)
-
-val specialize_using : specializer -> env -> types -> types array -> types
-val reduce_using : reducer -> env -> types -> types
-
+(*
+ * Convert a reducer into a specializer in the obvious way
+ *)
+val reducer_to_specializer : reducer -> specializer
