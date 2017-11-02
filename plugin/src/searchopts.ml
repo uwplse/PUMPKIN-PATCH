@@ -41,7 +41,7 @@ let get_app (cut : cut_lemma) =
 
 (* Test if a type is exactly the type of the lemma to cut by *)
 let is_cut_strict env lemma typ =
-  let r = reduce_using reduce_remove_identities in
+  let r = reduce_using reduce_term in
   try
     concls_convertible env (r env lemma) (r env typ)
   with _ ->
@@ -50,7 +50,7 @@ let is_cut_strict env lemma typ =
 (* Test if a term has exactly the type of the lemma to cut by *)
 let has_cut_type_strict env cut trm =
   try
-    let typ = reduce_using reduce_remove_identities env (infer_type env trm) in
+    let typ = reduce_using reduce_term env (infer_type env trm) in
     is_cut_strict env (get_lemma cut) typ
   with _ ->
     false
@@ -68,7 +68,7 @@ let rec flip_concls lemma =
 (* Test if a term has exactly the type of the lemma to cut by in reverse *)
 let has_cut_type_strict_rev env cut trm =
   try
-    let typ = reduce_using reduce_remove_identities env (infer_type env trm) in
+    let typ = reduce_using reduce_term env (infer_type env trm) in
     is_cut_strict env (flip_concls (get_lemma cut)) typ
   with _ ->
     false
@@ -96,14 +96,14 @@ let rec is_cut env lemma typ =
 (* Check if a term has loosely the cut lemma type (can have extra hypotheses) *)
 let has_cut_type env cut trm =
   try
-    let typ = reduce_using reduce_remove_identities env (infer_type env trm) in
+    let typ = reduce_using reduce_term env (infer_type env trm) in
     is_cut env (get_lemma cut) typ
   with _ ->
     false
 
 (* Check if a term is loosely an application of the lemma to cut by *)
 let has_cut_type_app env cut trm =
-  let r = reduce_using reduce_remove_identities in
+  let r = reduce_using reduce_term in
   try
     let typ = shift (r env (infer_type env trm)) in
     let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
