@@ -1027,7 +1027,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
 (* Given a configuration, return the appropriate search function *)
 let search_function (opts : options) (should_reduce : bool) =
   if should_reduce then
-    (fun opts d -> search opts (reduce_diff reduce_remove_identities d))
+    (fun opts d -> search opts (reduce_diff reduce_term d))
   else
     search
 
