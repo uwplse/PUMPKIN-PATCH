@@ -1,3 +1,4 @@
+-I src/library/utilities
 -I src
 -I src/core/components/abstraction
 -I src/core/components/specialization
@@ -5,10 +6,10 @@
 -I src/core/components/factoring
 -Q theories Patcher
 
-src/utilities.mli
-src/utilities.ml
-src/collections.mli
-src/collections.ml
+src/library/utilities/utilities.mli
+src/library/utilities/utilities.ml
+src/library/utilities/collections.mli
+src/library/utilities/collections.ml
 src/category.mli
 src/category.ml
 src/coqterms.mli
