@@ -7,6 +7,7 @@ open Specialization
 open Names
 open Collections
 open Debruijn
+open Printing
 
 type factors = (env * types) list
 
@@ -141,4 +142,5 @@ let apply_factors (fs : factors) : types =
         specialize_using specialize_no_reduce en (shift t) (Array.make 1 t_app))
       (List.tl fs)
       base
-  in reduce_using reduce_term env (reconstruct_lambda env body)
+  in reconstruct_lambda env body
+
