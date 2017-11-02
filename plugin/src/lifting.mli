@@ -7,7 +7,7 @@ open Coqterms
 
 type candidates = types list
 type arg_subst
-type lifting_strategy
+type abstraction_strategy
 
 (* --- User configuration for lifting --- *)
 
@@ -19,7 +19,7 @@ type lift_config =
     cs : candidates;
     f_base : types;
     f_goal : types;
-    strategies : lifting_strategy list;
+    strategies : abstraction_strategy list;
   }
 
 (*--- Lifting arguments ---*)
@@ -27,39 +27,39 @@ type lift_config =
 (*
  * All strategies that reduce first
  *)
-val reduce_strategies : lifting_strategy list
+val reduce_strategies : abstraction_strategy list
 
 (*
  * All strategies that don't reduce first
  *)
-val no_reduce_strategies : lifting_strategy list
+val no_reduce_strategies : abstraction_strategy list
 
 (*
  * List of default strategies
  *)
-val default_strategies : lifting_strategy list
+val default_strategies : abstraction_strategy list
 
 (*
  * List of the simplest strategies
  *)
-val simple_strategies : lifting_strategy list
+val simple_strategies : abstraction_strategy list
 
 (*--- Lifting properties ---*)
 
 (*
  * All strategies that reduce first
  *)
-val reduce_strategies_prop : types -> lifting_strategy list
+val reduce_strategies_prop : types -> abstraction_strategy list
 
 (*
  * All strategies that don't reduce first
  *)
-val no_reduce_strategies_prop : types -> lifting_strategy list
+val no_reduce_strategies_prop : types -> abstraction_strategy list
 
 (*
  * List of default strategies
  *)
-val default_strategies_prop : types -> lifting_strategy list
+val default_strategies_prop : types -> abstraction_strategy list
 
 (*--- Lifting ---*)
 

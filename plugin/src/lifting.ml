@@ -19,10 +19,10 @@ type arg_subst = closure * closure
 
 type lift_dimension = Arguments | Property of types
 
-type lifting_strategy =
+type abstraction_strategy =
   {
     reducer : reducer;
-    abstracter : abstraction_strategy;
+    abstracter : abstracter;
     filter : types filter_strategy;
     to_lift : lift_dimension;
   }
@@ -36,7 +36,7 @@ type lift_config =
     cs : candidates;
     f_base : types;
     f_goal : types;
-    strategies : lifting_strategy list;
+    strategies : abstraction_strategy list;
   }
 
 (* Internal options for lifting *)
@@ -54,7 +54,7 @@ type lifting_options =
  * Reduce first
  * Replace all convertible terms at the highest level with abstracted terms
  *)
-let syntactic_full_reduce : lifting_strategy =
+let syntactic_full_reduce : abstraction_strategy =
   {
     reducer = reduce_remove_identities;
     abstracter = syntactic_full_strategy;
@@ -66,7 +66,7 @@ let syntactic_full_reduce : lifting_strategy =
  * Don't reduce
  * Replace all convertible terms at the highest level with abstracted terms
  *)
-let syntactic_full_no_reduce : lifting_strategy =
+let syntactic_full_no_reduce : abstraction_strategy =
   {syntactic_full_reduce with reducer = remove_identities; }
 
 (*
@@ -74,7 +74,7 @@ let syntactic_full_no_reduce : lifting_strategy =
  * Replace all terms with convertible types at the highest level
  * with abstracted terms
  *)
-let types_full_reduce : lifting_strategy =
+let types_full_reduce : abstraction_strategy =
   {
     reducer = reduce_remove_identities;
     abstracter = types_full_strategy;
@@ -86,7 +86,7 @@ let types_full_reduce : lifting_strategy =
  * Don't reduce
  * Replace all convertible terms at the highest level with abstracted terms
  *)
-let types_full_no_reduce : lifting_strategy =
+let types_full_no_reduce : abstraction_strategy =
   { types_full_reduce with reducer = remove_identities; }
 
 (*
@@ -94,7 +94,7 @@ let types_full_no_reduce : lifting_strategy =
  * Replace all terms matching a pattern (f, args) with abstracted terms
  * Fall back to syntactic_full when the concrete argument is not a pattern
  *)
-let pattern_full_reduce : lifting_strategy =
+let pattern_full_reduce : abstraction_strategy =
   {
     reducer = reduce_remove_identities;
     abstracter = pattern_full_strategy;
@@ -107,14 +107,14 @@ let pattern_full_reduce : lifting_strategy =
  * Replace all terms matching a pattern (f, args) with abstracted terms
  * Fall back to syntactic_full when the concrete argument is not a pattern
  *)
-let pattern_no_reduce : lifting_strategy =
+let pattern_no_reduce : abstraction_strategy =
   { pattern_full_reduce with reducer = remove_identities; }
 
 (*
  * Reduce first
  * Replace all combinations of convertible subterms with abstracted terms
  *)
-let syntactic_all_reduce : lifting_strategy =
+let syntactic_all_reduce : abstraction_strategy =
   {
     reducer = reduce_remove_identities;
     abstracter = syntactic_all_strategy;
@@ -126,49 +126,49 @@ let syntactic_all_reduce : lifting_strategy =
  * Don't reduce
  * Replace all combinations of convertible subterms with abstracted terms
  *)
-let syntactic_all_no_reduce : lifting_strategy =
+let syntactic_all_no_reduce : abstraction_strategy =
   { syntactic_all_reduce with reducer = remove_identities; }
 
 (*
  * All strategies that reduce first
  *)
-let reduce_strategies : lifting_strategy list =
+let reduce_strategies : abstraction_strategy list =
   [syntactic_full_reduce; syntactic_all_reduce; pattern_full_reduce]
 
 (*
  * All strategies that don't reduce first
  *)
-let no_reduce_strategies : lifting_strategy list =
+let no_reduce_strategies : abstraction_strategy list =
   [syntactic_full_no_reduce; syntactic_all_no_reduce; pattern_no_reduce]
 
 (*
  * List of default strategies
  *)
-let default_strategies : lifting_strategy list =
+let default_strategies : abstraction_strategy list =
   [syntactic_full_no_reduce; syntactic_full_reduce; pattern_full_reduce;
    syntactic_all_no_reduce; syntactic_all_reduce; pattern_no_reduce]
 
 (*
  * List of the simplest strategies
  *)
-let simple_strategies : lifting_strategy list =
+let simple_strategies : abstraction_strategy list =
   [syntactic_full_reduce; syntactic_full_no_reduce]
 
 (* --- Strategies for lifting properties --- *)
 
-let types_full_reduce_prop (goal : types) : lifting_strategy =
+let types_full_reduce_prop (goal : types) : abstraction_strategy =
   { types_full_reduce with to_lift = Property goal; }
 
-let types_full_no_reduce_prop (goal : types) : lifting_strategy =
+let types_full_no_reduce_prop (goal : types) : abstraction_strategy =
   { types_full_no_reduce with to_lift = Property goal; }
 
-let reduce_strategies_prop (goal : types) : lifting_strategy list =
+let reduce_strategies_prop (goal : types) : abstraction_strategy list =
   [types_full_reduce_prop goal]
 
-let no_reduce_strategies_prop (goal : types) : lifting_strategy list =
+let no_reduce_strategies_prop (goal : types) : abstraction_strategy list =
   [types_full_no_reduce_prop goal]
 
-let default_strategies_prop (goal : types) : lifting_strategy list =
+let default_strategies_prop (goal : types) : abstraction_strategy list =
   List.append
     (reduce_strategies_prop goal)
     (no_reduce_strategies_prop goal)
