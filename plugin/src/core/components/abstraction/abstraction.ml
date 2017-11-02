@@ -40,10 +40,8 @@ type abstraction_options =
 (*
  * Wrap each candidate in a lambda from anonymous terms with the types of args
  * Assumes all arguments are bound in env
- *
- * TODO rename to generalize
  *)
-let wrap_candidates_in_lambdas (env : env) (num_to_abstract : int) (cs : candidates) : candidates =
+let generalize (env : env) (num_to_abstract : int) (cs : candidates) : candidates =
   snd
     (List.fold_right
        (fun _ (en, l) ->
@@ -196,7 +194,7 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
   let bs = substitute_using strategy env_abs args_adj args_abs cs_adj in
-  let lambdas = wrap_candidates_in_lambdas env_abs opts.num_to_abstract bs in
+  let lambdas = generalize env_abs opts.num_to_abstract bs in
   Printf.printf "%d abstracted candidates\n" (List.length lambdas);
   filter_using strategy env opts.goal_type lambdas
 
