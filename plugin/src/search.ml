@@ -199,7 +199,7 @@ let get_lifting_goals p_typ (env : env) (o : types) (n : types) : types list =
       let goals = List.flatten (List.map2 (goals_for_fix env_fix) dso dsn) in
       let lambdas = List.map (reconstruct_lambda env_fix) goals in
       let apps = List.map (fun t -> mkApp (t, Array.make 1 n)) lambdas in
-      let red_goals = reduce_all reduce_remove_identities env apps in
+      let red_goals = reduce_all reduce_term env apps in
       List.map
         (fun goal ->
           let pi = 0 in
