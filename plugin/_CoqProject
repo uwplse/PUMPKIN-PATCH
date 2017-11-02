@@ -1,4 +1,5 @@
 -I src
+-I src/components
 -Q theories Patcher
 
 src/utilities.mli
@@ -25,8 +26,8 @@ src/filters.mli
 src/filters.ml
 src/abstraction.mli
 src/abstraction.ml
-src/specialization.mli
-src/specialization.ml
+src/components/specialization.mli
+src/components/specialization.ml
 src/lifting.mli
 src/lifting.ml
 src/proofcat.mli
@@ -39,10 +40,10 @@ src/expansion.mli
 src/expansion.ml
 src/proofdiff.mli
 src/proofdiff.ml
-src/factoring.mli
-src/factoring.ml
-src/inverting.mli
-src/inverting.ml
+src/components/factoring.mli
+src/components/factoring.ml
+src/components/inverting.mli
+src/components/inverting.ml
 src/searchopts.mli
 src/searchopts.ml
 src/search.mli
