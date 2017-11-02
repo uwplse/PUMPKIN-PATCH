@@ -135,7 +135,7 @@ let rec exploit_type_symmetry (env : env) (trm : types) : types list =
  * as a separate step.
  *)
 let invert_factor (env, rp) : (env * types) option =
-  let r = reduce_using reduce_remove_identities in
+  let r = reduce_using reduce_term in
   let rp = r env rp in
   match kind_of_term rp with
   | Lambda (n, old_goal_type, body) ->
