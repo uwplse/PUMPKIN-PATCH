@@ -1,4 +1,4 @@
-(* Lifting strategies *)
+(* --- Abstraction Component --- *)
 
 (* TODO there is still code in here to check and clean up *)
 
@@ -13,19 +13,6 @@ open Collections
 open Specialization
 open Coqenvs
 open Utilities
-
-type candidates = types list
-type arg_subst = closure * closure
-
-type abstraction_dimension = Arguments | Property of types
-
-type abstraction_strategy =
-  {
-    reducer : reducer;
-    abstracter : abstracter;
-    filter : types filter_strategy;
-    to_abstract : abstraction_dimension;
-  }
 
 (* User configuration for abstraction *)
 type abstraction_config =
@@ -48,144 +35,13 @@ type abstraction_options =
     num_to_abstract : int;
   }
 
-(* --- Strategies for abstraction arguments --- *)
-
-(*
- * Reduce first
- * Replace all convertible terms at the highest level with abstracted terms
- *)
-let syntactic_full_reduce : abstraction_strategy =
-  {
-    reducer = reduce_remove_identities;
-    abstracter = syntactic_full_strategy;
-    filter = filter_by_type;
-    to_abstract = Arguments;
-  }
-
-(*
- * Don't reduce
- * Replace all convertible terms at the highest level with abstracted terms
- *)
-let syntactic_full_no_reduce : abstraction_strategy =
-  {syntactic_full_reduce with reducer = remove_identities; }
-
-(*
- * Reduce first
- * Replace all terms with convertible types at the highest level
- * with abstracted terms
- *)
-let types_full_reduce : abstraction_strategy =
-  {
-    reducer = reduce_remove_identities;
-    abstracter = types_full_strategy;
-    filter = filter_by_type;
-    to_abstract = Arguments;
-  }
-
-(*
- * Don't reduce
- * Replace all convertible terms at the highest level with abstracted terms
- *)
-let types_full_no_reduce : abstraction_strategy =
-  { types_full_reduce with reducer = remove_identities; }
-
-(*
- * Reduce first
- * Replace all terms matching a pattern (f, args) with abstracted terms
- * Fall back to syntactic_full when the concrete argument is not a pattern
- *)
-let pattern_full_reduce : abstraction_strategy =
-  {
-    reducer = reduce_remove_identities;
-    abstracter = pattern_full_strategy;
-    filter = filter_by_type;
-    to_abstract = Arguments;
-  }
-
-(*
- * Don't reduce
- * Replace all terms matching a pattern (f, args) with abstracted terms
- * Fall back to syntactic_full when the concrete argument is not a pattern
- *)
-let pattern_no_reduce : abstraction_strategy =
-  { pattern_full_reduce with reducer = remove_identities; }
-
-(*
- * Reduce first
- * Replace all combinations of convertible subterms with abstracted terms
- *)
-let syntactic_all_reduce : abstraction_strategy =
-  {
-    reducer = reduce_remove_identities;
-    abstracter = syntactic_all_strategy;
-    filter = filter_by_type;
-    to_abstract = Arguments;
-  }
-
-(*
- * Don't reduce
- * Replace all combinations of convertible subterms with abstracted terms
- *)
-let syntactic_all_no_reduce : abstraction_strategy =
-  { syntactic_all_reduce with reducer = remove_identities; }
-
-(*
- * All strategies that reduce first
- *)
-let reduce_strategies : abstraction_strategy list =
-  [syntactic_full_reduce; syntactic_all_reduce; pattern_full_reduce]
-
-(*
- * All strategies that don't reduce first
- *)
-let no_reduce_strategies : abstraction_strategy list =
-  [syntactic_full_no_reduce; syntactic_all_no_reduce; pattern_no_reduce]
-
-(*
- * List of default strategies
- *)
-let default_strategies : abstraction_strategy list =
-  [syntactic_full_no_reduce; syntactic_full_reduce; pattern_full_reduce;
-   syntactic_all_no_reduce; syntactic_all_reduce; pattern_no_reduce]
-
-(*
- * List of the simplest strategies
- *)
-let simple_strategies : abstraction_strategy list =
-  [syntactic_full_reduce; syntactic_full_no_reduce]
-
-(* --- Strategies for abstraction properties --- *)
-
-let types_full_reduce_prop (goal : types) : abstraction_strategy =
-  { types_full_reduce with to_abstract = Property goal; }
-
-let types_full_no_reduce_prop (goal : types) : abstraction_strategy =
-  { types_full_no_reduce with to_abstract = Property goal; }
-
-let reduce_strategies_prop (goal : types) : abstraction_strategy list =
-  [types_full_reduce_prop goal]
-
-let no_reduce_strategies_prop (goal : types) : abstraction_strategy list =
-  [types_full_no_reduce_prop goal]
-
-let default_strategies_prop (goal : types) : abstraction_strategy list =
-  List.append
-    (reduce_strategies_prop goal)
-    (no_reduce_strategies_prop goal)
-
 (* --- Functionality for abstraction --- *)
-
-(*
- * From the abstract environment, abstract args,
- * concrete environment, and concrete args,
- * return an argument substitution for abstraction
- *)
-let make_arg_subst (abstract : closure) (concrete : closure) =
-  (abstract, concrete)
 
 (*
  * Wrap each candidate in a lambda from anonymous terms with the types of args
  * Assumes all arguments are bound in env
+ *
+ * TODO rename to generalize
  *)
 let wrap_candidates_in_lambdas (env : env) (num_to_abstract : int) (cs : candidates) : candidates =
   snd
@@ -260,7 +116,7 @@ let get_concrete config strategy : closure =
   let s = reducer_to_specializer reduce_term in
   let base = specialize_using s env config.f_base (Array.of_list args) in
   let concrete = (env, List.append args [base]) in
-  match strategy.to_abstract with
+  match kind_of_abstraction strategy with
   | Arguments ->
      concrete
   | Property _ ->
@@ -285,7 +141,7 @@ let get_abstraction_args config : closure =
    for a particular strategy, function, and arguments *)
 let get_abstract config concrete strategy : closure =
   let s = reducer_to_specializer reduce_term in
-  match strategy.to_abstract with
+  match kind_of_abstraction strategy with
   | Arguments ->
      let (env_abs, args_abs) = get_abstraction_args config in
      let p = shift_by (List.length args_abs) config.f_base in
@@ -303,7 +159,7 @@ let get_abstract config concrete strategy : closure =
 let get_abstraction_opts config strategy : abstraction_options =
   let concrete = get_concrete config strategy in
   let abstract = get_abstract config concrete strategy in
-  match strategy.to_abstract with
+  match kind_of_abstraction strategy with
   | Arguments ->
      let num_to_abstract = List.length config.args in
      let goal_type = get_arg_abstract_goal_type config num_to_abstract in
@@ -321,7 +177,7 @@ let get_abstraction_opts config strategy : abstraction_options =
  * are not offset from each other, unlike in the argument case
  *)
 let shift_terms is_concrete strategy opts : types list -> types list =
-  match strategy.to_abstract with
+  match kind_of_abstraction strategy with
   | Arguments ->
      if is_concrete then
        List.map (shift_by opts.num_to_abstract)
@@ -331,19 +187,18 @@ let shift_terms is_concrete strategy opts : types list -> types list =
      List.map id
 
 (* Abstract candidates with a provided abstraction strategy *)
-let abstract_with_strategy (config : abstraction_config) strategy : types list =
+let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let opts = get_abstraction_opts config strategy in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
-  let reduced_cs = reduce_all strategy.reducer env config.cs in
+  let reduced_cs = reduce_all_using strategy env config.cs in
   let shift_concrete = shift_terms config.is_concrete strategy opts in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
-  let abstracter = strategy.abstracter in
-  let bs = abstract_candidates abstracter env_abs args_adj args_abs cs_adj in
+  let bs = substitute_using strategy env_abs args_adj args_abs cs_adj in
   let lambdas = wrap_candidates_in_lambdas env_abs opts.num_to_abstract bs in
   Printf.printf "%d abstracted candidates\n" (List.length lambdas);
-  strategy.filter env opts.goal_type lambdas
+  filter_using strategy env opts.goal_type lambdas
 
 (*
  * Try to abstract candidates with an ordered list of abstraction strategies
@@ -352,7 +207,7 @@ let abstract_with_strategy (config : abstraction_config) strategy : types list =
  *
  * TODO clean types after generalizing w args
  *)
-let abstract_with_strategies (config : abstraction_config) : types list =
+let abstract_with_strategies (config : abstraction_config) : candidates =
   let abstract_using = abstract_with_strategy config in
   let rec try_abstract_using strategies =
     match strategies with

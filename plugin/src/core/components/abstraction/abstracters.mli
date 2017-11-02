@@ -1,26 +1,76 @@
-(* --- Abstraction strategies --- *)
+(* --- Abstraction Strategies --- *)
 
 open Term
 open Environ
 
-type abstracter
+type candidates = types list
+type abstraction_dimension = Arguments | Property of types
 
-(* Fully abstract each term, substituting every convertible subterm *)
-val syntactic_full_strategy : abstracter
+type abstraction_strategy
 
-(* Fully abstract each term, substituting every subterm w/ convertible types *)
-val types_full_strategy : abstracter
-
-(* All combinations of abstractions of convertible subterms *)
-val syntactic_all_strategy : abstracter
-
-(* A pattern-based full abstraction strategy for constructors *)
-val pattern_full_strategy : abstracter
+(* --- Top-level --- *)
 
 (*
- * Abstract the candidates by subtituting actual args with abstract args,
- * using an abstraction strategy to determine when to substitute.
+ * Substitute actual args with abstract args in candidates,
+ * using a strategy to determine when to substitute.
  *)
-val abstract_candidates :
- abstracter -> env -> types list -> types list -> types list -> types list
+val substitute_using :
+ abstraction_strategy -> env -> types list -> types list -> candidates ->
+ candidates
 
+(*
+ * Reduce candidates, using the abstraction strategy to determine
+ * how to reduce
+ *)
+val reduce_all_using :
+  abstraction_strategy -> env -> candidates -> candidates
+
+(*
+ * Filter candidates, using the abstraction strategy to determine
+ * how to filter
+ *)
+val filter_using :
+  abstraction_strategy -> env -> types -> candidates -> candidates
+
+(* --- Recover options from an abstraction strategy --- *)
+
+val kind_of_abstraction : abstraction_strategy -> abstraction_dimension
+
+(*--- Strategies for abstracting arguments ---*)
+
+(*
+ * All strategies that reduce first
+ *)
+val reduce_strategies : abstraction_strategy list
+
+(*
+ * All strategies that don't reduce first
+ *)
+val no_reduce_strategies : abstraction_strategy list
+
+(*
+ * List of default strategies
+ *)
+val default_strategies : abstraction_strategy list
+
+(*
+ * List of the simplest strategies
+ *)
+val simple_strategies : abstraction_strategy list
+
+(*--- Strategies for abstracting properties ---*)
+
+(*
+ * All strategies that reduce first
+ *)
+val reduce_strategies_prop : types -> abstraction_strategy list
+
+(*
+ * All strategies that don't reduce first
+ *)
+val no_reduce_strategies_prop : types -> abstraction_strategy list
+
+(*
+ * List of default strategies
+ *)
+val default_strategies_prop : types -> abstraction_strategy list

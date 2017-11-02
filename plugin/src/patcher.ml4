@@ -13,6 +13,7 @@ open Substitution
 open Printing
 open Inverting
 open Theorem
+open Abstracters
 open Abstraction
 open Debruijn
 open Searchopts

@@ -9,6 +9,7 @@ open Debruijn
 open Proofcat
 open Proofcatterms
 open Assumptions
+open Abstracters
 open Abstraction
 open Filters
 open Proofdiff
