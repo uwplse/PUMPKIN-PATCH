@@ -1015,7 +1015,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
            else
              (* 6c TODO explain, refactor, support better *)
              let (o, n) = proof_terms d in
-             let d_red = reduce_diff reduce_remove_identities d in
+             let d_red = reduce_diff reduce_term d in
              let (o_red, n_red) = proof_terms d_red in
              if not ((eq_constr o o_red) && (eq_constr n n_red)) then
                search opts d_red
