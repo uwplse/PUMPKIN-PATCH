@@ -56,7 +56,7 @@ type lifting_options =
  *)
 let syntactic_full_reduce : lifting_strategy =
   {
-    reducer = reduce_remove_identities;
+    reducer = reduce_term;
     abstracter = syntactic_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -76,7 +76,7 @@ let syntactic_full_no_reduce : lifting_strategy =
  *)
 let types_full_reduce : lifting_strategy =
   {
-    reducer = reduce_remove_identities;
+    reducer = reduce_term;
     abstracter = types_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -96,7 +96,7 @@ let types_full_no_reduce : lifting_strategy =
  *)
 let pattern_full_reduce : lifting_strategy =
   {
-    reducer = reduce_remove_identities;
+    reducer = reduce_term;
     abstracter = pattern_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -116,7 +116,7 @@ let pattern_no_reduce : lifting_strategy =
  *)
 let syntactic_all_reduce : lifting_strategy =
   {
-    reducer = reduce_remove_identities;
+    reducer = reduce_term;
     abstracter = syntactic_all_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -257,7 +257,7 @@ let get_concrete_prop (config : lift_config) (concrete : closure) : closure =
 let get_concrete config strategy : closure =
   let env = config.env in
   let args = config.args in
-  let s = reducer_to_specializer reduce_remove_identities in
+  let s = reducer_to_specializer reduce_term in
   let base = specialize_using s env config.f_base (Array.of_list args) in
   let concrete = (env, List.append args [base]) in
   match strategy.to_lift with
@@ -284,7 +284,7 @@ let get_abstract_args config : closure =
 (* Get the abstract arguments that map to concrete arguments
    for a particular strategy, function, and arguments *)
 let get_abstract config concrete strategy : closure =
-  let s = reducer_to_specializer reduce_remove_identities in
+  let s = reducer_to_specializer reduce_term in
   match strategy.to_lift with
   | Arguments ->
      let (env_abs, args_abs) = get_abstract_args config in
