@@ -144,8 +144,8 @@ let abstract n trm goal : unit =
          let args = Array.to_list (snd (destApp gt)) in
          let cs = [c] in
          let is_concrete = true in
-         let lift_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
-         let lcs = lift_with_strategies lift_config in
+         let abstraction_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
+         let lcs = abstract_with_strategies abstraction_config in
          if List.length lcs > 0 then
            define_term n env evm (List.hd lcs)
          else

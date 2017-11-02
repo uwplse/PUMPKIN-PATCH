@@ -17,18 +17,18 @@ open Utilities
 type candidates = types list
 type arg_subst = closure * closure
 
-type lift_dimension = Arguments | Property of types
+type abstraction_dimension = Arguments | Property of types
 
 type abstraction_strategy =
   {
     reducer : reducer;
     abstracter : abstracter;
     filter : types filter_strategy;
-    to_lift : lift_dimension;
+    to_abstract : abstraction_dimension;
   }
 
-(* User configuration for lifting *)
-type lift_config =
+(* User configuration for abstraction *)
+type abstraction_config =
   {
     is_concrete : bool; (* TODO hack *)
     env : env;
@@ -39,8 +39,8 @@ type lift_config =
     strategies : abstraction_strategy list;
   }
 
-(* Internal options for lifting *)
-type lifting_options =
+(* Internal options for abstraction *)
+type abstraction_options =
   {
     concrete : closure;
     abstract : closure;
@@ -48,7 +48,7 @@ type lifting_options =
     num_to_abstract : int;
   }
 
-(* --- Strategies for lifting arguments --- *)
+(* --- Strategies for abstraction arguments --- *)
 
 (*
  * Reduce first
@@ -59,7 +59,7 @@ let syntactic_full_reduce : abstraction_strategy =
     reducer = reduce_remove_identities;
     abstracter = syntactic_full_strategy;
     filter = filter_by_type;
-    to_lift = Arguments;
+    to_abstract = Arguments;
   }
 
 (*
@@ -79,7 +79,7 @@ let types_full_reduce : abstraction_strategy =
     reducer = reduce_remove_identities;
     abstracter = types_full_strategy;
     filter = filter_by_type;
-    to_lift = Arguments;
+    to_abstract = Arguments;
   }
 
 (*
@@ -99,7 +99,7 @@ let pattern_full_reduce : abstraction_strategy =
     reducer = reduce_remove_identities;
     abstracter = pattern_full_strategy;
     filter = filter_by_type;
-    to_lift = Arguments;
+    to_abstract = Arguments;
   }
 
 (*
@@ -119,7 +119,7 @@ let syntactic_all_reduce : abstraction_strategy =
     reducer = reduce_remove_identities;
     abstracter = syntactic_all_strategy;
     filter = filter_by_type;
-    to_lift = Arguments;
+    to_abstract = Arguments;
   }
 
 (*
@@ -154,13 +154,13 @@ let default_strategies : abstraction_strategy list =
 let simple_strategies : abstraction_strategy list =
   [syntactic_full_reduce; syntactic_full_no_reduce]
 
-(* --- Strategies for lifting properties --- *)
+(* --- Strategies for abstraction properties --- *)
 
 let types_full_reduce_prop (goal : types) : abstraction_strategy =
-  { types_full_reduce with to_lift = Property goal; }
+  { types_full_reduce with to_abstract = Property goal; }
 
 let types_full_no_reduce_prop (goal : types) : abstraction_strategy =
-  { types_full_no_reduce with to_lift = Property goal; }
+  { types_full_no_reduce with to_abstract = Property goal; }
 
 let reduce_strategies_prop (goal : types) : abstraction_strategy list =
   [types_full_reduce_prop goal]
@@ -173,12 +173,12 @@ let default_strategies_prop (goal : types) : abstraction_strategy list =
     (reduce_strategies_prop goal)
     (no_reduce_strategies_prop goal)
 
-(* --- Functionality for lifting --- *)
+(* --- Functionality for abstraction --- *)
 
 (*
  * From the abstract environment, abstract args,
  * concrete environment, and concrete args,
- * return an argument substitution for lifting
+ * return an argument substitution for abstraction
  *)
 let make_arg_subst (abstract : closure) (concrete : closure) =
   (abstract, concrete)
@@ -199,10 +199,10 @@ let wrap_candidates_in_lambdas (env : env) (num_to_abstract : int) (cs : candida
 
 (*
  * From a common environment, source type, destination type,
- * and number of arguments, get the goal type for lifting
+ * and number of arguments, get the goal type for abstraction
  * that takes you from destination back to source, abstracting over the arguments
  *)
-let get_arg_lift_goal_type (config : lift_config) (num_args : int) : types =
+let get_arg_abstract_goal_type (config : abstraction_config) (num_args : int) : types =
   let rec infer_goal (en : env) (b : types) (g : types) (i : int) : types =
     if i >= num_args then (* TODO, need to check if this generalizes *)
       match (kind_of_term b, kind_of_term g) with
@@ -240,7 +240,7 @@ let get_arg_lift_goal_type (config : lift_config) (num_args : int) : types =
  * When abstracting over a property, add the property itself to the arguments
  * to abstract over
  *)
-let get_concrete_prop (config : lift_config) (concrete : closure) : closure =
+let get_concrete_prop (config : abstraction_config) (concrete : closure) : closure =
   let (env, args) = concrete in
   let p = config.f_base in
   let p_typ = infer_type env p in
@@ -260,14 +260,14 @@ let get_concrete config strategy : closure =
   let s = reducer_to_specializer reduce_term in
   let base = specialize_using s env config.f_base (Array.of_list args) in
   let concrete = (env, List.append args [base]) in
-  match strategy.to_lift with
+  match strategy.to_abstract with
   | Arguments ->
      concrete
   | Property _ ->
      get_concrete_prop config concrete
 
 (* Get abstract arguments for a function *)
-let get_abstract_args config : closure =
+let get_abstraction_args config : closure =
   let rec infer_args (i : int) (en : env) (g : types) : closure =
     if i = 0 then
       (en, [])
@@ -285,9 +285,9 @@ let get_abstract_args config : closure =
    for a particular strategy, function, and arguments *)
 let get_abstract config concrete strategy : closure =
   let s = reducer_to_specializer reduce_term in
-  match strategy.to_lift with
+  match strategy.to_abstract with
   | Arguments ->
-     let (env_abs, args_abs) = get_abstract_args config in
+     let (env_abs, args_abs) = get_abstraction_args config in
      let p = shift_by (List.length args_abs) config.f_base in
      let base_abs = specialize_using s env_abs p (Array.of_list args_abs) in
      (env_abs, List.append args_abs [base_abs])
@@ -298,15 +298,15 @@ let get_abstract config concrete strategy : closure =
      let base_abs = specialize_using s env_p p (Array.of_list args_abs) in
      (env_p, List.append (p :: List.tl args_abs) [base_abs])
 
-(* Given a lifting strategy, get the lifting options for the
+(* Given a abstraction strategy, get the abstraction options for the
    particular function and arguments *)
-let get_lift_opts config strategy : lifting_options =
+let get_abstraction_opts config strategy : abstraction_options =
   let concrete = get_concrete config strategy in
   let abstract = get_abstract config concrete strategy in
-  match strategy.to_lift with
+  match strategy.to_abstract with
   | Arguments ->
      let num_to_abstract = List.length config.args in
-     let goal_type = get_arg_lift_goal_type config num_to_abstract in
+     let goal_type = get_arg_abstract_goal_type config num_to_abstract in
      { concrete; abstract; goal_type; num_to_abstract }
   | Property goal_type ->
      let (_, args_p) = concrete in
@@ -321,7 +321,7 @@ let get_lift_opts config strategy : lifting_options =
  * are not offset from each other, unlike in the argument case
  *)
 let shift_terms is_concrete strategy opts : types list -> types list =
-  match strategy.to_lift with
+  match strategy.to_abstract with
   | Arguments ->
      if is_concrete then
        List.map (shift_by opts.num_to_abstract)
@@ -330,9 +330,9 @@ let shift_terms is_concrete strategy opts : types list -> types list =
   | Property _ ->
      List.map id
 
-(* Lift candidates with a provided abstraction strategy *)
-let lift_with_strategy (config : lift_config) strategy : types list =
-  let opts = get_lift_opts config strategy in
+(* Abstract candidates with a provided abstraction strategy *)
+let abstract_with_strategy (config : abstraction_config) strategy : types list =
+  let opts = get_abstraction_opts config strategy in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
   let reduced_cs = reduce_all strategy.reducer env config.cs in
@@ -342,26 +342,26 @@ let lift_with_strategy (config : lift_config) strategy : types list =
   let abstracter = strategy.abstracter in
   let bs = abstract_candidates abstracter env_abs args_adj args_abs cs_adj in
   let lambdas = wrap_candidates_in_lambdas env_abs opts.num_to_abstract bs in
-  Printf.printf "%d lifted candidates\n" (List.length lambdas);
+  Printf.printf "%d abstracted candidates\n" (List.length lambdas);
   strategy.filter env opts.goal_type lambdas
 
 (*
- * Try to lift candidates with an ordered list of abstraction strategies
+ * Try to abstract candidates with an ordered list of abstraction strategies
  * Return as soon as one is successful
  * If all fail, return the empty list
  *
  * TODO clean types after generalizing w args
  *)
-let lift_with_strategies (config : lift_config) : types list =
-  let lift_using = lift_with_strategy config in
-  let rec try_lift_using strategies =
+let abstract_with_strategies (config : abstraction_config) : types list =
+  let abstract_using = abstract_with_strategy config in
+  let rec try_abstract_using strategies =
     match strategies with
     | h :: t ->
-       let lifted = lift_using h in
-       if (List.length lifted) > 0 then
-         lifted
+       let abstracted = abstract_using h in
+       if (List.length abstracted) > 0 then
+         abstracted
        else
-         try_lift_using t
+         try_abstract_using t
     | _ ->
        []
-  in try_lift_using config.strategies
+  in try_abstract_using config.strategies

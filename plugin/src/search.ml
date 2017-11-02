@@ -254,8 +254,8 @@ let rec generalize_term strategies (env : env) (c : types) (g : types) : types l
        let args = Array.to_list (snd (destApp gt)) in
        let cs = [c] in
        let is_concrete = true in
-       let lift_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
-       lift_with_strategies lift_config
+       let abstraction_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
+       abstract_with_strategies abstraction_config
      else
        failwith "Cannot infer property to generalize"
   | _ ->
@@ -282,8 +282,8 @@ let rec generalize_term_args strategies (env : env) (c : types) (g : types) : ty
      let args = Array.to_list args in
      let cs = [c] in
      let is_concrete = false in
-     let lift_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
-     lift_with_strategies lift_config
+     let abstraction_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
+     abstract_with_strategies abstraction_config
   | _ ->
      failwith "Goal is inconsistent with term to generalize"
 
@@ -332,7 +332,7 @@ let zoom_unshift search opts (d : goal_proof_diff) : candidates =
     opts
     d
 
-(* --- Lifting for search --- *)
+(* --- Abstraction for search --- *)
 
 (*
  * Try to abstract candidate patches given the goal types of the old proof
@@ -360,8 +360,8 @@ let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : can
       (List.for_all2 (convertible env) (Array.to_list args_n))
       (fun args ->
         let is_concrete = true in
-        let lift_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
-        let lcs = lift_with_strategies lift_config in
+        let abstraction_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
+        let lcs = abstract_with_strategies abstraction_config in
         let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
         List.map (unshift_local (num_new_rels - 1) num_new_rels) lcs)
       (always give_up)

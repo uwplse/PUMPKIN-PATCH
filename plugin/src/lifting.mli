@@ -11,7 +11,7 @@ type abstraction_strategy
 
 (* --- User configuration for lifting --- *)
 
-type lift_config =
+type abstraction_config =
   {
     is_concrete : bool;
     env : env;
@@ -68,4 +68,4 @@ val default_strategies_prop : types -> abstraction_strategy list
  * Return as soon as one is successful
  * If all fail, return the empty list
  *)
-val lift_with_strategies : lift_config -> types list
+val abstract_with_strategies : abstraction_config -> types list

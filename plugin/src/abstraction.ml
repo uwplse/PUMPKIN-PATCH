@@ -1,4 +1,4 @@
-(* --- Abstraction Component --- *)
+(* --- Abstraction Strategies --- *)
 
 open Term
 open Environ

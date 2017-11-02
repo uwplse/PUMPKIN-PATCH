@@ -1,4 +1,4 @@
-(* Strategies for abstracting concrete terms *)
+(* --- Abstraction strategies --- *)
 
 open Term
 open Environ
