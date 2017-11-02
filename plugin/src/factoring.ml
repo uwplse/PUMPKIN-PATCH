@@ -106,7 +106,7 @@ let rec find_path (env : env) (trm : types) : factors =
  * function.
  *)
 let factor_term (env : env) (trm : types) : factors =
-  let r = reduce_using reduce_remove_identities in
+  let r = reduce_using reduce_term in
   let (env_zoomed, trm_zoomed) = zoom_lambda_term env (r env trm) in
   let path_body = find_path env_zoomed trm_zoomed in
   List.map
@@ -141,4 +141,4 @@ let apply_factors (fs : factors) : types =
         specialize_using specialize_no_reduce en (shift t) (Array.make 1 t_app))
       (List.tl fs)
       base
-  in reduce_using reduce_remove_identities env (reconstruct_lambda env body)
+  in reduce_using reduce_term env (reconstruct_lambda env body)
