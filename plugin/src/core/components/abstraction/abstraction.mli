@@ -1,26 +1,71 @@
-(* --- Abstraction strategies --- *)
+(* Lifting strategies *)
 
-open Term
+open Abstracters
 open Environ
+open Term
+open Coqterms
 
-type abstracter
+type candidates = types list
+type arg_subst
+type abstraction_strategy
 
-(* Fully abstract each term, substituting every convertible subterm *)
-val syntactic_full_strategy : abstracter
+(* --- User configuration for lifting --- *)
 
-(* Fully abstract each term, substituting every subterm w/ convertible types *)
-val types_full_strategy : abstracter
+type abstraction_config =
+  {
+    is_concrete : bool;
+    env : env;
+    args : types list;
+    cs : candidates;
+    f_base : types;
+    f_goal : types;
+    strategies : abstraction_strategy list;
+  }
 
-(* All combinations of abstractions of convertible subterms *)
-val syntactic_all_strategy : abstracter
-
-(* A pattern-based full abstraction strategy for constructors *)
-val pattern_full_strategy : abstracter
+(*--- Lifting arguments ---*)
 
 (*
- * Abstract the candidates by subtituting actual args with abstract args,
- * using an abstraction strategy to determine when to substitute.
+ * All strategies that reduce first
  *)
-val abstract_candidates :
- abstracter -> env -> types list -> types list -> types list -> types list
+val reduce_strategies : abstraction_strategy list
 
+(*
+ * All strategies that don't reduce first
+ *)
+val no_reduce_strategies : abstraction_strategy list
+
+(*
+ * List of default strategies
+ *)
+val default_strategies : abstraction_strategy list
+
+(*
+ * List of the simplest strategies
+ *)
+val simple_strategies : abstraction_strategy list
+
+(*--- Lifting properties ---*)
+
+(*
+ * All strategies that reduce first
+ *)
+val reduce_strategies_prop : types -> abstraction_strategy list
+
+(*
+ * All strategies that don't reduce first
+ *)
+val no_reduce_strategies_prop : types -> abstraction_strategy list
+
+(*
+ * List of default strategies
+ *)
+val default_strategies_prop : types -> abstraction_strategy list
+
+(*--- Lifting ---*)
+
+(*
+ * Try to lift candidates with an ordered list of abstraction strategies
+ * Return as soon as one is successful
+ * If all fail, return the empty list
+ *)
+val abstract_with_strategies : abstraction_config -> types list

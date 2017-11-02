@@ -9,11 +9,10 @@ open Debruijn
 open Proofcat
 open Proofcatterms
 open Assumptions
-open Lifting
+open Abstraction
 open Filters
 open Proofdiff
 open Specialization
-open Lifting
 open Evaluation
 open Expansion
 open Printing

@@ -27,12 +27,12 @@ src/substitution.mli
 src/substitution.ml
 src/filters.mli
 src/filters.ml
-src/core/components/abstraction/abstraction.mli
-src/core/components/abstraction/abstraction.ml
+src/core/components/abstraction/abstracters.mli
+src/core/components/abstraction/abstracters.ml
 src/core/components/specialization/specialization.mli
 src/core/components/specialization/specialization.ml
-src/core/components/abstraction/lifting.mli
-src/core/components/abstraction/lifting.ml
+src/core/components/abstraction/abstraction.mli
+src/core/components/abstraction/abstraction.ml
 src/proofcat.mli
 src/proofcat.ml
 src/proofcatterms.mli

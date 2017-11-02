@@ -2,7 +2,6 @@
 
 open Term
 open Proofdiff
-open Lifting
 open Searchopts
 
 (*

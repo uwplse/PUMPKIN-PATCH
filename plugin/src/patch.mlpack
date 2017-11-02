@@ -9,9 +9,9 @@ Debruijn
 Assumptions
 Substitution
 Filters
-Abstraction
+Abstracters
 Specialization
-Lifting
+Abstraction
 Proofcat
 Proofcatterms
 Evaluation
