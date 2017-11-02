@@ -6,7 +6,6 @@ open Abstracters
 open Environ
 open Term
 open Debruijn
-open Filters
 open Coqterms
 open Printing
 open Collections
@@ -14,7 +13,7 @@ open Specialization
 open Coqenvs
 open Utilities
 
-(* User configuration for abstraction *)
+(* Caller configuration for abstraction *)
 type abstraction_config =
   {
     is_concrete : bool; (* TODO hack *)

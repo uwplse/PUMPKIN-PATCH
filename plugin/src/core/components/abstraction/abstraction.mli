@@ -5,7 +5,7 @@ open Environ
 open Term
 open Coqterms
 
-(* --- User configuration for lifting --- *)
+(* --- Caller configuration for abstraction --- *)
 
 type abstraction_config =
   {
@@ -18,7 +18,7 @@ type abstraction_config =
     strategies : abstraction_strategy list;
   }
 
-(*--- Lifting ---*)
+(*--- Abstraction ---*)
 
 (*
  * Try to lift candidates with an ordered list of abstraction strategies
