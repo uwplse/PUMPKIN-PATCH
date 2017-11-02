@@ -56,7 +56,7 @@ type lifting_options =
  *)
 let syntactic_full_reduce : lifting_strategy =
   {
-    reducer = reduce_term;
+    reducer = reduce_remove_identities;
     abstracter = syntactic_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -76,7 +76,7 @@ let syntactic_full_no_reduce : lifting_strategy =
  *)
 let types_full_reduce : lifting_strategy =
   {
-    reducer = reduce_term;
+    reducer = reduce_remove_identities;
     abstracter = types_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -96,7 +96,7 @@ let types_full_no_reduce : lifting_strategy =
  *)
 let pattern_full_reduce : lifting_strategy =
   {
-    reducer = reduce_term;
+    reducer = reduce_remove_identities;
     abstracter = pattern_full_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
@@ -116,7 +116,7 @@ let pattern_no_reduce : lifting_strategy =
  *)
 let syntactic_all_reduce : lifting_strategy =
   {
-    reducer = reduce_term;
+    reducer = reduce_remove_identities;
     abstracter = syntactic_all_strategy;
     filter = filter_by_type;
     to_lift = Arguments;
