@@ -11,6 +11,7 @@ open Debruijn
 open Filters
 open Reducers
 open Candidates
+open Collections
 
 (* --- Utilities --- *)
 
@@ -52,7 +53,69 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
   let o = (old_goal_type, old_term_sub) in
   (env, difference o n assums)
 
-(* --- Differencing: Application --- *)
+(* --- Differencing of types --- *)
+
+(*
+ * Gets the change in the case of a fixpoint branch.
+ * These are the goals for abstraction.
+ * Since semantic differencing doesn't have a good model of fixpoints yet,
+ * this is a little complicated, and currently works directly over
+ * the old representation. It's also the only function so far
+ * to delta-reduce, which we can learn from.
+ *
+ * But basically this detects a change in a fixpoint case and
+ * just is super preliminary.
+ * After the prototype we should model fixpoints better.
+ *)
+let rec get_goal_fix env (old_term : types) (new_term : types) : candidates =
+  if eq_constr old_term new_term then
+    give_up
+  else
+    match kinds_of_terms (old_term, new_term) with
+    | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when convertible env t1 t2 ->
+       List.map
+         (fun c -> mkProd (n1, t1, c))
+         (get_goal_fix (push_rel (n1, None, t1) env) b1 b2)
+    | _ ->
+       let rec get_goal_reduced env old_term new_term =
+         let r = reduce_unfold_whd env in
+         let red_old = r old_term in
+         let red_new = r new_term in
+         match kinds_of_terms (red_old, red_new) with
+         | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
+            let args1 = Array.to_list args1 in
+            let args2 = Array.to_list args2 in
+            flat_map2 (get_goal_reduced env) args1 args2
+         | _ when not (eq_constr red_old red_new) ->
+            let r = reduce_unfold env in
+            [r (mkProd (Anonymous, old_term, shift new_term))]
+         | _ ->
+            give_up
+       in get_goal_reduced env old_term new_term
+
+(* Same as the above, but at the top-level for the fixpoint itself *)
+let rec diff_fix env (old_term : types) (new_term : types) : candidates =
+  let conv = convertible env in
+  match kinds_of_terms (old_term, new_term) with
+  | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when conv t1 t2 ->
+     diff_fix (push_rel (n1, None, t1) env) b1 b2
+  | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
+     if Array.length bs1 = Array.length bs2 then
+       let bs1 = Array.to_list bs1 in
+       let bs2 = Array.to_list bs2 in
+       let env_m = push_rel (Anonymous, None, m1) env in
+       let get_goals = get_goal_fix env_m in
+       List.map
+         unshift
+         (List.append
+            (flat_map2 get_goals bs1 bs2)
+            (flat_map2 get_goals bs2 bs1))
+     else
+       give_up
+  | _ ->
+     give_up
+
+(* --- Differencing of proofs --- *)
 
 (*
  * Try to identify the new proof term inside of the old proof term
@@ -82,8 +145,6 @@ let build_app_candidates (env : env) (old_term : types) (new_term : types) =
       (fun b -> mkLambda (Anonymous, new_type, b))
       (filter_not_same env_shift old_term_shift bodies)
   with _ -> give_up
-
-(* --- Top-level differencing --- *)
 
 (*
  * Given two proof terms that apply functions, old and new,
