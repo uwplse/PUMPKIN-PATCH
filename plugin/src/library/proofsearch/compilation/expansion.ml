@@ -122,7 +122,7 @@ let expand_terminal (c : proof_cat) : proof_cat =
      let ms = morphisms c in
      let concls = arrows_with_dest t ms in
      let binding =
-       if List.length concls > 0 then
+       if non_empty concls then
          let (_, ext, _) = List.hd concls in (* arbitrary for now *)
          ext
        else

@@ -136,9 +136,14 @@ let hd_f_default (a : 'a) (f : 'a list -> 'a list) (l : 'a list) : 'a =
     else
       List.hd fl
 
+(*
+ * Return true if a list has length > 0
+ *)
+let non_empty (l : 'a list) : int =
+  List.length l > 0
+
 (* Filter a list of lists by only its non-empty lists *)
-let filter_non_empty (la : 'a list list) : 'a list list =
-  List.filter (fun l -> List.length l > 0) la
+let filter_non_empty = List.filter non_empty
 
 (*
  * Get values from a list of optionals only if every optional is some
@@ -162,3 +167,4 @@ let get_some (l : 'a option list) : 'a list =
  *)
 let singleton_array (a : 'a) : 'a array =
   Array.make 1 a
+

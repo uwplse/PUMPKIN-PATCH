@@ -221,8 +221,7 @@ let zoom_wrap_prod search opts n t (d : goal_proof_diff) : candidates =
  *)
 let zoom_unshift search opts (d : goal_proof_diff) : candidates =
   zoom_search
-    (fun opts d ->
-      List.map unshift (search opts d))
+    (fun opts d -> List.map unshift (search opts d))
     opts
     d
 
@@ -244,7 +243,7 @@ let zoom_unshift search opts (d : goal_proof_diff) : candidates =
 let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : candidates =
   let goals = goal_types d in
   let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
-  if goals_are_apps && List.length cfs > 0 then
+  if goals_are_apps && non_empty cfs then
     let (env, d_type, cs) = merge_lift_diff_envs d cfs in
     let new_goal_type = new_proof d_type in
     let old_goal_type = old_proof d_type in
@@ -331,7 +330,7 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
       | FixpointCase ((_, _), cut) ->
          let f = search_f opts (eval_with_terms_goals opts f_o f_n d) in
          let f_cut = (filter_cut env cut) f in
-         if List.length f_cut > 0 then
+         if non_empty f_cut then
            f_cut
          else
            let args =
@@ -442,7 +441,7 @@ let search_app_ind search_ind search_arg opts d : candidates =
     | FixpointCase ((_, _), _) ->
        f
     | _ ->
-       if List.length final_args_old > 0 then
+       if non_empty final_args_old then
          let args_o = final_args_old in
          let args_n = final_args_new in
          let args = diff_final opts search_arg env_o env_n args_o args_n d in
@@ -532,7 +531,7 @@ let rec search_case_paths search opts (d : goal_case_diff) : types option =
         let c1 = eval_proof_arrow h1 in
         let c2 = eval_proof_arrow h2 in
         let cs = search opts (add_to_diff d_goal c1 c2) in
-        if List.length cs > 0 then
+        if non_empty cs then
           let candidate = List.hd cs in
           match get_change opts with
           | InductiveType (_, _) ->
@@ -541,7 +540,7 @@ let rec search_case_paths search opts (d : goal_case_diff) : types option =
              Some candidate
           | _ ->
              let lcs = try_lift_candidates reduce_strategies d_goal cs in
-             if List.length lcs > 0 then
+             if non_empty lcs then
                Some (List.hd lcs)
              else
                search_case_paths search opts d_t
@@ -789,7 +788,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
     (*2a*) let patches = search_app_ind search_ind search opts d in
-    if List.length patches > 0 then
+    if non_empty patches then
       patches
     else
       (*2b*) find_difference opts (proof_to_term d)
@@ -808,11 +807,11 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
     | _ ->
        if is_app opts d then
          (*6a*) let patches = find_difference opts (proof_to_term d) in
-         if List.length patches > 0 then
+         if non_empty patches then
            patches
          else
            (*6b*) let patches = search_app search search opts d in
-           if List.length patches > 0 then
+           if non_empty patches then
              patches
            else
              (* 6c TODO explain, refactor, support better *)
@@ -901,7 +900,7 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : 
   let search = search_function opts should_reduce in
   let patches = search opts d in
   let ((_, env), _) = old_proof (dest_goals d) in
-  if List.length patches > 0 then
+  if non_empty patches then
     return_patch opts env patches
   else
     let rev_patches = search opts (reverse d) in
@@ -910,7 +909,7 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : 
     let inverted = invert_terms invert_factor env rev_patches in
     match change with
     | Conclusion ->
-       if List.length inverted > 0 then
+       if non_empty inverted then
          let patch = List.hd inverted in
          Printf.printf "%s\n" "SUCCESS";
          List.hd inverted
@@ -919,7 +918,7 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : 
          Printf.printf "%s\n" "FAILURE";
          patch
     | _ ->
-       if List.length inverted > 0 then
+       if non_empty inverted then
          return_patch opts env inverted
        else
          failwith "Could not find patch"

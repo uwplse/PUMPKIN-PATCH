@@ -110,3 +110,8 @@ val get_some : 'a option list -> 'a list
  * Create a singleton array
  *)
 val singleton_array : 'a -> 'a array
+
+(*
+ * Return true if a list has at least one element
+ *)
+val non_empty : 'a list -> int

@@ -448,7 +448,7 @@ let has_path (c : proof_cat) (src : context_object) (dst : context_object) : boo
       (fun d' ->
         let reaches_rec = fun s' -> reaches ms s' d' in
         let adj = arrows_with_source s ms in
-        List.length adj > 0 && List.exists id (List.map (map_dest reaches_rec) adj))
+        non_empty adj && List.exists id (List.map (map_dest reaches_rec) adj))
       d
   in reaches (morphisms c) src dst
 
