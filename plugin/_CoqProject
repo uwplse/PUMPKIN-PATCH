@@ -8,6 +8,7 @@
 -I src/core/components/specialization
 -I src/core/components/inversion
 -I src/core/components/factoring
+-I src/core/components/differencing
 -I src/core/procedures
 -I src
 -Q theories Patcher
@@ -68,6 +69,9 @@ src/core/components/factoring/factoring.ml
 src/core/components/inversion/inverting.mli
 src/core/components/inversion/inverting.ml
 
+src/core/components/differencing/differencing.mli
+src/core/components/differencing/differencing.ml
+
 src/core/procedures/search.mli
 src/core/procedures/search.ml
 src/core/procedures/theorem.mli
@@ -75,4 +79,5 @@ src/core/procedures/theorem.ml
 
 src/patcher.ml4
 src/patch.mlpack
+
 theories/Patch.v

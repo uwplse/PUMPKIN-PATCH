@@ -334,6 +334,11 @@ let induct_over_same_h eq (d : goal_proof_diff) : bool =
   else
     false
 
+(* Get the number of bindings that are not common to both proofs in d *)
+let num_new_bindings (f : 'a -> env) (d : 'a proof_diff) =
+  let assums = assumptions d in
+  num_assumptions (complement_assumptions assums (f (old_proof d)))
+
 (* --- Zooming --- *)
 
 (* Remove the initial object of c *)
