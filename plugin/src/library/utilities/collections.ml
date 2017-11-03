@@ -138,8 +138,15 @@ let filter_non_empty (la : 'a list list) : 'a list list =
  * Get values from a list of optionals only if every optional is some
  * Otherwise, return the empty list
  *)
-let get_all_or_none (l : 'a option list) : 'b list =
+let get_all_or_none (l : 'a option list) : 'a list =
   if List.for_all Option.has_some l then
     List.map Option.get l
   else
     []
+
+(*
+ * Get values from a list of optionals for every element that has_some
+ * Filter out values that are none
+ *)
+let get_some (l : 'a option list) : 'a list =
+  List.map Option.get (List.filter Option.has_some l)

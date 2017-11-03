@@ -94,3 +94,9 @@ val filter_non_empty : 'a list list -> 'a list list
  * Otherwise, return the empty list
  *)
 val get_all_or_none : 'a option list -> 'a list
+
+(*
+ * Get values from a list of optionals for every element that has_some
+ * Filter out values that are none
+ *)
+val get_some : 'a option list -> 'a list

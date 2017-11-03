@@ -174,6 +174,4 @@ let invert_using (invert : inverter) (env : env) (trm : types) : types option =
  * Use the supplied inverter to handle low-level inverses
  *)
 let invert_terms invert (env : env) (ps : types list) : types list =
-  List.map
-    Option.get
-    (List.filter Option.has_some (List.map (invert_using invert env) ps))
+  get_some (List.map (invert_using invert env) ps)
