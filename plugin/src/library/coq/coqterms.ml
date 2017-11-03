@@ -54,10 +54,10 @@ let id_typ : types =
 
 (* Get the Coq identity term for typ *)
 let identity_term (env : env) (typ : types) : types =
-  let id = mkApp (id_prop, Array.make 1 typ) in
+  let id = mkApp (id_prop, singleton_array typ) in
   try
     let _ = Typeops.infer env id in id
-  with _ -> mkApp (id_typ, Array.make 1 typ)
+  with _ -> mkApp (id_typ, singleton_array typ)
 
 (* Determine if a term applies an identity term *)
 let applies_identity (trm : types) : bool =

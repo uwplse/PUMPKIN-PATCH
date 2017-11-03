@@ -78,7 +78,7 @@ let rec apply_prop pi goal =
      mkProd (n, t, apply_prop (shift_i pi) b)
   | Prod (n, t, b) ->
      let p = mkRel pi in
-     mkProd (n, mkApp (p, Array.make 1 t), mkApp (shift p, Array.make 1 b))
+     mkProd (n, mkApp (p, singleton_array t), mkApp (shift p, singleton_array b))
 
 (*
  * Get goals for abstraction by a function
@@ -95,7 +95,7 @@ let get_lifting_goals p_typ (env : env) (o : types) (n : types) : types list =
       let dsn = Array.to_list dsn in
       let goals = flat_map2 (diff_fix env_fix) dso dsn in
       let lambdas = List.map (reconstruct_lambda env_fix) goals in
-      let apps = List.map (fun t -> mkApp (t, Array.make 1 n)) lambdas in
+      let apps = List.map (fun t -> mkApp (t, singleton_array n)) lambdas in
       let red_goals = reduce_all reduce_term env apps in
       List.map
         (fun goal ->
@@ -412,7 +412,7 @@ let diff_final opts search_arg env_o env_n args_o args_n d =
             let d = add_goals (difference a_n a_o (assumptions d)) in
             let specialize = specialize_using specialize_no_reduce env_o in
             List.map
-              (fun p -> specialize p (Array.make 1 arg_o))
+              (fun p -> specialize p (singleton_array arg_o))
               (search_arg opts d))
           ([final_arg_o])
           ([final_arg_n])))

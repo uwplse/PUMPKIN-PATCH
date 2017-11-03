@@ -105,3 +105,8 @@ val get_all_or_none : 'a option list -> 'a list
  * Filter out values that are none
  *)
 val get_some : 'a option list -> 'a list
+
+(*
+ * Create a singleton array
+ *)
+val singleton_array : 'a -> 'a array

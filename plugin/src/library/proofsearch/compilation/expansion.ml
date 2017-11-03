@@ -62,7 +62,7 @@ let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
 let expand_app (env : env) ((f, args) : types * types array) =
   assert (Array.length args > 0);
   let arg = args.(0) in
-  let f' = eval_proof env (mkApp (f, Array.make 1 arg)) in
+  let f' = eval_proof env (mkApp (f, singleton_array arg)) in
   let arg' = substitute_categories (eval_proof env arg) f' in
   bind_apply_function (LazyBinding (f, env)) 1 arg'
 

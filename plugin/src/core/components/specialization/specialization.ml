@@ -13,6 +13,7 @@ open Environ
 open Term
 open Coqterms
 open Reducers
+open Collections
 
 type specializer = env -> types -> types array -> types
 
@@ -53,7 +54,7 @@ let specialize_to (args : types array) (s : specializer) : reducer =
  * This only handles a single argument
  *)
 let specialize_in (f : types) (s : specializer) : reducer =
-  fun env arg -> s env f (Array.make 1 arg)
+  fun env arg -> s env f (singleton_array arg)
 
 (* Convert a reducer into a specializer in the obvious way *)
 let reducer_to_specializer (r : reducer) : specializer =

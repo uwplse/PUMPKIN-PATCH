@@ -106,7 +106,7 @@ let has_cut_type_app env cut trm =
     let typ = shift (reduce_term env (infer_type env trm)) in
     let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
     let app = get_app cut in
-    let app_app = reduce_term env_cut (mkApp (app, Array.make 1 (mkRel 1))) in
+    let app_app = reduce_term env_cut (mkApp (app, singleton_array (mkRel 1))) in
     let app_app_typ = infer_type env_cut app_app in
     is_cut env_cut app_app_typ typ
   with _ ->

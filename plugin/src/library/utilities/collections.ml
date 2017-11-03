@@ -157,3 +157,8 @@ let get_all_or_none (l : 'a option list) : 'a list =
 let get_some (l : 'a option list) : 'a list =
   List.map Option.get (List.filter Option.has_some l)
 
+(*
+ * Create a singleton array
+ *)
+let singleton_array (a : 'a) : 'a array =
+  Array.make 1 a
