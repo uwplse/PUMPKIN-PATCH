@@ -76,7 +76,12 @@ val map_tuple_hetero:  ('a -> 'c) -> ('b -> 'd) -> ('a * 'b) -> ('c * 'd)
 (*
  * Map a function over a list, then flatten the result
  *)
-val map_flat : ('a -> 'b list) -> 'a list -> 'b list
+val flat_map : ('a -> 'b list) -> 'a list -> 'b list
+
+(*
+ * Same as flat_map, but for map2
+ *)
+val flat_map2 : ('a -> 'b -> 'c list) -> 'a list -> 'b list -> 'c list
 
 (*
  * Get the head of a transformation on a list,

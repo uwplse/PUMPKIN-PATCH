@@ -112,12 +112,18 @@ let map_tuple_hetero (f : 'a -> 'c) (g : 'b -> 'd) ((a, b) : ('a * 'b)) : ('c * 
 (*
  * Map a function over a list, then flatten the result
  *)
-let map_flat (f : 'a -> 'b list) (l : 'a list) : 'b list =
+let flat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
   List.flatten (List.map f l)
 
 (*
+ * Same as flat_map, but for map2
+ *)
+let flat_map2 (f : 'a -> 'b -> 'c list) (la : 'a list) (lb : 'b list) : 'c list =
+  List.flatten (List.map2 f la lb)
+
+(*
  * Get the head of a transformation on a list,
- * defaulting to default if the original list is empty, or if the 
+ * defaulting to default if the original list is empty, or if the
  * result is empty
  *)
 let hd_f_default (a : 'a) (f : 'a list -> 'a list) (l : 'a list) : 'a =
@@ -150,3 +156,4 @@ let get_all_or_none (l : 'a option list) : 'a list =
  *)
 let get_some (l : 'a option list) : 'a list =
   List.map Option.get (List.filter Option.has_some l)
+

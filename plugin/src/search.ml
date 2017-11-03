@@ -129,7 +129,7 @@ let rec get_goal_fix (env : env) (old_term : types) (new_term : types) : types l
          | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
             let args1 = Array.to_list args1 in
             let args2 = Array.to_list args2 in
-            List.flatten (List.map2 (get_goal_reduced env) args1 args2)
+            flat_map2 (get_goal_reduced env) args1 args2
          | _ when not (eq_constr red_old red_new) ->
             let r = reduce_using reduce_unfold env in
             [r (mkProd (Anonymous, old_term, shift new_term))]
@@ -148,11 +148,12 @@ let rec goals_for_fix (env : env) (old_term : types) (new_term : types) : types 
        let bs1 = Array.to_list bs1 in
        let bs2 = Array.to_list bs2 in
        let env_m = push_rel (Anonymous, None, m1) env in
+       let get_goals = get_goal_fix env_m in
        List.map
          unshift
          (List.append
-            (List.flatten (List.map2 (get_goal_fix env_m) bs1 bs2))
-            (List.flatten (List.map2 (get_goal_fix env_m) bs2 bs1)))
+            (flat_map2 get_goals bs1 bs2)
+            (flat_map2 get_goals bs2 bs1))
      else
        give_up
   | _ ->
@@ -196,7 +197,7 @@ let get_lifting_goals p_typ (env : env) (o : types) (n : types) : types list =
       let env_fix = push_rel_context (bindings_for_fix nso tso) env in
       let dso = Array.to_list dso in
       let dsn = Array.to_list dsn in
-      let goals = List.flatten (List.map2 (goals_for_fix env_fix) dso dsn) in
+      let goals = flat_map2 (goals_for_fix env_fix) dso dsn in
       let lambdas = List.map (reconstruct_lambda env_fix) goals in
       let apps = List.map (fun t -> mkApp (t, Array.make 1 n)) lambdas in
       let red_goals = reduce_all reduce_term env apps in
@@ -476,8 +477,7 @@ let find_difference opts (d : goal_term_diff) : types list =
 
 (* Using some search function, recursively search the arguments *)
 let search_args search_arg args_o args_n : candidates =
-  List.flatten
-    (List.map2 search_arg (Array.to_list args_o) (Array.to_list args_n))
+  flat_map2 search_arg (Array.to_list args_o) (Array.to_list args_n)
 
 (*
  * Given a search function and a difference between terms,
@@ -1042,7 +1042,6 @@ let search_function (opts : options) (should_reduce : bool) =
  * in the prototype. I'll fix this one day.
  *)
 let return_patch (opts : options) (env : env) (patches : types list) =
-  let flat_map f l = List.flatten (List.map f l) in
   match get_change opts with
   | FixpointCase ((old_type, new_type), cut) ->
      let body_reducer = specialize_in (get_app cut) specialize_term in

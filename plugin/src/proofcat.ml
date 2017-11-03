@@ -458,7 +458,7 @@ let has_path (c : proof_cat) (src : context_object) (dst : context_object) : boo
 let arrows_from (c : proof_cat) (o : context_object) : arrow list =
   let rec from ms s =
     let adj = arrows_with_source s ms in
-    List.append adj (map_flat (map_dest (from ms)) adj)
+    List.append adj (flat_map (map_dest (from ms)) adj)
   in from (morphisms c) o
 
 (*
@@ -474,7 +474,7 @@ let arrows_between (c : proof_cat) (src : context_object) (dst : context_object)
       (fun d' ->
         let between_rec = fun s' -> between ms s' d' in
         let adj = arrows_with_source s ms in
-        List.append adj (map_flat (map_dest between_rec) adj))
+        List.append adj (flat_map (map_dest between_rec) adj))
       d
   in
   let ms = morphisms c in
@@ -491,7 +491,7 @@ let arrows_between (c : proof_cat) (src : context_object) (dst : context_object)
 let paths_from (c : proof_cat) (src : context_object) : arrow list list =
   let rec paths ms s =
     let adj = arrows_with_source s ms in
-    map_flat
+    flat_map
       (fun m ->
         let paths = map_dest (paths ms) m in
         if (List.length paths) = 0 then

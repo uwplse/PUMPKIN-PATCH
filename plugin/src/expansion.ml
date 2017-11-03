@@ -175,8 +175,8 @@ let expand_inductive_conclusions_fully (c : proof_cat) : proof_cat =
   let (ms_to_expand, old_ms) = partition_expandable c in
   let old_os = all_objects_except_those_in (conclusions ms_to_expand) c_os in
   let expanded = expand_inductive_conclusions ms_to_expand in
-  let new_os = map_flat (map_objects (all_objects_except_those_in c_os)) expanded in
-  let new_ms = map_flat morphisms expanded in
+  let new_os = flat_map (map_objects (all_objects_except_those_in c_os)) expanded in
+  let new_ms = flat_map morphisms expanded in
   let os = List.append old_os new_os in
   let ms = List.append old_ms new_ms in
   make_category os ms (initial_opt c) None
