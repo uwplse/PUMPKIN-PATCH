@@ -369,7 +369,7 @@ let contexts_at_index (c : proof_cat) (i : int) : context_object list =
       [o]
     else
       let adj = arrows_with_source o ms in
-      List.flatten (List.map (map_dest (fun d -> find_at ms d (n - 1))) adj)
+      flat_map (map_dest (fun d -> find_at ms d (n - 1))) adj
   in find_at (morphisms c) (initial c) i
 
 (*

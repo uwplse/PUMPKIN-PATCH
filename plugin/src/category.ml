@@ -1,5 +1,7 @@
 (* A super simple representation for small categories. *)
 
+open Collections
+
 module type Opaque =
 sig
   type t
@@ -91,7 +93,7 @@ struct
         in append_initial_terminal t (append_initial_terminal i os)
 
   let morphisms (Category (cs, _, _)) =
-    List.flatten (List.map (fun (s, adjs) -> (List.map (fun (m, d) -> (s, m, d)) adjs)) cs)
+    flat_map (fun (s, adjs) -> (List.map (fun (m, d) -> (s, m, d)) adjs)) cs
 
   let initial (Category (_, i, _)) = i
 

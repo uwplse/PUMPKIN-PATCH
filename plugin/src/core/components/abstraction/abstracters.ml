@@ -106,7 +106,7 @@ let syntactic_all_combinations (env : env) (arg_actual : types) (arg_abstract : 
   if eq_constr arg_actual arg_abstract then
     trms
   else
-    List.flatten (List.map (all_conv_substs_combs env (arg_actual, arg_abstract)) trms)
+    flat_map (all_conv_substs_combs env (arg_actual, arg_abstract)) trms
 
 let syntactic_all_strategy : abstracter =
   syntactic_all_combinations

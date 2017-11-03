@@ -400,50 +400,49 @@ let rec map_subterms_env_if (p : 'a p_with_env) (f : 'a f_cart_with_env) (d : 'a
 let rec map_subterms_env_if_combs (p : 'a p_with_env) (f : 'a f_cart_with_env) (d : 'a updater) (env : env) (a : 'a) (trm : types) : types list =
   let map_rec = map_subterms_env_if_combs p f d in
   let trms = if p env a trm then f env a trm else [trm] in
-  List.flatten
-    (List.map
-       (fun trm' ->
-         match kind_of_term trm' with
-         | Cast (c, k, t) ->
-            let cs' = map_rec env a c in
-            let ts' = map_rec env a t in
-            combine_cartesian (fun c' t' -> mkCast (c', k, t')) cs' ts'
-         | Prod (n, t, b) ->
-            let ts' = map_rec env a t in
-            let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
-            combine_cartesian (fun t' b' -> mkProd (n, t', b')) ts' bs'
-         | Lambda (n, t, b) ->
-            let ts' = map_rec env a t in
-            let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
-            combine_cartesian (fun t' b' -> mkLambda (n, t', b')) ts' bs'
-         | LetIn (n, trm, typ, e) ->
-            let trms' = map_rec env a trm in
-            let typs' = map_rec env a typ in
-            let es' = map_rec (push_rel (n, Some e, typ) env) (d a) e in
-            combine_cartesian (fun trm' (typ', e') -> mkLetIn (n, trm', typ', e')) trms' (cartesian typs' es')
-         | App (fu, args) ->
-            let fus' = map_rec env a fu in
-            let argss' = combine_cartesian_append (Array.map (map_rec env a) args) in
-            combine_cartesian (fun fu' args' -> mkApp (fu', args')) fus' argss'
-         | Case (ci, ct, m, bs) ->
-            let cts' = map_rec env a ct in
-            let ms' = map_rec env a m in
-            let bss' = combine_cartesian_append (Array.map (map_rec env a) bs) in
-            combine_cartesian (fun ct' (m', bs') -> mkCase (ci, ct', m', bs')) cts' (cartesian ms' bss')
-         | Fix ((is, i), (ns, ts, ds)) ->
-            let tss' = combine_cartesian_append (Array.map (map_rec env a) ts) in
-            let dss' = combine_cartesian_append (Array.map (map_rec_env_fix_cartesian map_rec d env a ns ts) ds) in
-            combine_cartesian (fun ts' ds' -> mkFix ((is, i), (ns, ts', ds'))) tss' dss'
-         | CoFix (i, (ns, ts, ds)) ->
-            let tss' = combine_cartesian_append (Array.map (map_rec env a) ts) in
-            let dss' = combine_cartesian_append (Array.map (map_rec_env_fix_cartesian map_rec d env a ns ts) ds) in
-            combine_cartesian (fun ts' ds' -> mkCoFix (i, (ns, ts', ds'))) tss' dss'
-         | Proj (p, c) ->
-            let cs' = map_rec env a c in
-            List.map (fun c' -> mkProj (p, c')) cs'
-         | _ ->
-            [trm'])
-       trms)
+  flat_map
+    (fun trm' ->
+      match kind_of_term trm' with
+      | Cast (c, k, t) ->
+         let cs' = map_rec env a c in
+         let ts' = map_rec env a t in
+         combine_cartesian (fun c' t' -> mkCast (c', k, t')) cs' ts'
+      | Prod (n, t, b) ->
+         let ts' = map_rec env a t in
+         let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+         combine_cartesian (fun t' b' -> mkProd (n, t', b')) ts' bs'
+      | Lambda (n, t, b) ->
+         let ts' = map_rec env a t in
+         let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+         combine_cartesian (fun t' b' -> mkLambda (n, t', b')) ts' bs'
+      | LetIn (n, trm, typ, e) ->
+         let trms' = map_rec env a trm in
+         let typs' = map_rec env a typ in
+         let es' = map_rec (push_rel (n, Some e, typ) env) (d a) e in
+         combine_cartesian (fun trm' (typ', e') -> mkLetIn (n, trm', typ', e')) trms' (cartesian typs' es')
+      | App (fu, args) ->
+         let fus' = map_rec env a fu in
+         let argss' = combine_cartesian_append (Array.map (map_rec env a) args) in
+         combine_cartesian (fun fu' args' -> mkApp (fu', args')) fus' argss'
+      | Case (ci, ct, m, bs) ->
+         let cts' = map_rec env a ct in
+         let ms' = map_rec env a m in
+         let bss' = combine_cartesian_append (Array.map (map_rec env a) bs) in
+         combine_cartesian (fun ct' (m', bs') -> mkCase (ci, ct', m', bs')) cts' (cartesian ms' bss')
+      | Fix ((is, i), (ns, ts, ds)) ->
+         let tss' = combine_cartesian_append (Array.map (map_rec env a) ts) in
+         let dss' = combine_cartesian_append (Array.map (map_rec_env_fix_cartesian map_rec d env a ns ts) ds) in
+         combine_cartesian (fun ts' ds' -> mkFix ((is, i), (ns, ts', ds'))) tss' dss'
+      | CoFix (i, (ns, ts, ds)) ->
+         let tss' = combine_cartesian_append (Array.map (map_rec env a) ts) in
+         let dss' = combine_cartesian_append (Array.map (map_rec_env_fix_cartesian map_rec d env a ns ts) ds) in
+         combine_cartesian (fun ts' ds' -> mkCoFix (i, (ns, ts', ds'))) tss' dss'
+      | Proj (p, c) ->
+         let cs' = map_rec env a c in
+         List.map (fun c' -> mkProj (p, c')) cs'
+      | _ ->
+         [trm'])
+    trms
 
 (*
  * Map a function over subterms of a term in an environment
@@ -498,8 +497,7 @@ let rec map_subterms_env_if_lazy (p : 'a p_with_env) (f : 'a f_cart_with_env) (d
        List.map (fun c' -> mkProj (p, c')) cs'
     | _ ->
        [trm]
-  in
-  List.flatten (List.map (fun trm' -> if p env a trm' then f env a trm' else [trm']) trms')
+  in flat_map (fun trm' -> if p env a trm' then f env a trm' else [trm']) trms'
 
 (* --- Terms with existential variables --- *)
 
