@@ -18,8 +18,8 @@ src/library/coq/coqterms.mli
 src/library/coq/coqterms.ml
 src/library/coq/coqenvs.mli
 src/library/coq/coqenvs.ml
-src/printing.mli
-src/printing.ml
+src/library/coq/printing.mli
+src/library/coq/printing.ml
 src/hofs.mli
 src/hofs.ml
 src/debruijn.mli
