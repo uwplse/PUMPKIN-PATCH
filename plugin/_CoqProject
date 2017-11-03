@@ -4,11 +4,12 @@
 -I src/library/proofsearch/representation
 -I src/library/proofsearch/compilation
 -I src/core/configuration
--I src
 -I src/core/components/abstraction
 -I src/core/components/specialization
 -I src/core/components/inversion
 -I src/core/components/factoring
+-I src/core/procedures
+-I src
 -Q theories Patcher
 
 src/library/utilities/utilities.mli
@@ -67,10 +68,11 @@ src/core/components/factoring/factoring.ml
 src/core/components/inversion/inverting.mli
 src/core/components/inversion/inverting.ml
 
-src/search.mli
-src/search.ml
-src/theorem.mli
-src/theorem.ml
+src/core/procedures/search.mli
+src/core/procedures/search.ml
+src/core/procedures/theorem.mli
+src/core/procedures/theorem.ml
+
 src/patcher.ml4
 src/patch.mlpack
 theories/Patch.v
