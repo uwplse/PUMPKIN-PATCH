@@ -42,6 +42,8 @@ src/library/proofsearch/representation/proofcatterms.ml
 
 src/library/proofsearch/compilation/evaluation.mli
 src/library/proofsearch/compilation/evaluation.ml
+src/library/proofsearch/compilation/expansion.mli
+src/library/proofsearch/compilation/expansion.ml
 
 src/core/components/specialization/specialization.mli
 src/core/components/specialization/specialization.ml
@@ -50,8 +52,6 @@ src/core/components/abstraction/abstracters.ml
 src/core/components/abstraction/abstraction.mli
 src/core/components/abstraction/abstraction.ml
 
-src/expansion.mli
-src/expansion.ml
 src/proofdiff.mli
 src/proofdiff.ml
 src/core/components/factoring/factoring.mli
