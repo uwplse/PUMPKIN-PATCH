@@ -27,12 +27,12 @@ src/library/coq/hofs.mli
 src/library/coq/hofs.ml
 src/library/coq/debruijn.mli
 src/library/coq/debruijn.ml
+src/library/coq/substitution.mli
+src/library/coq/substitution.ml
 
 src/library/proofsearch/assumptions.mli
 src/library/proofsearch/assumptions.ml
 
-src/substitution.mli
-src/substitution.ml
 src/filters.mli
 src/filters.ml
 src/core/components/specialization/specialization.mli

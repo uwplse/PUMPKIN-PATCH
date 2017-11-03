@@ -6,10 +6,7 @@ open Coqterms
 open Hofs
 open Assumptions
 open Debruijn
-open Coqterms
 open Coqenvs
-open Assumptions
-open Debruijn
 open Collections
 open Printing
 
