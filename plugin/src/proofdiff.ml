@@ -10,7 +10,7 @@ open Evaluation
 open Utilities
 open Proofcatterms
 open Substitution
-open Specialization
+open Reducers
 open Declarations
 open Collections
 open Printing
@@ -218,7 +218,7 @@ let reduced_proof_terms (r : reducer) (d : goal_proof_diff) : env * types * type
   let (env, ns, os) = merge_diff_closures (dest_goals (proof_to_term d)) [] in
   let [new_goal_type; new_term] = ns in
   let [old_goal_type; old_term] = os in
-  (env, reduce_using r env old_term, reduce_using r env new_term)
+  (env, r env old_term, r env new_term)
 
 (* Get the goal types for a lift goal diff *)
 let goal_types (d : lift_goal_diff) : types * types =
@@ -236,7 +236,7 @@ let reduce_diff (r : reducer) (d : goal_proof_diff) : goal_proof_diff =
   let (goal_n, _) = new_proof d in
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
-  eval_with_terms (reduce_using r env_o o) (reduce_using r env_n n) d
+  eval_with_terms (r env_o o) (r env_n n) d
 
 (* --- Questions about differences between proofs --- *)
 

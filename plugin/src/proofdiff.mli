@@ -6,7 +6,7 @@ open Proofcat
 open Assumptions
 open Expansion
 open Substitution
-open Specialization
+open Reducers
 
 (* --- Types --- *)
 

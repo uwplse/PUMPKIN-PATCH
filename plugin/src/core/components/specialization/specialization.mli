@@ -11,20 +11,18 @@
 
 open Term
 open Environ
+open Reducers
 
 (*
  * A reducer specializes within a term.
  * A specializer specializes explicitly to some arguments.
  *)
 
-type reducer
 type specializer
 
 (* --- Top-level --- *)
 
 val specialize_using : specializer -> env -> types -> types array -> types
-val reduce_using : reducer -> env -> types -> types
-val reduce_all : reducer -> env -> types list -> types list
 
 (* --- Defaults --- *)
 
@@ -33,48 +31,6 @@ val reduce_all : reducer -> env -> types list -> types list
  *)
 val specialize_term : specializer
 
-(*
- * Default reducer
- *)
-val reduce_term : reducer
-
-(* --- Custom reducers --- *)
-
-(*
- * Do not reduce
- *)
-val do_not_reduce : reducer
-
-(*
- * Remove all applications of the identity function
- *)
-val remove_identities : reducer
-
-(*
- * Remove unused hypotheses
- *)
-val remove_unused_hypos : reducer
-
-(*
- * Remove all applications of the identity function, then default reduce
- *)
-val reduce_remove_identities : reducer
-
-(*
- * Default reduce and also unfold definitions (delta-reduce, nf)
- *)
-val reduce_unfold : reducer
-
-(*
- * Default reduce and also unfold definitions (delta-reduce, whd)
- *)
-val reduce_unfold_whd : reducer
-
-(*
- * Weak-head reduce a term if it is a let-in (conditional betaiotazeta, whd)
- *)
-val reduce_whd_if_let_in : reducer
-
 (* --- Custom specializers --- *)
 
 (*
@@ -82,17 +38,7 @@ val reduce_whd_if_let_in : reducer
  *)
 val specialize_no_reduce : specializer
 
-(* --- Combinators and converters --- *)
-
-(*
- * Reduce with the first reducer, then with the second reducer
- *)
-val chain_reduce : reducer -> reducer -> reducer
-
-(*
- * Try to reduce, but let failure be OK
- *)
-val try_reduce : reducer -> reducer
+(* --- Conversion between specializers and reducers --- *)
 
 (*
  * Specialize an applied function in a term body by its arguments.
@@ -103,14 +49,6 @@ val try_reduce : reducer -> reducer
  * then this will fail.
  *)
 val specialize_body : specializer -> reducer
-
-(*
- * Specialize the body of a term using the supplied specializer if
- * the predicate p is true on the body. If the term is a function,
- * then this recurses into the body and checks the condition, and so on.
- * It specializes as soon as the condition holds.
- *)
-val reduce_body_if : (env -> types -> bool) -> reducer -> reducer
 
 (*
  * Convert a specializer into a reducer by taking arguments

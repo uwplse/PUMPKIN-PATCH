@@ -9,7 +9,7 @@ open Collections
 open Debruijn
 open Utilities
 open Proofdiff
-open Specialization
+open Reducers
 open Assumptions
 
 (* --- Auxiliary --- *)
@@ -41,16 +41,15 @@ let get_app (cut : cut_lemma) =
 
 (* Test if a type is exactly the type of the lemma to cut by *)
 let is_cut_strict env lemma typ =
-  let r = reduce_using reduce_term in
   try
-    concls_convertible env (r env lemma) (r env typ)
+    concls_convertible env (reduce_term env lemma) (reduce_term env typ)
   with _ ->
     false
 
 (* Test if a term has exactly the type of the lemma to cut by *)
 let has_cut_type_strict env cut trm =
   try
-    let typ = reduce_using reduce_term env (infer_type env trm) in
+    let typ = reduce_term env (infer_type env trm) in
     is_cut_strict env (get_lemma cut) typ
   with _ ->
     false
@@ -68,7 +67,7 @@ let rec flip_concls lemma =
 (* Test if a term has exactly the type of the lemma to cut by in reverse *)
 let has_cut_type_strict_rev env cut trm =
   try
-    let typ = reduce_using reduce_term env (infer_type env trm) in
+    let typ = reduce_term env (infer_type env trm) in
     is_cut_strict env (flip_concls (get_lemma cut)) typ
   with _ ->
     false
@@ -96,19 +95,18 @@ let rec is_cut env lemma typ =
 (* Check if a term has loosely the cut lemma type (can have extra hypotheses) *)
 let has_cut_type env cut trm =
   try
-    let typ = reduce_using reduce_term env (infer_type env trm) in
+    let typ = reduce_term env (infer_type env trm) in
     is_cut env (get_lemma cut) typ
   with _ ->
     false
 
 (* Check if a term is loosely an application of the lemma to cut by *)
 let has_cut_type_app env cut trm =
-  let r = reduce_using reduce_term in
   try
-    let typ = shift (r env (infer_type env trm)) in
+    let typ = shift (reduce_term env (infer_type env trm)) in
     let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
     let app = get_app cut in
-    let app_app = r env_cut (mkApp (app, Array.make 1 (mkRel 1))) in
+    let app_app = reduce_term env_cut (mkApp (app, Array.make 1 (mkRel 1))) in
     let app_app_typ = infer_type env_cut app_app in
     is_cut env_cut app_app_typ typ
   with _ ->
@@ -388,7 +386,7 @@ let configure_kind_of_change (d : goal_proof_diff) (cut : cut_lemma option) : ki
   let d_goals = erase_proofs d in
   let goals = goal_types d_goals in
   let env = context_env (old_proof d_goals) in
-  let r = reduce_using reduce_remove_identities env in
+  let r = reduce_remove_identities env in
   let old_goal = r (fst goals) in
   let new_goal = r (snd goals) in
   let rec configure env typ_o typ_n =

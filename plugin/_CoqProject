@@ -32,6 +32,8 @@ src/library/coq/substitution.mli
 src/library/coq/substitution.ml
 src/library/coq/filters.mli
 src/library/coq/filters.ml
+src/library/coq/reducers.mli
+src/library/coq/reducers.ml
 
 src/library/proofsearch/representation/assumptions.mli
 src/library/proofsearch/representation/assumptions.ml

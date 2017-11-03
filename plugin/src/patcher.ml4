@@ -17,6 +17,7 @@ open Abstracters
 open Abstraction
 open Debruijn
 open Searchopts
+open Reducers
 open Specialization
 open Factoring
 
@@ -65,7 +66,7 @@ let invert_patch n env evm patch =
 (* Common patch command functionality *)
 let patch n old_term new_term try_invert a search =
   let (evm, env) = Lemmas.get_current_context() in
-  let reduce = reduce_using (try_reduce reduce_remove_identities) in
+  let reduce = try_reduce reduce_remove_identities in
   let patch = reduce env (search env evm a) in
   let prefix = Id.to_string n in
   define_term n env evm patch;
@@ -122,7 +123,7 @@ let invert n trm : unit =
 let specialize n trm : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let reducer = specialize_body specialize_term in
-  let specialized = reduce_using reducer env (intern env evm trm) in
+  let specialized = reducer env (intern env evm trm) in
   define_term n env evm specialized
 
 (* Abstract a term by a function *)

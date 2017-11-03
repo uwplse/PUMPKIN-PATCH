@@ -6,6 +6,7 @@ open Coqterms
 open Printing
 open Substitution
 open Debruijn
+open Reducers
 open Specialization
 
 (*
@@ -79,7 +80,7 @@ let rec args_to (env : env) (f : types) (trm : types) : env * (types array) =
 let update_theorem (env : env) (src : types) (dst : types) (trm : types) : types =
   assert (isConst src && isConst dst);
   let (env, trm) = zoom_lambda_term env trm in
-  let trm = reduce_using reduce_term env trm in
+  let trm = reduce_term env trm in
   let (env_args, args) = args_to env src trm in
   let specialize = specialize_using specialize_no_reduce env_args in
   let src_typ = infer_type env_args (specialize src args) in

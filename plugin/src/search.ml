@@ -13,6 +13,7 @@ open Abstracters
 open Abstraction
 open Filters
 open Proofdiff
+open Reducers
 open Specialization
 open Evaluation
 open Expansion
@@ -122,7 +123,7 @@ let rec get_goal_fix (env : env) (old_term : types) (new_term : types) : types l
          (get_goal_fix (push_rel (n1, None, t1) env) b1 b2)
     | _ ->
        let rec get_goal_reduced env old_term new_term =
-         let r = reduce_using reduce_unfold_whd env in
+         let r = reduce_unfold_whd env in
          let red_old = r old_term in
          let red_new = r new_term in
          match kinds_of_terms (red_old, red_new) with
@@ -131,7 +132,7 @@ let rec get_goal_fix (env : env) (old_term : types) (new_term : types) : types l
             let args2 = Array.to_list args2 in
             flat_map2 (get_goal_reduced env) args1 args2
          | _ when not (eq_constr red_old red_new) ->
-            let r = reduce_using reduce_unfold env in
+            let r = reduce_unfold env in
             [r (mkProd (Anonymous, old_term, shift new_term))]
          | _ ->
             give_up
@@ -683,9 +684,8 @@ let simplify_letin (d : goal_proof_diff) : goal_proof_diff =
     let d_dest = dest_goals d in
     let ((_, old_env), _) = old_proof d_dest in
     let ((_, new_env), _) = new_proof d_dest in
-    let r = reduce_using reduce_whd_if_let_in in
-    let o' = r old_env o in
-    let n' = r new_env n in
+    let o' = reduce_whd_if_let_in old_env o in
+    let n' = reduce_whd_if_let_in new_env n in
     eval_with_terms o' n' d
   else
     d
@@ -1047,7 +1047,7 @@ let return_patch (opts : options) (env : env) (patches : types list) =
      let body_reducer = specialize_in (get_app cut) specialize_term in
      let reduction_condition en tr = has_cut_type_strict_sym en cut tr in
      let reducer = reduce_body_if reduction_condition body_reducer in
-     let specialized = List.map (reduce_using reducer env) patches in
+     let specialized = List.map (reducer env) patches in
      let specialized_fs = List.map (factor_term env) specialized in
      let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
      let specialized_typs = List.map (infer_type env) specialized_fs_terms in
@@ -1075,7 +1075,7 @@ let return_patch (opts : options) (env : env) (patches : types list) =
            let c_typs = List.map (infer_type env) [c] in
            let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
            let (_, _, b) = destLambda (get_app cut) in
-           let r = reduce_using reduce_remove_identities env in
+           let r = reduce_remove_identities env in
            let g = r (get_lifting_goal_args 1 b) in
            generalize_term_args no_reduce_strategies env_cut (shift c) g)
          patches

@@ -7,7 +7,7 @@ open Collections
 open Substitution
 open Debruijn
 open Printing
-open Specialization
+open Reducers
 open Filters
 
 type candidates = types list

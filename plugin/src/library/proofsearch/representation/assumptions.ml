@@ -6,11 +6,14 @@ open Collections
 open Coqenvs
 open Debruijn
 open Printing
+open Coqterms
+open Hofs
 
 (* For now, these are lists of pairs of ints, each int representing
    an index in a different environment; this representation
    is hard to use, so may change this in the future (TODO) *)
 
+type merged_closure = env * types list * types list
 type equal_assumptions = (int * int) list
 type param_substitutions = (int * types) list
 type swap_map = (types * types) list
@@ -183,6 +186,38 @@ let assume_local_equal (assums : equal_assumptions) : equal_assumptions =
 let build_substitution (dst : types) (subs : param_substitutions) : param_substitutions =
   build_n_substitutions 1 [dst] subs
 
+(* --- Applying assumptions --- *)
+
+(* Apply assums in trm *)
+let substitute_assumptions (assums : equal_assumptions) (trm : types) : types =
+  map_term_if
+    has_assumption
+    get_assumption
+    shift_assumptions
+    assums
+    trm
+
+(* Substitute provided indexes in trm with associated terms in subs *)
+let substitute_params (subs : param_substitutions) (trm : types) : types =
+  map_term_if
+    has_substitution
+    get_substitution
+    shift_substitutions
+    subs
+    trm
+
+(* Substitute provided indexes in an environment with the provided terms *)
+let substitute_env_params (subs : param_substitutions) (env : env) : env =
+  let num_rels = nb_rel env in
+  let all_rels = List.rev (lookup_all_rels env) in
+  snd
+    (List.fold_left
+     (fun (s, env) (n, b, t) ->
+       let sub = substitute_params s in
+       (shift_substitutions s, push_rel (n, Option.map sub b, sub t) env))
+     (unshift_substitutions_by num_rels subs, pop_rel_context num_rels env)
+     all_rels)
+
 (* --- Auxiliary functions on swaps --- *)
 
 (*
@@ -223,7 +258,7 @@ let map_swaps f (s : swap_map) : 'a list =
  *)
 let merge_swaps (sl : swap_map list) : swap_map =
   unique_swaps (List.flatten sl)
-      
+
 (*
  * Unshift a swap map by n
  *)
@@ -245,4 +280,134 @@ let unshift_swaps = unshift_swaps_by 1
  * Shift a swap map
  *)
 let shift_swaps = shift_swaps_by 1
+
+(* --- Building and applying swaps --- *)
+
+(*
+ * Get a swap map for all combinations of a function application
+ *)
+let build_swap_map (en : env) (t : types) : swap_map =
+  match kind_of_term t with
+  | App (_, args) ->
+     filter_swaps
+       (fun (a1, a2) ->
+	 (not (convertible en a1 a2)) && types_convertible en a1 a2)
+       (combinations_of_arguments args)
+  | _ ->
+     no_swaps
+
+(*
+ * Given a pair of arguments to swap, apply the swap inside of args
+ *)
+let swap_args (env : env) (args : types array) ((a1, a2) : types * types) =
+  combine_cartesian_append
+    (Array.map
+       (fun a ->
+         if convertible env a1 a then
+           [a2]
+         else if convertible env a2 a then
+           [a1]
+         else
+           [a])
+       args)
+
+(*
+ * Apply a swap map to an array of arguments
+ *)
+let apply_swaps env args swaps : (types array) list =
+  List.flatten (map_swaps (swap_args env args) swaps)
+
+(*
+ * Apply a swap map to an array of arguments,
+ * then combine the results using the combinator c, using a as a default
+ *)
+let apply_swaps_combine c a env args swaps : 'a list =
+  let swapped = apply_swaps env args swaps in
+  if List.length swapped = 0 then
+    [a]
+  else
+    a :: List.map c swapped
+
+(* In env, swap all arguments to a function
+ * with convertible types with each other, building a swap map for each
+ * term
+ *)
+let all_typ_swaps_combs (env : env) (trm : types) : types list =
+  unique
+    eq_constr
+    (map_subterms_env_if_lazy
+       (fun en _ t  ->
+         isApp t)
+       (fun en _ t ->
+	 let swaps = build_swap_map en t in
+	 let (f, args) = destApp t in
+	 apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps)
+       (fun _ -> ())
+       env
+       ()
+       trm)
+
+(*
+ * In an environment, swaps all subterms  convertible to the source
+ * and destination terms in the swap map with each other.
+ *
+ * This checks convertibility before recursing, and so will replace at
+ * the highest level possible.
+ *)
+let all_conv_swaps_combs (env : env) (swaps : swap_map) (trm : types) =
+    unique
+    eq_constr
+    (map_subterms_env_if_lazy
+       (fun _ _ t  -> isApp t)
+       (fun en depth t ->
+	 let swaps = shift_swaps_by depth swaps in
+	 let (f, args) = destApp t in
+	 unique
+	   eq_constr
+	   (apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps))
+       (fun depth -> depth + 1)
+       env
+       0
+       trm)
+
+(* --- Merging environments --- *)
+
+(* TODO needs cleanup, testing -- and when you test, see if you can change shifting to homogenous *)
+
+(*
+ * Merge two environments,
+ * assuming certain terms are equal and substituting those equal terms
+ *)
+let merge_environments (env1 : env) (env2 : env) (assums : equal_assumptions) : env =
+  let num_rels = nb_rel env2 in
+  let unshift_assums = map_tuple_hetero (unshift_from_assumptions_by num_rels) (unshift_assumptions_by num_rels) in
+  let split_assums = unshift_assums (split_assumptions assums env2) in
+  let (env_merged, _, _) =
+    List.fold_left
+       (fun (env, substs, l) i ->
+         if has_assumption assums (mkRel i) then
+           let shift_assums = map_tuple_hetero shift_from_assumptions shift_assumptions in
+           (env, shift_assums substs, l)
+         else
+           let shift_assums = map_tuple shift_assumptions in
+           let (n, b, t) = lookup_rel i env2 in
+           let substitute = substitute_assumptions (fold_tuple union_assumptions substs) in
+           let t' = substitute t in
+           let b' = Option.map substitute b in
+           (push_rel (n, b', t') env, shift_assums substs, (n, b', t') :: l))
+       (env1, split_assums, [])
+       (List.rev (all_rel_indexes env2))
+  in env_merged
+
+(*
+ * Merge two closures (environments and lists of terms),
+ * assuming certain terms are equal and substituting those equal terms
+ *)
+let merge_closures ((env1, trm1s) : closure) ((env2, trm2s) : closure) (assums : equal_assumptions) : merged_closure =
+  let env_merged = merge_environments env1 env2 assums in
+  let num_new_rels = (nb_rel env_merged) - (nb_rel env1) in
+  let substitute = substitute_assumptions (shift_to_assumptions_by num_new_rels assums) in
+  let trm1s_adj = List.map (shift_by num_new_rels) trm1s in
+  let trm2s_subst = List.map substitute trm2s in
+  (env_merged, trm1s_adj, trm2s_subst)
 

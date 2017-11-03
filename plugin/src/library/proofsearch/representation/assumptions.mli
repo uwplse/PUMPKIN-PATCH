@@ -2,6 +2,9 @@
 
 open Term
 open Environ
+open Coqterms
+
+type merged_closure = env * types list * types list
 
 type equal_assumptions
 type param_substitutions
@@ -128,6 +131,23 @@ val assume_local_equal : equal_assumptions -> equal_assumptions
 (* Build a substitution for the closest local binding to a term *)
 val build_substitution : types -> param_substitutions -> param_substitutions
 
+(* --- Applying assumptions --- *)
+
+(*
+ * Apply a set of assumptions within a term
+ *)
+val substitute_assumptions : equal_assumptions -> types -> types
+
+(*
+ * Substitute in values for parameters for an inductive type
+ *)
+val substitute_params : param_substitutions -> types -> types
+
+(*
+ * Substitute in values for parameters for an inductive type in an environment
+ *)
+val substitute_env_params : param_substitutions -> env -> env
+
 (* --- Auxiliary functions on swaps --- *)
 
 (*
@@ -179,3 +199,37 @@ val unshift_swaps : swap_map -> swap_map
  * Shift a swap map
  *)
 val shift_swaps : swap_map -> swap_map
+
+(* --- Applying swaps --- *)
+
+(*
+ * In an environment, swaps all subterms  convertible to the source
+ * and destination terms in the swap map with each other.
+ *
+ * This checks convertibility after recursing, and so will replace at
+ * the lowest level possible.
+ *)
+val all_conv_swaps_combs : env -> swap_map -> types -> types list
+
+(*
+ * In an environment, swaps all subterms with types convertible to the source
+ * and destination types with each other.
+ *
+ * This checks convertibility after recursing, and so will replace at
+ * the lowest level possible.
+ *)
+val all_typ_swaps_combs : env -> types -> types list
+
+(* --- Merging environments --- *)
+
+(*
+ * Merge two environments,
+ * assuming certain terms are equal and substituting those equal terms
+ *)
+val merge_environments : env -> env -> equal_assumptions -> env
+
+(*
+ * Merge two closures (environments and lists of terms),
+ * assuming certain terms are equal and substituting those equal terms
+ *)
+val merge_closures : closure -> closure -> equal_assumptions -> merged_closure

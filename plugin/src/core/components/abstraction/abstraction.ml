@@ -9,6 +9,7 @@ open Debruijn
 open Coqterms
 open Printing
 open Collections
+open Reducers
 open Specialization
 open Coqenvs
 open Utilities
