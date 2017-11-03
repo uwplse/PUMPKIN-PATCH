@@ -203,9 +203,7 @@ let zoom_search search opts (d : goal_proof_diff) : candidates =
  *)
 let zoom_wrap_lambda search opts n t (d : goal_proof_diff) : candidates =
   zoom_search
-    (fun opts d ->
-      let ((_, env), _) = old_proof (dest_goals d) in
-      List.map (fun c -> mkLambda (n, t, c)) (search opts d))
+    (fun opts d -> List.map (fun c -> mkLambda (n, t, c)) (search opts d))
     opts
     d
 
@@ -214,8 +212,7 @@ let zoom_wrap_lambda search opts n t (d : goal_proof_diff) : candidates =
  *)
 let zoom_wrap_prod search opts n t (d : goal_proof_diff) : candidates =
   zoom_search
-    (fun opts d ->
-      List.map (fun c -> mkProd (n, t, c)) (search opts d))
+    (fun opts d -> List.map (fun c -> mkProd (n, t, c)) (search opts d))
     opts
     d
 
