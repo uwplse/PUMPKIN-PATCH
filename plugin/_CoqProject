@@ -1,4 +1,5 @@
 -I src/library/utilities
+-I src/library/categories
 -I src
 -I src/core/components/abstraction
 -I src/core/components/specialization
@@ -10,8 +11,8 @@ src/library/utilities/utilities.mli
 src/library/utilities/utilities.ml
 src/library/utilities/collections.mli
 src/library/utilities/collections.ml
-src/category.mli
-src/category.ml
+src/library/categories/category.mli
+src/library/categories/category.ml
 src/coqterms.mli
 src/coqterms.ml
 src/coqenvs.mli
