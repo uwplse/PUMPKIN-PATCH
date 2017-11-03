@@ -43,10 +43,6 @@ let debug_search (d : goal_proof_diff) : unit =
 
 (* --- Auxiliary functions for candidates and diffs --- *)
 
-(* When we don't know how to find a patch, just give up *)
-let give_up : candidates =
-  []
-
 let merge_lift_diff_envs (d : lift_goal_diff) (cs : candidates) =
   let d = dest_lift_goals d in
   let assums = assumptions d in

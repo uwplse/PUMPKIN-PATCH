@@ -14,10 +14,6 @@ open Candidates
 
 (* --- Utilities --- *)
 
-(* When we don't know how to find a patch, just give up *)
-let give_up : candidates =
-  []
-
 (*
  * Given a term for the old proof, in the inductive case, substitute in
  * the IH from the new case for every term
