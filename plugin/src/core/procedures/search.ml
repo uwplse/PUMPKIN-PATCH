@@ -25,6 +25,7 @@ open Inverting
 open Searchopts
 open Factoring
 open Differencing
+open Candidates
 
 (* --- Debugging --- *)
 

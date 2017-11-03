@@ -4,6 +4,7 @@ open Abstracters
 open Environ
 open Term
 open Coqterms
+open Candidates
 
 (* --- Caller configuration for abstraction --- *)
 

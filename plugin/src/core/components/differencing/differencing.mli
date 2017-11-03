@@ -2,7 +2,7 @@
 
 open Searchopts
 open Proofdiff
-open Abstracters
+open Candidates
 
 (*
  * Primitive differencing function

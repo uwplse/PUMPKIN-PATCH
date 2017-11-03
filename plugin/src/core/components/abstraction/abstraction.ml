@@ -13,6 +13,7 @@ open Reducers
 open Specialization
 open Coqenvs
 open Utilities
+open Candidates
 
 (* Caller configuration for abstraction *)
 type abstraction_config =

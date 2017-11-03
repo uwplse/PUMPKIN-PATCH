@@ -9,8 +9,7 @@ open Debruijn
 open Printing
 open Reducers
 open Filters
-
-type candidates = types list
+open Candidates
 
 type abstraction_dimension = Arguments | Property of types
 type abstracter = env -> types -> types -> candidates -> candidates

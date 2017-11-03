@@ -2,7 +2,6 @@
 
 open Searchopts
 open Proofdiff
-open Abstracters
 open Assumptions
 open Term
 open Substitution
@@ -11,6 +10,7 @@ open Coqterms
 open Debruijn
 open Filters
 open Reducers
+open Candidates
 
 (* --- Utilities --- *)
 

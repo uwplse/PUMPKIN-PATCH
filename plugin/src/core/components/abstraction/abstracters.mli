@@ -2,8 +2,8 @@
 
 open Term
 open Environ
+open Candidates
 
-type candidates = types list
 type abstraction_dimension = Arguments | Property of types
 
 type abstraction_strategy
