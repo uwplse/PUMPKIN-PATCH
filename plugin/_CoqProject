@@ -67,8 +67,6 @@ src/core/components/factoring/factoring.ml
 src/core/components/inversion/inverting.mli
 src/core/components/inversion/inverting.ml
 
-src/searchopts.mli
-src/searchopts.ml
 src/search.mli
 src/search.ml
 src/theorem.mli
