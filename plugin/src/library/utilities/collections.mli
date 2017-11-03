@@ -88,3 +88,9 @@ val hd_f_default : 'a -> ('a list -> 'a list) -> 'a list -> 'a
  * Filter a list of lists by only its non-empty lists
  *)
 val filter_non_empty : 'a list list -> 'a list list
+
+(*
+ * Get values from a list of optionals only if every optional is some
+ * Otherwise, return the empty list
+ *)
+val get_all_or_none : 'a option list -> 'a list

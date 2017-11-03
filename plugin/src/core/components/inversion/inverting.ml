@@ -28,17 +28,14 @@ type inverter = (env * types) -> (env * types) option
  *)
 let invert_factors (invert : inverter) (fs : factors) : factors =
   let inverse_options = List.map invert fs in
-  if List.for_all Option.has_some inverse_options then
-    let inverted = List.rev (List.map Option.get inverse_options) in
-    match inverted with (* swap final hypothesis *)
-    | (env_inv, trm_inv) :: t when List.length t > 0 ->
-       let (n, h_inv, _) = destLambda (snd (last t)) in
-       let env_inv = push_rel (n, None, h_inv) (pop_rel_context 1 env_inv) in
-       (env_inv, trm_inv) :: t
-    | _ ->
-       inverted
-  else
-    []
+  let inverted = List.rev (get_all_or_none inverse_options) in
+  match inverted with (* swap final hypothesis *)
+  | (env_inv, trm_inv) :: t when List.length t > 0 ->
+     let (n, h_inv, _) = destLambda (snd (last t)) in
+     let env_inv = push_rel (n, None, h_inv) (pop_rel_context 1 env_inv) in
+     (env_inv, trm_inv) :: t
+  | _ ->
+     inverted
 
 (* --- Invert a term --- *)
 

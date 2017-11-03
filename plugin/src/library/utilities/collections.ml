@@ -134,3 +134,12 @@ let hd_f_default (a : 'a) (f : 'a list -> 'a list) (l : 'a list) : 'a =
 let filter_non_empty (la : 'a list list) : 'a list list =
   List.filter (fun l -> List.length l > 0) la
 
+(*
+ * Get values from a list of optionals only if every optional is some
+ * Otherwise, return the empty list
+ *)
+let get_all_or_none (l : 'a option list) : 'b list =
+  if List.for_all Option.has_some l then
+    List.map Option.get l
+  else
+    []
