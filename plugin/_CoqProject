@@ -1,6 +1,7 @@
 -I src/library/utilities
 -I src/library/categories
 -I src/library/coq
+-I src/library/proofsearch
 -I src
 -I src/core/components/abstraction
 -I src/core/components/specialization
@@ -27,8 +28,9 @@ src/library/coq/hofs.ml
 src/library/coq/debruijn.mli
 src/library/coq/debruijn.ml
 
-src/assumptions.mli
-src/assumptions.ml
+src/library/proofsearch/assumptions.mli
+src/library/proofsearch/assumptions.ml
+
 src/substitution.mli
 src/substitution.ml
 src/filters.mli
