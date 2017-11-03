@@ -89,8 +89,7 @@ let get_lifting_goals p_typ (env : env) (o : types) (n : types) : types list =
   let new_term = unwrap_definition env n in
   match kinds_of_terms (old_term, new_term) with
   | (Fix ((_, i), (nso, tso, dso)), Fix ((_, j), (_, tsn, dsn))) when i = j ->
-    let all_convertible = List.for_all2 (convertible env) in
-    if all_convertible (Array.to_list tso) (Array.to_list tsn) then
+    if all_convertible env (Array.to_list tso) (Array.to_list tsn) then
       let env_fix = push_rel_context (bindings_for_fix nso tso) env in
       let dso = Array.to_list dso in
       let dsn = Array.to_list dsn in
@@ -255,7 +254,7 @@ let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : can
     let (f_base, args_n) = destApp new_goal_type in
     let (f_goal, args_o) = destApp old_goal_type in
     map_if
-      (List.for_all2 (convertible env) (Array.to_list args_n))
+      (all_convertible env (Array.to_list args_n))
       (fun args ->
         let is_concrete = true in
         let abstraction_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
@@ -365,8 +364,7 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
          else
            args
       | Conclusion ->
-         let all_conv = List.for_all2 (convertible env) in
-         if all_conv (Array.to_list args_o) (Array.to_list args_n) then
+         if all_convertible env (Array.to_list args_o) (Array.to_list args_n) then
            let specialize = specialize_using specialize_no_reduce env in
            let combine_app = combine_cartesian specialize in
 	   let f = search_f opts (eval_with_terms_goals opts f_o f_n d) in

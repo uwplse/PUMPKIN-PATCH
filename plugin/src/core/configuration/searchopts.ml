@@ -408,7 +408,7 @@ let configure_kind_of_change (d : goal_proof_diff) (cut : cut_lemma option) : ki
          Conclusion
        else
          if isConst f_o && isConst f_n && (not (convertible env f_o f_n)) then
-           if List.for_all2 (convertible env) args_o args_n then
+           if all_convertible env args_o args_n then
              if not (Option.has_some cut) then
                failwith "Must supply cut lemma for change in fixpoint"
              else

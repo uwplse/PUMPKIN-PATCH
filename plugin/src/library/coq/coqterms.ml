@@ -288,6 +288,12 @@ let rec concls_convertible (env : env) (typ1 : types) (typ2 : types) : bool =
   | _ ->
      convertible env typ1 typ2
 
+(*
+ * Check whether all terms in l1 and l2 are convertible in env
+ *)
+let all_convertible (env : env) (l1 : types list) (l2 : types list) : bool =
+  List.for_all2 (convertible env) l1 l2
+
 (* --- Types --- *)
 
 (* Infer the type of trm in env, using the unsafe type judgment

@@ -128,6 +128,11 @@ val convertible_e : env -> evar_map -> types -> types -> bool
  *)
 val concls_convertible : env -> types -> types -> bool
 
+(*
+ * Check whether all terms in two lists are convertible in an environment
+ *)
+val all_convertible : env -> types list -> types list -> bool
+
 (* --- Types of terms --- *)
 
 (* Infer the type of a term in an environment, using Coq's unsafe type judgment *)
