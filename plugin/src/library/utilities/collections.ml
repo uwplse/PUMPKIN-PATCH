@@ -139,11 +139,12 @@ let hd_f_default (a : 'a) (f : 'a list -> 'a list) (l : 'a list) : 'a =
 (*
  * Return true if a list has length > 0
  *)
-let non_empty (l : 'a list) : int =
+let non_empty (l : 'a list) : bool =
   List.length l > 0
 
 (* Filter a list of lists by only its non-empty lists *)
-let filter_non_empty = List.filter non_empty
+let filter_non_empty (l : 'a list) =
+  List.filter non_empty l
 
 (*
  * Get values from a list of optionals only if every optional is some

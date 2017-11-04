@@ -26,6 +26,7 @@ open Searchopts
 open Factoring
 open Differencing
 open Candidates
+open Zooming
 
 (* --- Debugging --- *)
 

@@ -114,4 +114,4 @@ val singleton_array : 'a -> 'a array
 (*
  * Return true if a list has at least one element
  *)
-val non_empty : 'a list -> int
+val non_empty : 'a list -> bool

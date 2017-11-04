@@ -53,6 +53,8 @@ src/library/proofsearch/compilation/expansion.mli
 src/library/proofsearch/compilation/expansion.ml
 src/library/proofsearch/compilation/proofdiff.mli
 src/library/proofsearch/compilation/proofdiff.ml
+src/library/proofsearch/compilation/zooming.mli
+src/library/proofsearch/compilation/zooming.ml
 
 src/core/configuration/searchopts.mli
 src/core/configuration/searchopts.ml
