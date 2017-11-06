@@ -42,12 +42,17 @@ let debug_search (d : goal_proof_diff) : unit =
   debug_term env_n new_goal "new goal";
   print_separator ()
 
-(* --- Auxiliary functions for candidates and diffs --- *)
+(* --- Using options for search --- *)
 
 (* Keep the same assumptions, but update the goals and terms for a diff *)
 let eval_with_terms_goals opts t_o t_n d =
   let update = update_search_goals opts d in
   update (erase_goals (eval_with_terms t_o t_n d))
+
+(* Convert search to a search_function for zooming *)
+let to_search_function search opts d : search_function =
+  let update_goals = update_search_goals opts d in
+  (fun d -> search opts (update_goals d))
 
 (* --- Interacting with abstraction --- *)
 
@@ -177,13 +182,6 @@ let rec generalize_term_args strategies (env : env) (c : types) (g : types) : ty
   | _ ->
      failwith "Goal is inconsistent with term to generalize"
 
-(* --- Searching with zooming --- *)
-
-(* TODO move to options module or somewhere similar *)
-let to_search_function search opts d : search_function =
-  let update_goals = update_search_goals opts d in
-  (fun d -> search opts (update_goals d))
-
 (* --- Abstraction for search --- *)
 
 (*
@@ -220,20 +218,6 @@ let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : can
       (Array.to_list args_o)
   else
     cfs
-
-(* --- Identity --- *)
-
-(*
- * Given a difference in proofs with contexts storing the goals,
- * return the singleton list with the polymorphic identity function
- * applied to the type of the goal.
- *
- * This is incorrect in some cases:
- * Inside of lambdas, we need to adjust this.
- *)
-let identity_candidates (d : 'a goal_diff) : candidates =
-  let (new_goal, _) = new_proof d in
-  [identity_term (context_env new_goal) (context_term new_goal)]
 
 (* --- Application --- *)
 

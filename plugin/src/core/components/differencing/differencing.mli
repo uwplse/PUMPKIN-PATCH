@@ -27,3 +27,8 @@ val find_difference : options -> goal_term_diff -> candidates
  *)
 val no_diff : options -> goal_proof_diff -> bool
 
+(*
+ * Return the identity candidates applied to the type
+ * of the new proof in the diff
+ *)
+val identity_candidates : goal_proof_diff -> candidates

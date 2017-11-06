@@ -1,5 +1,6 @@
 (* --- Differencing Component --- *)
 
+open Proofcatterms
 open Searchopts
 open Proofdiff
 open Assumptions
@@ -205,3 +206,15 @@ let no_diff opts (d : goal_proof_diff) : bool =
      || (eq_constr d_old new_term && eq_constr d_new old_term)
   | _ ->
      conv
+
+(*
+ * Given a difference in proofs with contexts storing the goals,
+ * return the singleton list with the polymorphic identity function
+ * applied to the type of the goal.
+ *
+ * TODO: This is incorrect in some cases:
+ * Inside of lambdas, we need to adjust this.
+ *)
+let identity_candidates (d : goal_proof_diff) : candidates =
+  let (new_goal, _) = new_proof d in
+  [identity_term (context_env new_goal) (context_term new_goal)]
