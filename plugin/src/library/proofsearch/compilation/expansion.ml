@@ -231,3 +231,39 @@ let expand_constr (c : proof_cat) : proof_cat =
   let tr = List.hd (all_objects_except_those_in assums concls) in (*arbitrary*)
   make_category (objects c_exp) ms (initial_opt c_exp) (Some tr)
 
+(*
+ * Expand the application of a constant function
+ * TODO, do we need this in expand_app? How is this used right now?
+ *)
+let expand_const_app env (c, u) (f, args) default =
+  match inductive_of_elim env (c, u) with
+  | Some mutind ->
+     let mutind_body = lookup_mutind_body mutind env in
+     let f_c = eval_proof env f in
+     let f_exp = expand_inductive_params mutind_body.mind_nparams f_c in
+     eval_induction mutind_body f_exp args
+  | None ->
+     (eval_proof env (mkApp (f, args)), 0, default)
+
+(*
+ * Expand an application arrow
+ *
+ * This assumes it's the only arrow in c
+ * Otherwise, there is an error
+ * Like the above, this will not work yet when induction is later in the proof
+ *)
+let expand_application (c, n, l) : proof_cat * int * (types list) =
+  map_ext
+    (fun e ->
+      match e with
+      | LazyBinding (trm, env) ->
+         let (f, args) = destApp trm in
+         (match kind_of_term f with
+          | Const (c, u) ->
+             expand_const_app env (c, u) (f, args) l
+          | _ ->
+             let c_trm = Context (Term (trm, env), fid ()) in
+             let exp = expand_term eval_theorem c_trm in
+             (exp, 0, l))
+      | _ -> assert false)
+    (only_arrow c)

@@ -187,6 +187,7 @@ let rec generalize_term_args strategies (env : env) (c : types) (g : types) : ty
 
 (* --- Searching with zooming --- *)
 
+(* TODO move to options module or somewhere similar *)
 let to_search_function search opts d : search_function =
   let update_goals = update_search_goals opts d in
   (fun d -> search opts (update_goals d))

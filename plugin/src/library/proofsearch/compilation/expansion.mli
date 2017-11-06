@@ -51,3 +51,12 @@ val expand_inductive_params : int -> proof_cat expansion_strategy
  * Then mark the edges that are inductive hypotheses
  *)
 val expand_constr : proof_cat expansion_strategy
+
+(*
+ * Expand an application arrow
+ *
+ * This assumes it's the only arrow in c
+ * Otherwise, there is an error
+ * Like the above, this will not work yet when induction is later in the proof
+ *)
+val expand_application : (proof_cat * int * (types list)) expansion_strategy

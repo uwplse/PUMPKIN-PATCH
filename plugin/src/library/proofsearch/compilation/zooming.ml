@@ -9,6 +9,7 @@ open Utilities
 open Candidates
 open Term
 open Debruijn
+open Expansion
 
 (* --- Zooming --- *)
 
@@ -116,50 +117,6 @@ let zoom_map f a expander introducer d =
     a
   else
     f (Option.get zoomed)
-
-(* TODO move expand below into actual expansion *)
-(*
- * Expand the application of a constant function
- *)
-let expand_const_application env (c, u) (f, args) default =
-  match inductive_of_elim env (c, u) with
-  | Some mutind ->
-     let mutind_body = lookup_mutind_body mutind env in
-     let f_c = eval_proof env f in
-     let f_exp = expand_inductive_params mutind_body.mind_nparams f_c in
-     eval_induction mutind_body f_exp args
-  | None ->
-     (eval_proof env (mkApp (f, args)), 0, default)
-
-(*
- * Expand the application of a fuction
- *
- * This will not work yet when induction shows up later in the proof
- * We should make a benchmark for this and extend as needed
- *)
-let expand_application_term env trm default =
-  let (f, args) = destApp trm in
-  match kind_of_term f with
-  | Const (c, u) ->
-     expand_const_application env (c, u) (f, args) default
-  | _ ->
-     let exp = expand_term eval_theorem (Context (Term (trm, env), fid ())) in
-     (exp, 0, default)
-
-(*
- * Expand an application arrow
- *
- * This assumes it's the only arrow in c
- * Otherwise, there is an error
- * Like the above, this will not work yet when induction is later in the proof
- *)
-let expand_application (c, n, l) : proof_cat * int * (types list) =
-  map_ext
-    (fun e ->
-      match e with
-      | LazyBinding (trm, env) -> expand_application_term env trm l
-      | _ -> assert false)
-    (only_arrow c)
 
 (* Zoom over two inductive proofs that induct over the same hypothesis *)
 let zoom_same_hypos = zoom expand_application (fun d -> Some d)
