@@ -32,3 +32,12 @@ val no_diff : options -> goal_proof_diff -> bool
  * of the new proof in the diff
  *)
 val identity_candidates : goal_proof_diff -> candidates
+
+(* --- Recursive differencing --- *)
+
+(*
+ * Using some differencing function between terms,
+ * recursively difference the arguments
+ *)
+val diff_args :
+  (types -> types -> candidates) -> types array -> types array -> candidates

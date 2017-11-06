@@ -221,10 +221,6 @@ let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : can
 
 (* --- Application --- *)
 
-(* Using some search function, recursively search the arguments *)
-let search_args search_arg args_o args_n : candidates =
-  flat_map2 search_arg (Array.to_list args_o) (Array.to_list args_n)
-
 (*
  * Given a search function and a difference between terms,
  * if the terms are applications (f args) and (f' args'),
@@ -277,7 +273,7 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
            f_cut
          else
            let args =
-             search_args
+             diff_args
                (fun a_o a_n ->
                  let d_a = eval_with_terms_goals opts a_n a_o (reverse d) in
                  search_arg opts d_a)
@@ -287,7 +283,7 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          let opts = set_change opts Conclusion in
          let args =
-           search_args
+           diff_args
              (fun a_o a_n ->
 	       let d = eval_with_terms_goals opts a_o a_n d in
 	       if no_diff opts d then

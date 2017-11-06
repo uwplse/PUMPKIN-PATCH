@@ -218,3 +218,12 @@ let no_diff opts (d : goal_proof_diff) : bool =
 let identity_candidates (d : goal_proof_diff) : candidates =
   let (new_goal, _) = new_proof d in
   [identity_term (context_env new_goal) (context_term new_goal)]
+
+(* --- Recursive differencing --- *)
+
+(*
+ * Using some differencing function between terms,
+ * recursively difference the arguments
+ *)
+let diff_args diff_arg args_o args_n : candidates =
+  flat_map2 diff_arg (Array.to_list args_o) (Array.to_list args_n)
