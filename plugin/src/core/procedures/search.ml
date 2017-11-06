@@ -44,14 +44,6 @@ let debug_search (d : goal_proof_diff) : unit =
 
 (* --- Auxiliary functions for candidates and diffs --- *)
 
-let merge_lift_diff_envs (d : lift_goal_diff) (cs : candidates) =
-  let d = dest_lift_goals d in
-  let assums = assumptions d in
-  let (env, ns, os) = merge_lift_diff_closures d cs in
-  let new_goal_type = List.hd ns in
-  let old_goal_type = List.hd os in
-  (env, difference old_goal_type new_goal_type assums, List.tl os)
-
 (* Keep the same assumptions, but update the goals and terms for a diff *)
 let eval_with_terms_goals opts t_o t_n d =
   let update = update_search_goals opts d in

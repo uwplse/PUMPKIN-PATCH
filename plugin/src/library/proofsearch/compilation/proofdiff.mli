@@ -159,12 +159,12 @@ val dest_cases : case_diff -> proof_cat_diff list
 (* --- Merging environments for diffs --- *)
 
 (*
- * Merge the environments for two lift_goal_type_diffs
+ * Merge the environments for two lift_goal_diffs
  * Combine with a list of terms in the old environment
- * Return them in the order (env, new, old ++ terms)
+ * Return (env, types diff, terms)
  *)
-val merge_lift_diff_closures :
-  lift_goal_type_diff -> types list -> merged_closure
+val merge_lift_diff_envs :
+  lift_goal_diff -> types list -> (env * types proof_diff * types list)
 
 (*
  * Merge the environments for two goal_type_term_diffs

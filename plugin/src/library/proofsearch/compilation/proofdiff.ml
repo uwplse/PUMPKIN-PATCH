@@ -199,6 +199,14 @@ let merge_lift_diff_closures (d : lift_goal_type_diff) (trms : types list) =
     (old_goal_env, old_goal_type :: trms)
     assums
 
+let merge_lift_diff_envs (d : lift_goal_diff) (trms : types list) =
+  let d = dest_lift_goals d in
+  let assums = assumptions d in
+  let (env, ns, os) = merge_lift_diff_closures d trms in
+  let new_goal_type = List.hd ns in
+  let old_goal_type = List.hd os in
+  (env, difference old_goal_type new_goal_type assums, List.tl os)
+
 let merge_diff_closures (d : goal_type_term_diff) (trms : types list) =
   let assums = assumptions d in
   let ((old_goal_type, old_goal_env), old_term) = old_proof d in
