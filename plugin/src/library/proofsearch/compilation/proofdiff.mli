@@ -7,6 +7,7 @@ open Assumptions
 open Expansion
 open Substitution
 open Reducers
+open Merging
 
 (* --- Types --- *)
 

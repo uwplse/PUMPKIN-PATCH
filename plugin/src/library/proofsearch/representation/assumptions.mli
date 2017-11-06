@@ -4,8 +4,6 @@ open Term
 open Environ
 open Coqterms
 
-type merged_closure = env * types list * types list
-
 type equal_assumptions
 type param_substitutions
 type swap_map
@@ -219,17 +217,3 @@ val all_conv_swaps_combs : env -> swap_map -> types -> types list
  * the lowest level possible.
  *)
 val all_typ_swaps_combs : env -> types -> types list
-
-(* --- Merging environments --- *)
-
-(*
- * Merge two environments,
- * assuming certain terms are equal and substituting those equal terms
- *)
-val merge_environments : env -> env -> equal_assumptions -> env
-
-(*
- * Merge two closures (environments and lists of terms),
- * assuming certain terms are equal and substituting those equal terms
- *)
-val merge_closures : closure -> closure -> equal_assumptions -> merged_closure

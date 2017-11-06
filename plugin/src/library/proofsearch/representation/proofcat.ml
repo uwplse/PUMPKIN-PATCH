@@ -9,6 +9,7 @@ open Substitution
 open Assumptions
 open Utilities
 open Collections
+open Merging
 
 (* --- Type definitions --- *)
 

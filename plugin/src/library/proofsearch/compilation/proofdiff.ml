@@ -14,6 +14,7 @@ open Reducers
 open Declarations
 open Collections
 open Printing
+open Merging
 
 (* --- Types --- *)
 
