@@ -6,9 +6,13 @@ open Coqterms
 open Evaluation
 open Term
 open Utilities
+open Candidates
+open Term
+open Debruijn
 
 (* --- Zooming --- *)
 
+type search_function = proof_cat_diff -> candidates
 type 'a intro_strategy = 'a proof_diff -> 'a proof_diff option
 
 type 'a zoomer =
@@ -159,3 +163,30 @@ let expand_application (c, n, l) : proof_cat * int * (types list) =
 
 (* Zoom over two inductive proofs that induct over the same hypothesis *)
 let zoom_same_hypos = zoom expand_application (fun d -> Some d)
+
+(* Default zoom for recursive search *)
+let zoom_search f (d : goal_proof_diff) : candidates =
+  zoom_map
+    f
+    give_up
+    expand_terminal
+    intro_common
+    (erase_goals d)
+
+(* Zoom in, search, and wrap the result in a lambda from binding (n : t)  *)
+let zoom_wrap_lambda f n t (d : goal_proof_diff) : candidates =
+  zoom_search
+    (fun d -> List.map (fun c -> mkLambda (n, t, c)) (f d))
+    d
+
+(* Zoom in, search, and wrap the result in a prod from binding (n : t) *)
+let zoom_wrap_prod f n t (d : goal_proof_diff) : candidates =
+  zoom_search
+    (fun d -> List.map (fun c -> mkProd (n, t, c)) (f d))
+    d
+
+(* Zoom in, search, and unshift the result *)
+let zoom_unshift f (d : goal_proof_diff) : candidates =
+  zoom_search
+    (fun d -> List.map unshift (f d))
+    d

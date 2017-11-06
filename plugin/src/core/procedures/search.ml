@@ -187,44 +187,9 @@ let rec generalize_term_args strategies (env : env) (c : types) (g : types) : ty
 
 (* --- Searching with zooming --- *)
 
-(*
- * Zoom in, search, and apply some function
- *)
-let zoom_search search opts (d : goal_proof_diff) : candidates =
+let to_search_function search opts d : search_function =
   let update_goals = update_search_goals opts d in
-  zoom_map
-    (fun d -> search opts (update_goals d))
-    give_up
-    expand_terminal
-    intro_common
-    (erase_goals d)
-
-(*
- * Zoom in, search, and wrap the result in a lambda from binding (n : t)
- *)
-let zoom_wrap_lambda search opts n t (d : goal_proof_diff) : candidates =
-  zoom_search
-    (fun opts d -> List.map (fun c -> mkLambda (n, t, c)) (search opts d))
-    opts
-    d
-
-(*
- * Zoom in, search, and wrap the result in a prod from binding (n : t)
- *)
-let zoom_wrap_prod search opts n t (d : goal_proof_diff) : candidates =
-  zoom_search
-    (fun opts d -> List.map (fun c -> mkProd (n, t, c)) (search opts d))
-    opts
-    d
-
-(*
- * Zoom in, search, and unshift the result
- *)
-let zoom_unshift search opts (d : goal_proof_diff) : candidates =
-  zoom_search
-    (fun opts d -> List.map unshift (search opts d))
-    opts
-    d
+  (fun d -> search opts (update_goals d))
 
 (* --- Abstraction for search --- *)
 
@@ -799,10 +764,10 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
     match kinds_of_terms (proof_terms d) with
     | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
        if no_diff opts (eval_with_terms t_o t_n d) then
-         (*4*) zoom_wrap_lambda search opts n_o t_o d
+         (*4*) zoom_wrap_lambda (to_search_function search opts d) n_o t_o d
        else
          if is_ind opts || not (is_conclusion (get_change opts)) then
-           (*5*) zoom_unshift search opts d
+           (*5*) zoom_unshift (to_search_function search opts d) d
          else
            give_up
     | _ ->

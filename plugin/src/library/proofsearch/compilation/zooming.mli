@@ -1,9 +1,13 @@
 open Proofdiff
 open Expansion
 open Proofcat
+open Candidates
+open Names
+open Term
 
 (* --- Zooming --- *)
 
+type search_function = proof_cat_diff -> candidates
 type 'a intro_strategy = 'a proof_diff -> 'a proof_diff option
 
 (*
@@ -93,3 +97,25 @@ val zoom_map :
  * Return the leftover arguments that aren't applied to the inductive type
  *)
 val zoom_same_hypos : induction_diff -> induction_diff option
+
+(*
+ * Default zoom for recursive search
+ *)
+val zoom_search : search_function -> goal_proof_diff -> candidates
+
+(*
+ * Zoom in, search, and wrap the result in a lambda
+ *)
+val zoom_wrap_lambda :
+  search_function -> name -> types -> goal_proof_diff -> candidates
+
+(*
+ * Zoom in, search, and wrap the result in a product
+ *)
+val zoom_wrap_prod :
+  search_function -> name -> types -> goal_proof_diff -> candidates
+
+(*
+ * Zoom in, search, and unshift the result
+ *)
+val zoom_unshift : search_function -> goal_proof_diff -> candidates
