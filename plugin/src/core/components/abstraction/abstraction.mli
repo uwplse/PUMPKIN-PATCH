@@ -10,7 +10,6 @@ open Candidates
 
 type abstraction_config =
   {
-    is_concrete : bool;
     env : env;
     args : types list;
     cs : candidates;

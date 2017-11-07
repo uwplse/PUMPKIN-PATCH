@@ -18,7 +18,6 @@ open Candidates
 (* Caller configuration for abstraction *)
 type abstraction_config =
   {
-    is_concrete : bool; (* TODO hack *)
     env : env;
     args : types list;
     cs : candidates;

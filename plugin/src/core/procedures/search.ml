@@ -148,8 +148,7 @@ let rec generalize_term strategies (env : env) (c : types) (g : types) : types l
        let f_goal = f_base in
        let args = Array.to_list (snd (destApp gt)) in
        let cs = [c] in
-       let is_concrete = true in
-       let abstraction_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
+       let abstraction_config = {env; args; cs; f_base; f_goal; strategies} in
        abstract_with_strategies abstraction_config
      else
        failwith "Cannot infer property to generalize"
@@ -176,8 +175,7 @@ let rec generalize_term_args strategies (env : env) (c : types) (g : types) : ty
      let (f_base, f_goal) = get_lemma_functions (infer_type env lemma) in
      let args = Array.to_list args in
      let cs = [c] in
-     let is_concrete = false in
-     let abstraction_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
+     let abstraction_config = {env; args; cs; f_base; f_goal; strategies} in
      abstract_with_strategies abstraction_config
   | _ ->
      failwith "Goal is inconsistent with term to generalize"
@@ -209,8 +207,7 @@ let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : can
     map_if
       (all_convertible env (Array.to_list args_n))
       (fun args ->
-        let is_concrete = true in
-        let abstraction_config = {is_concrete; env; args; cs; f_base; f_goal; strategies} in
+        let abstraction_config = {env; args; cs; f_base; f_goal; strategies} in
         let lcs = abstract_with_strategies abstraction_config in
         let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
         List.map (unshift_local (num_new_rels - 1) num_new_rels) lcs)
