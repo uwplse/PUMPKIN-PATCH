@@ -55,33 +55,26 @@ let generalize (env : env) (num_to_abstract : int) (cs : candidates) : candidate
 (*
  * From a common environment, source type, destination type,
  * and number of arguments, get the goal type for abstraction
- * that takes you from destination back to source, abstracting over the arguments
+ * that takes you from destination back to source,
+ * abstracting over the arguments
+ *
+ * TODO does this expect a certain form? Like reduced? If so, document
+ * Also, right now, abstraction fails if t_b t_g aren't convertible,
+ * should document somewhere too, but not checking for efficiency and
+ * simplicity
  *)
 let get_arg_abstract_goal_type (config : abstraction_config) (num_args : int) : types =
-  let rec infer_goal (en : env) (b : types) (g : types) (i : int) : types =
-    if i >= num_args then (* TODO, need to check if this generalizes *)
+  let rec infer_goal (b : types) (g : types) : types =
       match (kind_of_term b, kind_of_term g) with
-      | (Lambda (n_b, t_b, b_b), Lambda (n_g, t_g, b_g)) when convertible en t_b t_g ->
-	 let en' = push_rel (n_b, None, t_b) en in
-	 let g' = unshift_local i (i - 1) (infer_goal en' b_b b_g (i + 1)) in
-	 mkProd (n_b, t_b, g')
-      | (Prod (n_b, t_b, b_b), Prod (n_g, t_g, b_g)) when convertible en t_b t_g ->
-	 let en' = push_rel (n_b, None, t_b) en in
-	 let g' = unshift_local i (i - 1) (infer_goal en' b_b b_g (i + 1)) in
-	 mkProd (n_b, t_b, g')
+      | (Lambda (n_b, t_b, b_b), Lambda (_, t_g, b_g)) ->
+	 mkProd (n_b, t_b, infer_goal b_b b_g)
+      | (Prod (n_b, t_b, b_b), Prod (_, t_g, b_g)) ->
+	 mkProd (n_b, t_b, infer_goal b_b b_g)
       | _ ->
-	 let diff = i - num_args in
-	 let b' = shift_local (diff - 2) (i - 2) b in (* TODO num_args or i? *)
-	 let g' = shift_local (diff - 1) (i - 1) g in (* TODO bounds may be wrong in here and elsewhere, unsure why this works *)
-	 mkProd (Anonymous, b', g')
-    else
-      let (n_b, t_b, b_b) = destLambda b in
-      let (n_g, t_g, b_g) = destLambda g in
-      let en' = push_rel (n_b, None, t_b) en in
-      mkProd (n_b, t_b, shift_local i 1 (infer_goal en' b_b b_g (i + 1)))
+	 mkProd (Anonymous, b, shift g)
   in
   if config.is_concrete then
-    infer_goal config.env config.f_base config.f_goal 1
+    infer_goal config.f_base config.f_goal
   else (* TODO yet another hack, help *)
     let rec infer_goal b g =
       match (kind_of_term b, kind_of_term g) with
