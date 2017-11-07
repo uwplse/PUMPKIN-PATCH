@@ -22,6 +22,29 @@ type abstraction_strategy =
     to_abstract : abstraction_dimension;
   }
 
+(* --- Auxiliary functions --- *)
+
+(*
+ * Count the number of applications in a term.
+ * Do not consider lambdas.
+ *)
+let rec num_apps (trm : types) : int =
+  match kind_of_term trm with
+  | App (f, args) ->
+     Array.fold_left (fun n a -> n + num_apps a) (1 + num_apps f) args
+  | _ ->
+     0
+
+(*
+ * Heuristic for sorting the arguments to decide which ones to abstract first.
+ * Treats terms with more applications as larger.
+ *)
+let sort_dependent args args_abstract =
+  List.split
+    (List.stable_sort
+       (fun (a1, _) (a2, _) -> num_apps a1 - num_apps a2)
+       (List.combine args args_abstract))
+
 (* --- Top-level --- *)
 
 (*
@@ -31,15 +54,13 @@ type abstraction_strategy =
 let substitute_using (strategy : abstraction_strategy) (env : env) (args : types list) (args_abstract : types list) (cs : candidates) : candidates =
   let abs = strategy.abstracter in
   let num_args = List.length args_abstract in
-  (* TODO testing something, fix up later *)
-  let args = List.rev args in
-  let args_abstract = List.rev args_abstract in
+  let (args_sorted, args_abstract_sorted) = sort_dependent args args_abstract in
   if num_args > 0 then
-    let cs_abs = abs env (last args) (last args_abstract) cs in
+    let cs_abs = abs env (last args_sorted) (last args_abstract_sorted) cs in
     List.fold_right2
       (abs env)
-      (remove_last args)
-      (remove_last args_abstract)
+      (remove_last args_sorted)
+      (remove_last args_abstract_sorted)
       cs_abs
   else
     []
