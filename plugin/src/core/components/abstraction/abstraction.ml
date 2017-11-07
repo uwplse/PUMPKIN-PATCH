@@ -150,27 +150,13 @@ let get_abstraction_opts config strategy : abstraction_options =
      let num_to_abstract = List.length args_p in
      { concrete; abstract; goal_type; num_to_abstract }
 
-(*
- * Given a strategy, return a function that optionally shifts concrete terms
- *
- * This is probably temporary since property abstraction is only called outside
- * of an algorithm right now in a tactic, and so the concrete and abstract
- * are not offset from each other, unlike in the argument case
- *)
-let shift_terms strategy opts : types list -> types list =
-  match kind_of_abstraction strategy with
-  | Arguments ->
-     List.map (shift_by opts.num_to_abstract)
-  | Property _ ->
-     List.map id
-
 (* Abstract candidates with a provided abstraction strategy *)
 let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let opts = get_abstraction_opts config strategy in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
   let reduced_cs = reduce_all_using strategy env config.cs in
-  let shift_concrete = shift_terms strategy opts in
+  let shift_concrete = List.map (shift_by (nb_rel env_abs - nb_rel env)) in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
   let bs = substitute_using strategy env_abs args_adj args_abs cs_adj in
