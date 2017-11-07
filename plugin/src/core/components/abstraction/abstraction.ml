@@ -65,24 +65,14 @@ let generalize (env : env) (num_to_abstract : int) (cs : candidates) : candidate
  *)
 let get_arg_abstract_goal_type (config : abstraction_config) (num_args : int) : types =
   let rec infer_goal (b : types) (g : types) : types =
-      match (kind_of_term b, kind_of_term g) with
-      | (Lambda (n_b, t_b, b_b), Lambda (_, t_g, b_g)) ->
-	 mkProd (n_b, t_b, infer_goal b_b b_g)
-      | (Prod (n_b, t_b, b_b), Prod (_, t_g, b_g)) ->
-	 mkProd (n_b, t_b, infer_goal b_b b_g)
-      | _ ->
-	 mkProd (Anonymous, b, shift g)
-  in
-  if config.is_concrete then
-    infer_goal config.f_base config.f_goal
-  else (* TODO yet another hack, help *)
-    let rec infer_goal b g =
-      match (kind_of_term b, kind_of_term g) with
-      | (Lambda (n_b, t_b, b_b), Lambda (_, _, b_g)) ->
-         mkProd (n_b, t_b, infer_goal b_b b_g)
-      | _ ->
-         mkProd (Anonymous, b, g)
-    in infer_goal config.f_base config.f_goal
+    match (kind_of_term b, kind_of_term g) with
+    | (Lambda (n_b, t_b, b_b), Lambda (_, t_g, b_g)) ->
+       mkProd (n_b, t_b, infer_goal b_b b_g)
+    | (Prod (n_b, t_b, b_b), Prod (_, t_g, b_g)) ->
+       mkProd (n_b, t_b, infer_goal b_b b_g)
+    | _ ->
+       mkProd (Anonymous, b, shift g)
+  in infer_goal config.f_base config.f_goal
 
 (*
  * When abstracting over a property, add the property itself to the arguments

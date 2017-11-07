@@ -169,7 +169,7 @@ let rec generalize_term_args strategies (env : env) (c : types) (g : types) : ty
           let (f_base, f_goal) = get_lemma_functions b in
           (mkLambda (n, t, f_base), mkLambda (n, t, f_goal))
        | Prod (n, t, b) ->
-          (t, b)
+          (t, unshift b)
        | _ ->
           failwith "Could not infer arguments to generalize"
      in
