@@ -31,6 +31,9 @@ type abstraction_strategy =
 let substitute_using (strategy : abstraction_strategy) (env : env) (args : types list) (args_abstract : types list) (cs : candidates) : candidates =
   let abs = strategy.abstracter in
   let num_args = List.length args_abstract in
+  (* TODO testing something, fix up later *)
+  let args = List.rev args in
+  let args_abstract = List.rev args_abstract in
   if num_args > 0 then
     let cs_abs = abs env (last args) (last args_abstract) cs in
     List.fold_right2

@@ -158,13 +158,10 @@ let get_abstraction_opts config strategy : abstraction_options =
  * of an algorithm right now in a tactic, and so the concrete and abstract
  * are not offset from each other, unlike in the argument case
  *)
-let shift_terms is_concrete strategy opts : types list -> types list =
+let shift_terms strategy opts : types list -> types list =
   match kind_of_abstraction strategy with
   | Arguments ->
-     if is_concrete then
-       List.map (shift_by opts.num_to_abstract)
-     else
-       List.map id
+     List.map (shift_by opts.num_to_abstract)
   | Property _ ->
      List.map id
 
@@ -174,7 +171,7 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
   let reduced_cs = reduce_all_using strategy env config.cs in
-  let shift_concrete = shift_terms config.is_concrete strategy opts in
+  let shift_concrete = shift_terms strategy opts in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
   let bs = substitute_using strategy env_abs args_adj args_abs cs_adj in
