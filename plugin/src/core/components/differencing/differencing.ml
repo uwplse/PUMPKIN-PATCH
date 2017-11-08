@@ -13,6 +13,7 @@ open Filters
 open Reducers
 open Candidates
 open Collections
+open Coqenvs
 
 (* --- Utilities --- *)
 
@@ -94,12 +95,12 @@ let rec get_goal_fix env (old_term : types) (new_term : types) : candidates =
             give_up
        in get_goal_reduced env old_term new_term
 
-(* Same as the above, but at the top-level for the fixpoint itself *)
-let rec diff_fix env (old_term : types) (new_term : types) : candidates =
+(* Same as the above, but at the top-level for the fixpoint case *)
+let rec diff_fix_case env (old_term : types) (new_term : types) : candidates =
   let conv = convertible env in
   match kinds_of_terms (old_term, new_term) with
   | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when conv t1 t2 ->
-     diff_fix (push_rel (n1, None, t1) env) b1 b2
+     diff_fix_case (push_rel (n1, None, t1) env) b1 b2
   | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
      if Array.length bs1 = Array.length bs2 then
        let bs1 = Array.to_list bs1 in
@@ -115,6 +116,28 @@ let rec diff_fix env (old_term : types) (new_term : types) : candidates =
        give_up
   | _ ->
      give_up
+
+(* Same as above, for all of the cases of a fixpoint *)
+let diff_fix_cases env (old_term : types) (new_term : types) : candidates =
+  let old_term = unwrap_definition env old_term in
+  let new_term = unwrap_definition env new_term in
+  match kinds_of_terms (old_term, new_term) with
+  | (Fix ((_, i), (nso, tso, dso)), Fix ((_, j), (_, tsn, dsn))) when i = j ->
+    if all_convertible env (Array.to_list tso) (Array.to_list tsn) then
+      let env_fix = push_rel_context (bindings_for_fix nso tso) env in
+      let dso = Array.to_list dso in
+      let dsn = Array.to_list dsn in
+      let ds = flat_map2 (diff_fix_case env_fix) dso dsn in
+      let lambdas = List.map (reconstruct_lambda env_fix) ds in
+      let apps =
+        List.map
+          (fun t -> mkApp (t, singleton_array new_term))
+          lambdas
+      in unique eq_constr (reduce_all reduce_term env apps)
+    else
+      failwith "Cannot infer goals for generalizing change in definition"
+  | _ ->
+     failwith "Not a fixpoint"
 
 (* --- Differencing of proofs --- *)
 

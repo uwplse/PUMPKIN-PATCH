@@ -9,10 +9,9 @@ open Term
 (* --- Differencing of types & terms --- *)
 
 (*
- * Find the difference between two fixpoints
- * For now, this only detects a change in a single case of the fixpoint
+ * Find the difference between the cases of two fixpoints
  *)
-val diff_fix : env -> types -> types -> candidates
+val diff_fix_cases : env -> types -> types -> candidates
 
 
 (* --- Differencing of proofs --- *)

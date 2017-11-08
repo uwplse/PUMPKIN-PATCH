@@ -57,25 +57,6 @@ let to_search_function search opts d : search_function =
 
 (* --- Interacting with abstraction --- *)
 
-(* TODO move the remainder to differencing, explain what it's doing *)
-let diff_fix_cases (env : env) (o : types) (n : types) : candidates =
-  let old_term = unwrap_definition env o in
-  let new_term = unwrap_definition env n in
-  match kinds_of_terms (old_term, new_term) with
-  | (Fix ((_, i), (nso, tso, dso)), Fix ((_, j), (_, tsn, dsn))) when i = j ->
-    if all_convertible env (Array.to_list tso) (Array.to_list tsn) then
-      let env_fix = push_rel_context (bindings_for_fix nso tso) env in
-      let dso = Array.to_list dso in
-      let dsn = Array.to_list dsn in
-      let ds = flat_map2 (diff_fix env_fix) dso dsn in
-      let lambdas = List.map (reconstruct_lambda env_fix) ds in
-      let apps = List.map (fun t -> mkApp (t, singleton_array n)) lambdas in
-      unique eq_constr (reduce_all reduce_term env apps)
-    else
-      failwith "Cannot infer goals for generalizing change in definition"
-  | _ ->
-     failwith "Not a fixpoint"
-
 (*
  * Get the arguments for abstraction by arguments
  * Also a workaround
