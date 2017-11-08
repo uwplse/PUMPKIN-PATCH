@@ -88,19 +88,6 @@ let get_lifting_goals (env : env) (o : types) (n : types) =
      failwith "Not fixpoints"
 
 (*
- * Get the type of the function for abstraction
- * Also a workaround
- *)
-let rec get_prop_type env typ =
-  match kind_of_term typ with
-  | Prod (n, t, b) ->
-     get_prop_type (push_rel (n, None, t) env) b
-  | App (f, args) ->
-     infer_type env f
-  | _ ->
-     failwith "can't get type of prop"
-
-(*
  * Get the arguments for abstraction by arguments
  * Also a workaround
  *)
@@ -123,8 +110,7 @@ let rec generalize_term strategies (env : env) (c : types) (g : types) : types l
   | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
      generalize_term strategies (push_rel (n, None, t) env) cb gb
   | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
-     let ct = infer_type env c in
-     let (_, _, ctb) = destProd ct in
+     let (_, _, ctb) = destProd (infer_type env c) in
      if isApp ctb then
        let (f_base, _) = destApp (unshift ctb) in
        let f_goal = f_base in
@@ -774,7 +760,6 @@ let return_patch (opts : options) (env : env) (patches : types list) =
      let specialized_fs = List.map (factor_term env) specialized in
      let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
      let specialized_typs = List.map (infer_type env) specialized_fs_terms in
-     let p_typs = List.map (get_prop_type env) specialized_typs in
      let generalized = (* can simplify / try fewer *)
        flat_map
          (fun c ->

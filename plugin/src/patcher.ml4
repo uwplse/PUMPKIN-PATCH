@@ -138,8 +138,7 @@ let abstract n trm goal : unit =
     | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
        abstract_term (push_rel (n, None, t) env) cb gb
     | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
-       let ct = infer_type env c in
-       let (_, _, ctb) = destProd ct in
+       let (_, _, ctb) = destProd (infer_type env c) in
        if isApp ctb then
          let (f_base, _) = destApp (unshift ctb) in
          let f_goal = f_base in
