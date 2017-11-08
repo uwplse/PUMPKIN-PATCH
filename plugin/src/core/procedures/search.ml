@@ -75,11 +75,11 @@ let rec get_lifting_goal_args pi (app : types) : types =
 
 (* Same as above, but for arguments *)
 (* TODO why is this here? etc *)
-let configure_cut_args strategies (env : env) (c : types) (lemma : types) (app : types) : abstraction_config =
+let configure_cut_args strategies (env : env) (lemma : types) (app : types) (cs : candidates) : abstraction_config list =
   let env_cut = push_rel (Anonymous, None, lemma) env in
   let (_, _, b) = destLambda app in
   let g = reduce_remove_identities env (get_lifting_goal_args 1 b) in
-  let rec configure en c g =
+  let rec configure en c g : abstraction_config =
     match (kind_of_term c, kind_of_term g) with
     | (Lambda (n, t, cb), Prod (_, tb, gb)) ->
        configure (push_rel (n, None, t) en) cb gb
@@ -103,7 +103,7 @@ let configure_cut_args strategies (env : env) (c : types) (lemma : types) (app :
        {env; args_base; args_goal; cs; f_base; f_goal; strategies}
     | _ ->
        failwith "Goal is inconsistent with term to generalize"
-  in configure env_cut c g
+  in List.map (fun c -> configure env_cut (shift c) g) cs
 
 (* --- Abstraction for search --- *)
 
@@ -729,16 +729,13 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
      let patches = reduce_all remove_unused_hypos env patches in
      let generalized =
        flat_map
-         (fun c ->
-           let c_typs = List.map (infer_type env) [c] in
-           abstract_with_strategies
-             (configure_cut_args
-                no_reduce_strategies
-                env
-                (shift c)
-                (get_lemma cut)
-                (get_app cut)))
-         patches
+         abstract_with_strategies
+         (configure_cut_args
+            no_reduce_strategies
+            env
+            (get_lemma cut)
+            (get_app cut)
+            patches)
      in List.hd generalized
   | _ ->
      Printf.printf "%s\n" "SUCCESS";
