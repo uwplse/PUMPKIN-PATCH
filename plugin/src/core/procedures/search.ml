@@ -69,7 +69,7 @@ let to_search_function search opts d : search_function =
  * Get goals for abstraction by a function
  * Very preliminary, and also a workaround
  *)
-let get_lifting_goals p_typ (env : env) (o : types) (n : types) =
+let get_lifting_goals (env : env) (o : types) (n : types) =
   let old_term = unwrap_definition env o in
   let new_term = unwrap_definition env n in
   match kinds_of_terms (old_term, new_term) with
@@ -778,13 +778,10 @@ let return_patch (opts : options) (env : env) (patches : types list) =
      let generalized = (* can simplify / try fewer *)
        flat_map
          (fun c ->
+           let goals = get_lifting_goals env old_type new_type in
            flat_map
-             (fun p_typ ->
-               let goals = get_lifting_goals p_typ env old_type new_type in
-               flat_map
-                 (generalize_term reduce_strategies_prop env c)
-                 goals)
-             p_typs)
+             (generalize_term reduce_strategies_prop env c)
+             goals)
          specialized_fs_terms
      in List.hd generalized
   | ConclusionCase (Some cut) ->
