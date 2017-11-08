@@ -58,7 +58,7 @@ let to_search_function search opts d : search_function =
 (* --- Interacting with abstraction --- *)
 
 (* TODO move the remainder to differencing, explain what it's doing *)
-let diff_fixes (env : env) (o : types) (n : types) : candidates =
+let diff_fix_cases (env : env) (o : types) (n : types) : candidates =
   let old_term = unwrap_definition env o in
   let new_term = unwrap_definition env n in
   match kinds_of_terms (old_term, new_term) with
@@ -734,9 +734,9 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
      let generalized =
        flat_map
          abstract_with_strategies
-         (configure_fixpoint
+         (configure_fixpoint_cases
             env
-            (diff_fixes env old_type new_type)
+            (diff_fix_cases env old_type new_type)
             specialized_fs_terms)
      in List.hd generalized
   | ConclusionCase (Some cut) ->

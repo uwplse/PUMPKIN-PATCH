@@ -28,13 +28,11 @@ type abstraction_config =
 
 (*
  * Abstract a term by a function for a fixpoint
- *
- * TODO clean this
  *)
-let rec configure_fix strategies (env : env) (c : types) (g : types) : abstraction_config =
+let rec configure_fixpoint_case strategies (env : env) (c : types) (g : types) : abstraction_config =
   match (kind_of_term c, kind_of_term g) with
   | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
-     configure_fix strategies (push_rel (n, None, t) env) cb gb
+     configure_fixpoint_case strategies (push_rel (n, None, t) env) cb gb
   | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
      let (_, _, ctb) = destProd (infer_type env c) in
      if isApp ctb then
@@ -51,14 +49,12 @@ let rec configure_fix strategies (env : env) (c : types) (g : types) : abstracti
 
 (*
  * Get goals for abstraction by a function for a change in fixpoint cases
- *
- * TODO clean this up
  *)
-let configure_fixpoint (env : env) (ds : types list) (cs : types list) : abstraction_config list =
+let configure_fixpoint_cases (env : env) (diffs : types list) (cs : candidates) : abstraction_config list =
   flat_map
     (fun c ->
       List.map
-        (configure_fix reduce_strategies_prop env c)
-        ds)
+        (configure_fixpoint_case reduce_strategies_prop env c)
+        diffs)
     cs
 

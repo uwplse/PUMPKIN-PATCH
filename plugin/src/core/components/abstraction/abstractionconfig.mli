@@ -18,4 +18,5 @@ type abstraction_config =
   }
 
 (* Configure abstraction for a fixpoint *)
-val configure_fixpoint : env -> types list -> types list -> abstraction_config list
+val configure_fixpoint_cases :
+  env -> types list -> candidates -> abstraction_config list
