@@ -1,8 +1,7 @@
 (* --- Abstraction Component --- *)
 
-(* TODO there is still code in here to check and clean up *)
-
 open Abstracters
+open Abstractionconfig
 open Environ
 open Term
 open Debruijn
@@ -15,21 +14,6 @@ open Coqenvs
 open Utilities
 open Candidates
 open Coqenvs
-
-(* Caller configuration for abstraction *)
-(* TODO separate out configs for property and argument,
-   instead of per strategy *)
-(* Or just take base and goal applied *)
-type abstraction_config =
-  {
-    env : env;
-    args_base : types list;
-    args_goal : types list;
-    cs : candidates;
-    f_base : types;
-    f_goal : types;
-    strategies : abstraction_strategy list;
-  }
 
 (* Internal options for abstraction *)
 type abstraction_options =

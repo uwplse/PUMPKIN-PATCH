@@ -66,6 +66,8 @@ src/core/components/specialization/specialization.ml
 
 src/core/components/abstraction/abstracters.mli
 src/core/components/abstraction/abstracters.ml
+src/core/components/abstraction/abstractionconfig.mli
+src/core/components/abstraction/abstractionconfig.ml
 src/core/components/abstraction/abstraction.mli
 src/core/components/abstraction/abstraction.ml
 

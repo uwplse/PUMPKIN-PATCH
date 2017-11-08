@@ -11,6 +11,7 @@ open Proofcatterms
 open Assumptions
 open Abstracters
 open Abstraction
+open Abstractionconfig
 open Filters
 open Proofdiff
 open Reducers
@@ -56,16 +57,8 @@ let to_search_function search opts d : search_function =
 
 (* --- Interacting with abstraction --- *)
 
-(*
- * Get goals for abstraction by a function
- * Very preliminary, and also a workaround
- *
- * TODO clarify this is for fixpoints,
- * return a list of configurations.
- * Move this into the abstraction component in a configuration
- * file
- *)
-let get_lifting_goals (env : env) (o : types) (n : types) =
+(* TODO move the remainder to differencing, explain what it's doing *)
+let diff_fixes (env : env) (o : types) (n : types) : candidates =
   let old_term = unwrap_definition env o in
   let new_term = unwrap_definition env n in
   match kinds_of_terms (old_term, new_term) with
@@ -74,14 +67,14 @@ let get_lifting_goals (env : env) (o : types) (n : types) =
       let env_fix = push_rel_context (bindings_for_fix nso tso) env in
       let dso = Array.to_list dso in
       let dsn = Array.to_list dsn in
-      let goals = flat_map2 (diff_fix env_fix) dso dsn in
-      let lambdas = List.map (reconstruct_lambda env_fix) goals in
+      let ds = flat_map2 (diff_fix env_fix) dso dsn in
+      let lambdas = List.map (reconstruct_lambda env_fix) ds in
       let apps = List.map (fun t -> mkApp (t, singleton_array n)) lambdas in
       unique eq_constr (reduce_all reduce_term env apps)
     else
       failwith "Cannot infer goals for generalizing change in definition"
   | _ ->
-     failwith "Not fixpoints"
+     failwith "Not a fixpoint"
 
 (*
  * Get the arguments for abstraction by arguments
@@ -98,32 +91,6 @@ let rec get_lifting_goal_args pi (app : types) : types =
      mkApp (mkRel pi, args)
   | _ ->
      failwith "Cannot infer goals for generalizing arguments"
-
-(*
- * Abstract a term by a function
- * Only handles one argument since it's a debruijn hack wrt the cut lemma
- * The good version of this is in patcher.ml4 and this will go away one day
- *
- * TODO remove this/merge into configuration for fixpoints
- *)
-let rec generalize_term strategies (env : env) (c : types) (g : types) : types list =
-  match (kind_of_term c, kind_of_term g) with
-  | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
-     generalize_term strategies (push_rel (n, None, t) env) cb gb
-  | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
-     let (_, _, ctb) = destProd (infer_type env c) in
-     if isApp ctb then
-       let (f_base, _) = destApp (unshift ctb) in
-       let f_goal = f_base in
-       let args_base = [gt] in
-       let args_goal = [unshift gtg] in
-       let cs = [c] in
-       let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
-       abstract_with_strategies abstraction_config
-     else
-       failwith "Cannot infer property to generalize"
-  | _ ->
-     failwith "Goal is inconsistent with term to generalize"
 
 (* Same as above, but for arguments *)
 (* TODO why is this here? etc *)
@@ -755,7 +722,7 @@ let search_function (opts : options) (should_reduce : bool) =
  * inconsistencies and deal with user-cut lemmas
  * in the prototype. I'll fix this one day.
  *)
-let return_patch (opts : options) (env : env) (patches : types list) =
+let return_patch (opts : options) (env : env) (patches : types list) : types =
   match get_change opts with
   | FixpointCase ((old_type, new_type), cut) ->
      let body_reducer = specialize_in (get_app cut) specialize_term in
@@ -766,11 +733,11 @@ let return_patch (opts : options) (env : env) (patches : types list) =
      let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
      let generalized =
        flat_map
-         (fun c ->
-           flat_map
-             (generalize_term reduce_strategies_prop env c)
-             (get_lifting_goals env old_type new_type))
-         specialized_fs_terms
+         abstract_with_strategies
+         (configure_fixpoint
+            env
+            (diff_fixes env old_type new_type)
+            specialized_fs_terms)
      in List.hd generalized
   | ConclusionCase (Some cut) ->
      let patches = reduce_all remove_unused_hypos env patches in

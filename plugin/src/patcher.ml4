@@ -15,6 +15,7 @@ open Inverting
 open Theorem
 open Abstracters
 open Abstraction
+open Abstractionconfig
 open Debruijn
 open Searchopts
 open Reducers
