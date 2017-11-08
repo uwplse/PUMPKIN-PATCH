@@ -173,10 +173,8 @@ let get_abstraction_opts config strategy : abstraction_options =
      let goal_type = get_arg_abstract_goal_type config in
      let num_to_abstract = List.length config.args_base in
      { concrete; abstract; goal_type; num_to_abstract }
-  | Property goal_type ->
-     let (env, _) = concrete in debug_term env goal_type "goal_type";
-     let goal_type_test = get_prop_abstract_goal_type config in
-     debug_term env goal_type_test "goal_type_test";
+  | Property _ ->
+     let goal_type = get_prop_abstract_goal_type config in
      let (_, args_p) = concrete in
      let num_to_abstract = List.length args_p in
      { concrete; abstract; goal_type; num_to_abstract }
