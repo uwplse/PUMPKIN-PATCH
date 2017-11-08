@@ -127,6 +127,8 @@ let specialize n trm : unit =
   define_term n env evm specialized
 
 (* Abstract a term by a function *)
+(* TODO move into configuration configure_from_goal,
+   expose both args and props, etc *)
 let abstract n trm goal : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let c = lookup_definition env (intern env evm trm) in

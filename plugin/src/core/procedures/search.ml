@@ -57,17 +57,13 @@ let to_search_function search opts d : search_function =
 (* --- Interacting with abstraction --- *)
 
 (*
- * The code below is all workaround code for DeBruijn bugs. Seriously.
- * I have some workarounds to make sure I'm being
- * consistent in how I'm calling abstraction. This is all really boring
- * stuff that shouldn't exist that I'll fix after the prototype.
- * I assume if you've ever written a compiler that has to deal
- * with DeBruijn indexes, you can empathize.
- *)
-
-(*
  * Get goals for abstraction by a function
  * Very preliminary, and also a workaround
+ *
+ * TODO clarify this is for fixpoints,
+ * return a list of configurations.
+ * Move this into the abstraction component in a configuration
+ * file
  *)
 let get_lifting_goals (env : env) (o : types) (n : types) =
   let old_term = unwrap_definition env o in
@@ -90,6 +86,9 @@ let get_lifting_goals (env : env) (o : types) (n : types) =
 (*
  * Get the arguments for abstraction by arguments
  * Also a workaround
+ *
+ * TODO why is this here?
+ * Figure out what to do with this
  *)
 let rec get_lifting_goal_args pi (app : types) : types =
   match kind_of_term app with
@@ -104,6 +103,8 @@ let rec get_lifting_goal_args pi (app : types) : types =
  * Abstract a term by a function
  * Only handles one argument since it's a debruijn hack wrt the cut lemma
  * The good version of this is in patcher.ml4 and this will go away one day
+ *
+ * TODO remove this/merge into configuration for fixpoints
  *)
 let rec generalize_term strategies (env : env) (c : types) (g : types) : types list =
   match (kind_of_term c, kind_of_term g) with
@@ -125,6 +126,7 @@ let rec generalize_term strategies (env : env) (c : types) (g : types) : types l
      failwith "Goal is inconsistent with term to generalize"
 
 (* Same as above, but for arguments *)
+(* TODO why is this here? etc *)
 let rec generalize_term_args strategies (env : env) (c : types) (g : types) : types list =
   match (kind_of_term c, kind_of_term g) with
   | (Lambda (n, t, cb), Prod (_, tb, gb)) ->
@@ -164,6 +166,9 @@ let rec generalize_term_args strategies (env : env) (c : types) (g : types) : ty
  *
  * If the goal types are both specialized, then we lift (see lifting.ml/i) to
  * try to abstract them.
+ *
+ * TODO why separate from other lifting functions?
+ * Should this also be partially in configuration?
  *)
 let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : candidates =
   let goals = goal_types d in
@@ -759,8 +764,7 @@ let return_patch (opts : options) (env : env) (patches : types list) =
      let specialized = List.map (reducer env) patches in
      let specialized_fs = List.map (factor_term env) specialized in
      let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
-     let specialized_typs = List.map (infer_type env) specialized_fs_terms in
-     let generalized = (* can simplify / try fewer *)
+     let generalized =
        flat_map
          (fun c ->
            flat_map

@@ -14,6 +14,7 @@ open Specialization
 open Coqenvs
 open Utilities
 open Candidates
+open Coqenvs
 
 (* Caller configuration for abstraction *)
 (* TODO separate out configs for property and argument,
@@ -63,17 +64,8 @@ let get_prop_abstract_goal_type (config : abstraction_config) =
   let env = config.env in
   let prop_type = infer_type env config.f_base in
   (* TODO check type above actually ends in a prop *)
-  let num_rels = nb_rel env in
-  let all_rels = lookup_rels (List.rev (from_one_to num_rels)) env in
-  (* TODO move env stuff to push_to_back function in env aux *)
-  let env_prop =
-    List.fold_left
-      (fun en (na, b, t) ->
-        push_rel (na, b, t) en)
-      (push_rel (Anonymous, None, prop_type) (pop_rel_context num_rels env))
-      all_rels
-  in
-  let prop = mkRel (num_rels + 1) in
+  let env_prop = push_last (Anonymous, None, prop_type) env in
+  let prop = mkRel (nb_rel env_prop) in
   let base = mkApp (prop, Array.of_list config.args_base) in
   let goal = mkApp (prop, Array.of_list config.args_goal) in
   let goal_type_env = mkProd (Anonymous, base, shift goal) in

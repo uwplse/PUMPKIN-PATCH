@@ -15,6 +15,9 @@ val all_rel_indexes : env -> int list
 (* Return a list of all bindings in an environment, starting with the closest *)
 val lookup_all_rels : env -> rel_declaration list
 
+(* Push something to the highest position in an environment *)
+val push_last : rel_declaration -> env -> env
+
 (* --- Getting bindings for terms --- *)
 
 (*
