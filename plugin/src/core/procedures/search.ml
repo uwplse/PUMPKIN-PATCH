@@ -75,30 +75,35 @@ let rec get_lifting_goal_args pi (app : types) : types =
 
 (* Same as above, but for arguments *)
 (* TODO why is this here? etc *)
-let rec generalize_term_args strategies (env : env) (c : types) (g : types) : types list =
-  match (kind_of_term c, kind_of_term g) with
-  | (Lambda (n, t, cb), Prod (_, tb, gb)) ->
-     generalize_term_args strategies (push_rel (n, None, t) env) cb gb
-  | (Lambda (_, _, _), App (lemma, args)) ->
-     let ct = infer_type env g in
-     let rec get_lemma_functions typ =
-       match kind_of_term typ with
-       | Prod (n, t, b) when isProd b ->
-          let (f_base, f_goal) = get_lemma_functions b in
-          (mkLambda (n, t, f_base), mkLambda (n, t, f_goal))
-       | Prod (n, t, b) ->
-          (t, unshift b)
-       | _ ->
-          failwith "Could not infer arguments to generalize"
-     in
-     let (f_base, f_goal) = get_lemma_functions (infer_type env lemma) in
-     let args_base = Array.to_list args in
-     let args_goal = args_base in
-     let cs = [c] in
-     let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
-     abstract_with_strategies abstraction_config
-  | _ ->
-     failwith "Goal is inconsistent with term to generalize"
+let configure_cut_args strategies (env : env) (c : types) (lemma : types) (app : types) : abstraction_config =
+  let env_cut = push_rel (Anonymous, None, lemma) env in
+  let (_, _, b) = destLambda app in
+  let g = reduce_remove_identities env (get_lifting_goal_args 1 b) in
+  let rec configure en c g =
+    match (kind_of_term c, kind_of_term g) with
+    | (Lambda (n, t, cb), Prod (_, tb, gb)) ->
+       configure (push_rel (n, None, t) en) cb gb
+    | (Lambda (_, _, _), App (lemma, args)) ->
+       let ct = infer_type en g in
+       let rec get_lemma_functions typ =
+         match kind_of_term typ with
+         | Prod (n, t, b) when isProd b ->
+            let (f_base, f_goal) = get_lemma_functions b in
+            (mkLambda (n, t, f_base), mkLambda (n, t, f_goal))
+         | Prod (n, t, b) ->
+            (t, unshift b)
+         | _ ->
+            failwith "Could not infer arguments to generalize"
+       in
+       let (f_base, f_goal) = get_lemma_functions (infer_type en lemma) in
+       let args_base = Array.to_list args in
+       let args_goal = args_base in
+       let cs = [c] in
+       let env = en in
+       {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+    | _ ->
+       failwith "Goal is inconsistent with term to generalize"
+  in configure env_cut c g
 
 (* --- Abstraction for search --- *)
 
@@ -726,11 +731,13 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
        flat_map
          (fun c ->
            let c_typs = List.map (infer_type env) [c] in
-           let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
-           let (_, _, b) = destLambda (get_app cut) in
-           let r = reduce_remove_identities env in
-           let g = r (get_lifting_goal_args 1 b) in
-           generalize_term_args no_reduce_strategies env_cut (shift c) g)
+           abstract_with_strategies
+             (configure_cut_args
+                no_reduce_strategies
+                env
+                (shift c)
+                (get_lemma cut)
+                (get_app cut)))
          patches
      in List.hd generalized
   | _ ->
