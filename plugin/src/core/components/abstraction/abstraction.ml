@@ -16,10 +16,14 @@ open Utilities
 open Candidates
 
 (* Caller configuration for abstraction *)
+(* TODO separate out configs for property and argument,
+   instead of per strategy *)
+(* Or just take base and goal applied *)
 type abstraction_config =
   {
     env : env;
-    args : types list;
+    args_base : types list;
+    args_goal : types list;
     cs : candidates;
     f_base : types;
     f_goal : types;
@@ -52,6 +56,30 @@ let generalize (env : env) (num_to_abstract : int) (cs : candidates) : candidate
        (env, cs))
 
 (*
+ * Get goals for abstraction by a function
+ * TODO explain
+ * TODO same concern as below *)
+let get_prop_abstract_goal_type (config : abstraction_config) =
+  let env = config.env in
+  let prop_type = infer_type env config.f_base in
+  (* TODO check type above actually ends in a prop *)
+  let num_rels = nb_rel env in
+  let all_rels = lookup_rels (List.rev (from_one_to num_rels)) env in
+  (* TODO move env stuff to push_to_back function in env aux *)
+  let env_prop =
+    List.fold_left
+      (fun en (na, b, t) ->
+        push_rel (na, b, t) en)
+      (push_rel (Anonymous, None, prop_type) (pop_rel_context num_rels env))
+      all_rels
+  in
+  let prop = mkRel (num_rels + 1) in
+  let base = mkApp (prop, Array.of_list config.args_base) in
+  let goal = mkApp (prop, Array.of_list config.args_goal) in
+  let goal_type_env = mkProd (Anonymous, base, shift goal) in
+  reconstruct_prod env_prop goal_type_env
+
+(*
  * From a common environment, source type, destination type,
  * and number of arguments, get the goal type for abstraction
  * that takes you from destination back to source,
@@ -62,12 +90,12 @@ let generalize (env : env) (num_to_abstract : int) (cs : candidates) : candidate
  * should document somewhere too, but not checking for efficiency and
  * simplicity
  *)
-let get_arg_abstract_goal_type (config : abstraction_config) (num_args : int) : types =
+let get_arg_abstract_goal_type (config : abstraction_config) : types =
   let rec infer_goal (b : types) (g : types) : types =
-    match (kind_of_term b, kind_of_term g) with
-    | (Lambda (n_b, t_b, b_b), Lambda (_, t_g, b_g)) ->
+    match kinds_of_terms (b, g) with
+    | (Lambda (n_b, t_b, b_b), Lambda (_, _, b_g)) ->
        mkProd (n_b, t_b, infer_goal b_b b_g)
-    | (Prod (n_b, t_b, b_b), Prod (_, t_g, b_g)) ->
+    | (Prod (n_b, t_b, b_b), Prod (_, _, b_g)) ->
        mkProd (n_b, t_b, infer_goal b_b b_g)
     | _ ->
        mkProd (Anonymous, b, shift g)
@@ -93,7 +121,7 @@ let get_concrete_prop (config : abstraction_config) (concrete : closure) : closu
 (* Get the concrete environment and arguments to abstract *)
 let get_concrete config strategy : closure =
   let env = config.env in
-  let args = config.args in
+  let args = config.args_base in
   let s = reducer_to_specializer reduce_term in
   let base = specialize_using s env config.f_base (Array.of_list args) in
   let concrete = (env, List.append args [base]) in
@@ -116,7 +144,7 @@ let get_abstraction_args config : closure =
 	 (en'', (mkRel i) :: b')
       | _ ->
 	 (en, [])
-  in infer_args (List.length config.args) config.env config.f_goal
+  in infer_args (List.length config.args_base) config.env config.f_goal
 
 (* Get the abstract arguments that map to concrete arguments
    for a particular strategy, function, and arguments *)
@@ -129,7 +157,7 @@ let get_abstract config concrete strategy : closure =
      let base_abs = specialize_using s env_abs p (Array.of_list args_abs) in
      (env_abs, List.append args_abs [base_abs])
   | Property _ ->
-     let args_abs = config.args in
+     let args_abs = config.args_base in
      let (env_p, args_p) = concrete in
      let p = mkRel (List.length args_p) in
      let base_abs = specialize_using s env_p p (Array.of_list args_abs) in
@@ -142,10 +170,13 @@ let get_abstraction_opts config strategy : abstraction_options =
   let abstract = get_abstract config concrete strategy in
   match kind_of_abstraction strategy with
   | Arguments ->
-     let num_to_abstract = List.length config.args in
-     let goal_type = get_arg_abstract_goal_type config num_to_abstract in
+     let goal_type = get_arg_abstract_goal_type config in
+     let num_to_abstract = List.length config.args_base in
      { concrete; abstract; goal_type; num_to_abstract }
   | Property goal_type ->
+     let (env, _) = concrete in debug_term env goal_type "goal_type";
+     let goal_type_test = get_prop_abstract_goal_type config in
+     debug_term env goal_type_test "goal_type_test";
      let (_, args_p) = concrete in
      let num_to_abstract = List.length args_p in
      { concrete; abstract; goal_type; num_to_abstract }

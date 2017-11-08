@@ -11,7 +11,8 @@ open Candidates
 type abstraction_config =
   {
     env : env;
-    args : types list;
+    args_base : types list;
+    args_goal : types list;
     cs : candidates;
     f_base : types;
     f_goal : types;

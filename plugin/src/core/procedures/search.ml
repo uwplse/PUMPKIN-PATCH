@@ -140,15 +140,16 @@ let rec generalize_term strategies (env : env) (c : types) (g : types) : types l
   match (kind_of_term c, kind_of_term g) with
   | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
      generalize_term strategies (push_rel (n, None, t) env) cb gb
-  | (Lambda (_, _, _), Prod (_, gt, _)) when isApp gt ->
+  | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
      let ct = infer_type env c in
      let (_, _, ctb) = destProd ct in
      if isApp ctb then
        let (f_base, _) = destApp (unshift ctb) in
        let f_goal = f_base in
-       let args = Array.to_list (snd (destApp gt)) in
+       let args_base = Array.to_list (snd (destApp gt)) in
+       let args_goal = List.map unshift (Array.to_list (snd (destApp gtg))) in
        let cs = [c] in
-       let abstraction_config = {env; args; cs; f_base; f_goal; strategies} in
+       let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
        abstract_with_strategies abstraction_config
      else
        failwith "Cannot infer property to generalize"
@@ -173,9 +174,10 @@ let rec generalize_term_args strategies (env : env) (c : types) (g : types) : ty
           failwith "Could not infer arguments to generalize"
      in
      let (f_base, f_goal) = get_lemma_functions (infer_type env lemma) in
-     let args = Array.to_list args in
+     let args_base = Array.to_list args in
+     let args_goal = args_base in
      let cs = [c] in
-     let abstraction_config = {env; args; cs; f_base; f_goal; strategies} in
+     let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
      abstract_with_strategies abstraction_config
   | _ ->
      failwith "Goal is inconsistent with term to generalize"
@@ -207,7 +209,9 @@ let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : can
     map_if
       (all_convertible env (Array.to_list args_n))
       (fun args ->
-        let abstraction_config = {env; args; cs; f_base; f_goal; strategies} in
+        let args_base = args in
+        let args_goal = args in
+        let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
         let lcs = abstract_with_strategies abstraction_config in
         let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
         List.map (unshift_local (num_new_rels - 1) num_new_rels) lcs)

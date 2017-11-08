@@ -137,15 +137,16 @@ let abstract n trm goal : unit =
     match (kind_of_term c, kind_of_term g) with
     | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
        abstract_term (push_rel (n, None, t) env) cb gb
-    | (Lambda (_, _, _), Prod (_, gt, _)) when isApp gt ->
+    | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
        let ct = infer_type env c in
        let (_, _, ctb) = destProd ct in
        if isApp ctb then
          let (f_base, _) = destApp (unshift ctb) in
          let f_goal = f_base in
-         let args = Array.to_list (snd (destApp gt)) in
+         let args_base = Array.to_list (snd (destApp gt)) in
+         let args_goal = List.map unshift (Array.to_list (snd (destApp gtg))) in
          let cs = [c] in
-         let abstraction_config = {env; args; cs; f_base; f_goal; strategies} in
+         let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
          let lcs = abstract_with_strategies abstraction_config in
          if List.length lcs > 0 then
            define_term n env evm (List.hd lcs)
