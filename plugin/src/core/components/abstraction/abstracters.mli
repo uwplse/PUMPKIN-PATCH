@@ -4,7 +4,7 @@ open Term
 open Environ
 open Candidates
 
-type abstraction_dimension = Arguments | Property of types
+type abstraction_dimension = Arguments | Property
 
 type abstraction_strategy
 
@@ -63,14 +63,14 @@ val simple_strategies : abstraction_strategy list
 (*
  * All strategies that reduce first
  *)
-val reduce_strategies_prop : types -> abstraction_strategy list
+val reduce_strategies_prop : abstraction_strategy list
 
 (*
  * All strategies that don't reduce first
  *)
-val no_reduce_strategies_prop : types -> abstraction_strategy list
+val no_reduce_strategies_prop : abstraction_strategy list
 
 (*
  * List of default strategies
  *)
-val default_strategies_prop : types -> abstraction_strategy list
+val default_strategies_prop : abstraction_strategy list

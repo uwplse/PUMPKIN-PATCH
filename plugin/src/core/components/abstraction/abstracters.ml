@@ -11,7 +11,7 @@ open Reducers
 open Filters
 open Candidates
 
-type abstraction_dimension = Arguments | Property of types
+type abstraction_dimension = Arguments | Property
 type abstracter = env -> types -> types -> candidates -> candidates
 
 type abstraction_strategy =
@@ -242,19 +242,18 @@ let simple_strategies : abstraction_strategy list =
 
 (* --- Strategies for abstracting properties --- *)
 
-let types_full_reduce_prop (goal : types) : abstraction_strategy =
-  { types_full_reduce with to_abstract = Property goal; }
+let types_full_reduce_prop : abstraction_strategy =
+  { types_full_reduce with to_abstract = Property }
 
-let types_full_no_reduce_prop (goal : types) : abstraction_strategy =
-  { types_full_no_reduce with to_abstract = Property goal; }
+let types_full_no_reduce_prop : abstraction_strategy =
+  { types_full_no_reduce with to_abstract = Property }
 
-let reduce_strategies_prop (goal : types) : abstraction_strategy list =
-  [types_full_reduce_prop goal]
+let reduce_strategies_prop : abstraction_strategy list =
+  [types_full_reduce_prop]
 
-let no_reduce_strategies_prop (goal : types) : abstraction_strategy list =
-  [types_full_no_reduce_prop goal]
+let no_reduce_strategies_prop : abstraction_strategy list =
+  [types_full_no_reduce_prop]
 
-let default_strategies_prop (goal : types) : abstraction_strategy list =
-  List.append
-    (reduce_strategies_prop goal)
-    (no_reduce_strategies_prop goal)
+let default_strategies_prop : abstraction_strategy list =
+  List.append reduce_strategies_prop no_reduce_strategies_prop
+

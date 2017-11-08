@@ -801,9 +801,8 @@ let return_patch (opts : options) (env : env) (patches : types list) =
                let goals = get_lifting_goals p_typ env old_type new_type in
                flat_map
                  (fun goal_type ->
-                   let strategies = reduce_strategies_prop goal_type in
                    let (_, _, g) = destProd goal_type in
-                   generalize_term strategies env c g)
+                   generalize_term reduce_strategies_prop env c g)
                  goals)
              p_typs)
          specialized_fs_terms

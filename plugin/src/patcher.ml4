@@ -131,7 +131,7 @@ let abstract n trm goal : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let c = lookup_definition env (intern env evm trm) in
   let goal_type = intern env evm goal in
-  let strategies = reduce_strategies_prop goal_type in
+  let strategies = reduce_strategies_prop in
   let (_, _, goal_b) = destProd goal_type in
   let rec abstract_term env c g =
     match (kind_of_term c, kind_of_term g) with

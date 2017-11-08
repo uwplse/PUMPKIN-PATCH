@@ -128,7 +128,7 @@ let get_concrete config strategy : closure =
   match kind_of_abstraction strategy with
   | Arguments ->
      concrete
-  | Property _ ->
+  | Property ->
      get_concrete_prop config concrete
 
 (* Get abstract arguments for a function *)
@@ -156,7 +156,7 @@ let get_abstract config concrete strategy : closure =
      let p = shift_by (List.length args_abs) config.f_base in
      let base_abs = specialize_using s env_abs p (Array.of_list args_abs) in
      (env_abs, List.append args_abs [base_abs])
-  | Property _ ->
+  | Property ->
      let args_abs = config.args_base in
      let (env_p, args_p) = concrete in
      let p = mkRel (List.length args_p) in
@@ -173,7 +173,7 @@ let get_abstraction_opts config strategy : abstraction_options =
      let goal_type = get_arg_abstract_goal_type config in
      let num_to_abstract = List.length config.args_base in
      { concrete; abstract; goal_type; num_to_abstract }
-  | Property _ ->
+  | Property ->
      let goal_type = get_prop_abstract_goal_type config in
      let (_, args_p) = concrete in
      let num_to_abstract = List.length args_p in
