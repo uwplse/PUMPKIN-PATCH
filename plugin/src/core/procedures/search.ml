@@ -97,8 +97,8 @@ let get_lifting_goals p_typ (env : env) (o : types) (n : types) : types list =
       let red_goals = reduce_all reduce_term env apps in
       List.map
         (fun goal ->
-          let pi = 0 in
-          apply_prop pi (mkProd (Anonymous, p_typ, shift goal)))
+          let pi = 1 in
+          apply_prop pi (shift goal))
         (unique eq_constr red_goals)
     else
       failwith "Cannot infer goals for generalizing change in definition"
@@ -800,9 +800,7 @@ let return_patch (opts : options) (env : env) (patches : types list) =
              (fun p_typ ->
                let goals = get_lifting_goals p_typ env old_type new_type in
                flat_map
-                 (fun goal_type ->
-                   let (_, _, g) = destProd goal_type in
-                   generalize_term reduce_strategies_prop env c g)
+                 (generalize_term reduce_strategies_prop env c)
                  goals)
              p_typs)
          specialized_fs_terms
