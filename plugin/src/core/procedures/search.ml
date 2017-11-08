@@ -66,23 +66,10 @@ let to_search_function search opts d : search_function =
  *)
 
 (*
- * Apply a dependent proposition at an index to the goal
- * Auxiliary function for function abstraction
- * Workaround
- *)
-let rec apply_prop pi goal =
-  match kind_of_term goal with
-  | Prod (n, t, b) when isProd b ->
-     mkProd (n, t, apply_prop (shift_i pi) b)
-  | Prod (n, t, b) ->
-     let p = mkRel pi in
-     mkProd (n, mkApp (p, singleton_array t), mkApp (shift p, singleton_array b))
-
-(*
  * Get goals for abstraction by a function
  * Very preliminary, and also a workaround
  *)
-let get_lifting_goals p_typ (env : env) (o : types) (n : types) : types list =
+let get_lifting_goals p_typ (env : env) (o : types) (n : types) =
   let old_term = unwrap_definition env o in
   let new_term = unwrap_definition env n in
   match kinds_of_terms (old_term, new_term) with
@@ -94,12 +81,7 @@ let get_lifting_goals p_typ (env : env) (o : types) (n : types) : types list =
       let goals = flat_map2 (diff_fix env_fix) dso dsn in
       let lambdas = List.map (reconstruct_lambda env_fix) goals in
       let apps = List.map (fun t -> mkApp (t, singleton_array n)) lambdas in
-      let red_goals = reduce_all reduce_term env apps in
-      List.map
-        (fun goal ->
-          let pi = 1 in
-          apply_prop pi (shift goal))
-        (unique eq_constr red_goals)
+      List.map shift (unique eq_constr (reduce_all reduce_term env apps))
     else
       failwith "Cannot infer goals for generalizing change in definition"
   | _ ->
@@ -146,8 +128,8 @@ let rec generalize_term strategies (env : env) (c : types) (g : types) : types l
      if isApp ctb then
        let (f_base, _) = destApp (unshift ctb) in
        let f_goal = f_base in
-       let args_base = Array.to_list (snd (destApp gt)) in
-       let args_goal = List.map unshift (Array.to_list (snd (destApp gtg))) in
+       let args_base = [gt] in
+       let args_goal = [unshift gtg] in
        let cs = [c] in
        let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
        abstract_with_strategies abstraction_config
