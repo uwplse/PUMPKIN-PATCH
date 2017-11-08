@@ -81,7 +81,7 @@ let get_lifting_goals (env : env) (o : types) (n : types) =
       let goals = flat_map2 (diff_fix env_fix) dso dsn in
       let lambdas = List.map (reconstruct_lambda env_fix) goals in
       let apps = List.map (fun t -> mkApp (t, singleton_array n)) lambdas in
-      List.map shift (unique eq_constr (reduce_all reduce_term env apps))
+      unique eq_constr (reduce_all reduce_term env apps)
     else
       failwith "Cannot infer goals for generalizing change in definition"
   | _ ->
@@ -778,10 +778,9 @@ let return_patch (opts : options) (env : env) (patches : types list) =
      let generalized = (* can simplify / try fewer *)
        flat_map
          (fun c ->
-           let goals = get_lifting_goals env old_type new_type in
            flat_map
              (generalize_term reduce_strategies_prop env c)
-             goals)
+             (get_lifting_goals env old_type new_type))
          specialized_fs_terms
      in List.hd generalized
   | ConclusionCase (Some cut) ->
