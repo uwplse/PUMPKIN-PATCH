@@ -21,6 +21,8 @@ open Searchopts
 open Reducers
 open Specialization
 open Factoring
+open Collections
+open Coqenvs
 
 (*
  * Plugin for patching Coq proofs given a change.
@@ -131,11 +133,21 @@ let specialize n trm : unit =
 let abstract n trm goal : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let c = lookup_definition env (intern env evm trm) in
-  let goal_type = intern env evm goal in
+  let goal_type = unwrap_definition env (intern env evm goal) in
   let config = configure_from_goal env goal_type c in
   let abstracted = abstract_with_strategies config in
   if List.length abstracted > 0 then
-    define_term n env evm (List.hd abstracted)
+    try
+      define_term n env evm (List.hd abstracted)
+    with _ -> (* Temporary, hack to support arguments *)
+      let num_args = List.length (config.args_base) in
+      let num_discard = nb_rel config.env - num_args in
+      let rels = List.map (fun i -> i + num_discard) (from_one_to num_args) in
+      let args = Array.map (fun i -> mkRel i) (Array.of_list rels) in
+      let app = mkApp (List.hd abstracted, args) in
+      let reduced = reduce_term config.env app in
+      let reconstructed = reconstruct_lambda config.env reduced in
+      define_term n env evm reconstructed
   else
     failwith "Failed to generalize"
 

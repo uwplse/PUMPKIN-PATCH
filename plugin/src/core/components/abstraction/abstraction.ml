@@ -46,14 +46,11 @@ let generalize (env : env) (num_to_abstract : int) (cs : candidates) : candidate
  * TODO same concern as below *)
 let get_prop_abstract_goal_type (config : abstraction_config) =
   let env = config.env in
-  let prop_type = infer_type env config.f_base in
-  (* TODO check type above actually ends in a prop *)
-  let env_prop = push_last (Anonymous, None, prop_type) env in
-  let prop = mkRel (nb_rel env_prop) in
+  let prop = mkRel (nb_rel env) in
   let base = mkApp (prop, Array.of_list config.args_base) in
   let goal = mkApp (prop, Array.of_list config.args_goal) in
   let goal_type_env = mkProd (Anonymous, base, shift goal) in
-  reconstruct_prod env_prop goal_type_env
+  reconstruct_prod env goal_type_env
 
 (*
  * From a common environment, source type, destination type,
@@ -84,11 +81,7 @@ let get_arg_abstract_goal_type (config : abstraction_config) : types =
 let get_concrete_prop (config : abstraction_config) (concrete : closure) : closure =
   let (env, args) = concrete in
   let p = config.f_base in
-  let prop_type = infer_type env p in
-  let num_args = nb_rel env in
-  let env_prop = push_last (Anonymous, None, prop_type) env in
-  (* TODO duplicate logic w/ goal finding *)
-  (env_prop, p :: (List.tl args))
+  (env, p :: (List.tl args))
 
 (* Get the concrete environment and arguments to abstract *)
 let get_concrete config strategy : closure =
@@ -137,6 +130,7 @@ let get_abstract config concrete strategy : closure =
 
 (* Given a abstraction strategy, get the abstraction options for the
    particular function and arguments *)
+(* TODO num_to_abstract uniformity *)
 let get_abstraction_opts config strategy : abstraction_options =
   let concrete = get_concrete config strategy in
   let abstract = get_abstract config concrete strategy in

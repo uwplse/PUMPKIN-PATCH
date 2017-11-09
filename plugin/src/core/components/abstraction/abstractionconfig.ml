@@ -37,6 +37,8 @@ let default_fun_strategies = reduce_strategies_prop
 (*
  * Configure abstraction by a function or arguments given the environment,
  * the body of the goal, and the candidate
+ *
+ * TODO clean and document arg case
  *)
 let rec configure_goal_body env goal c : abstraction_config =
   match kinds_of_terms (goal, c) with
@@ -46,17 +48,22 @@ let rec configure_goal_body env goal c : abstraction_config =
      let (_, ctt, ctb) = destProd (infer_type env c) in
      if isApp ctb then
        let cs = [c] in
-       let (f_base, _) = destApp (unshift ctb) in
        let args_base = Array.to_list (snd (destApp gt)) in
        let args_goal = List.map unshift (Array.to_list (snd (destApp gb))) in
        if List.for_all2 eq_constr args_base args_goal then (* argument *)
 	 if isApp ctt then
-	   let f_goal = fst (destApp ctt) in
+	   let f_goal = unshift (unwrap_definition env (fst (destApp gb))) in
+	   let f_base = unwrap_definition env (fst (destApp gt)) in
+	   let (_, args_base) = destApp ctt in
+	   let args_base = Array.to_list args_base in
+	   let args_goal = args_base in
+	   let f_goal = unwrap_definition env f_goal in
 	   let strategies = default_arg_strategies in
 	   {env; args_base; args_goal; cs; f_base; f_goal; strategies}
 	 else
 	   failwith "Cannot infer argument to abstract"
        else (* function *)
+	 let f_base = unwrap_definition env (fst (destApp (unshift ctb))) in
 	 let f_goal = f_base in
 	 let strategies = default_fun_strategies in
 	 {env; args_base; args_goal; cs; f_base; f_goal; strategies}
@@ -97,6 +104,22 @@ let rec apply_prop pi goal =
      mkProd (n, mkApp (p, t_args), mkApp (shift p, b_args))
 
 (*
+ * Push the function to abstract into the environment
+ *
+ * We should check this is actually well-typed
+ *)
+let rec push_prop env typ : env =
+  match kind_of_term typ with
+  | Prod (n, t, b) ->
+     push_prop (push_rel (n, None, t) env) b
+  | App (f, _) ->
+     push_rel
+       (Anonymous, None, infer_type env f)
+       (pop_rel_context (nb_rel env) env)
+  | _ ->
+     failwith "Could not find function to abstract"
+
+(*
  * Get goals for abstraction by a function for a change in fixpoint cases
  * Take an environment, a list of differences between those cases,
  * and a list of candidates
@@ -105,7 +128,10 @@ let configure_fixpoint_cases env (diffs : types list) (cs : candidates) =
   let goals = List.map (apply_prop 1) diffs in
   flat_map
     (fun goal ->
-      List.map (configure_goal_body env goal) cs)
+      List.map
+	(fun c ->
+	  configure_goal_body (push_prop env (infer_type env c)) goal c)
+	cs)
     goals
 
 (* --- Cut Lemmas --- *)
@@ -154,6 +180,6 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
  * one configuration for each c. Same for the fixpoint case.
  *)
 let configure_from_goal env goal c : abstraction_config =
-  let (_, _, goal_body) = destProd goal in
-  configure_goal_body env goal_body c
+  let (n, t, goal_body) = destProd goal in
+  configure_goal_body (push_rel (n, None, t) env) goal_body c
 
