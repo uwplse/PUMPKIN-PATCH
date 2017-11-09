@@ -59,8 +59,9 @@ val configure_cut_args :
 (*
  * These configuration functions are for the top-level abstract
  * command, which takes a goal type. We use the goal type
- * to infer how to abstract the function rather than the type of the candidate,
- * since this gives the user more control over abstraction.
+ * to infer the arguments, but we use the candidate itself
+ * to infer which function to abstract. For now, this will fail
+ * if the function is not obvious from the candidate.
  *)
 
 (*

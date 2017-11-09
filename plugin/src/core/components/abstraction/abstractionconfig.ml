@@ -28,6 +28,30 @@ type abstraction_config =
     strategies : abstraction_strategy list;
   }
 
+(* --- Common functionality --- *)
+
+(*
+ * Configure abstraction by a function given the environment,
+ * the body of the goal, and the candidate
+ *)
+let rec configure_fun_goal_body strategies env goal c : abstraction_config =
+  match kinds_of_terms (goal, c) with
+  | (Prod (_, _, gb), Lambda (n, t, cb)) when isProd gb && isLambda cb ->
+     configure_fun_goal_body strategies (push_rel (n, None, t) env) gb cb
+  | (Prod (_, gt, gb), Lambda (_, _, _)) when isApp gt && isApp gb ->
+     let (_, _, ctb) = destProd (infer_type env c) in
+     if isApp ctb then
+       let (f_base, _) = destApp (unshift ctb) in
+       let f_goal = f_base in
+       let args_base = Array.to_list (snd (destApp gt)) in
+       let args_goal = List.map unshift (Array.to_list (snd (destApp gb))) in
+       let cs = [c] in
+       {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+     else
+       failwith "Cannot infer function to abstract"
+  | _ ->
+     failwith "Goal is inconsistent with term to abstract" 
+
 (* --- Defaults --- *)
 
 (* Default strategies *)
@@ -49,26 +73,19 @@ let configure_args env (d_type : types proof_diff) cs =
   {env; args_base; args_goal; cs; f_base; f_goal; strategies}
 
 (*
- * Abstract a term by a function for a fixpoint
+ * Apply a dependent proposition at an index to the goal
+ * This makes the call for fixpoint configuration consistent with the
+ * top-level
  *)
-let rec configure_fixpoint_case (env : env) (c : types) (g : types) : abstraction_config =
-  match (kind_of_term c, kind_of_term g) with
-  | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
-     configure_fixpoint_case (push_rel (n, None, t) env) cb gb
-  | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
-     let (_, _, ctb) = destProd (infer_type env c) in
-     if isApp ctb then
-       let (f_base, _) = destApp (unshift ctb) in
-       let f_goal = f_base in
-       let args_base = [gt] in
-       let args_goal = [unshift gtg] in
-       let cs = [c] in
-       let strategies = default_fun_strategies in
-       {env; args_base; args_goal; cs; f_base; f_goal; strategies}
-     else
-       failwith "Cannot infer property to generalize"
-  | _ ->
-     failwith "Goal is inconsistent with term to generalize"
+let rec apply_prop pi goal =
+  match kind_of_term goal with
+  | Prod (n, t, b) when isProd b ->
+     mkProd (n, t, apply_prop (shift_i pi) b)
+  | Prod (n, t, b) ->
+     let p = mkRel pi in
+     let t_args = singleton_array t in
+     let b_args = singleton_array b in
+     mkProd (n, mkApp (p, t_args), mkApp (shift p, b_args))
 
 (*
  * Get goals for abstraction by a function for a change in fixpoint cases
@@ -76,7 +93,11 @@ let rec configure_fixpoint_case (env : env) (c : types) (g : types) : abstractio
  * and a list of candidates
  *)
 let configure_fixpoint_cases env (diffs : types list) (cs : candidates) =
-  flat_map (fun c -> List.map (configure_fixpoint_case env c) diffs) cs
+  let goals = List.map (apply_prop 1) diffs in
+  flat_map
+    (fun goal ->
+      List.map (configure_fun_goal_body default_fun_strategies env goal) cs)
+    goals
 
 (* --- Cut Lemmas --- *)
 
@@ -117,32 +138,9 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
 (* --- Goals --- *)
 
 (*
- * Configure abstraction by a function given the environment,
- * the body of the goal, and the candidate
- *)
-let rec configure_fun_goal_body env goal c : abstraction_config =
-  match kinds_of_terms (goal, c) with
-  | (Prod (_, _, gb), Lambda (n, t, cb)) when isProd gb && isLambda cb ->
-     configure_fun_goal_body (push_rel (n, None, t) env) gb cb
-  | (Prod (_, gt, gb), Lambda (_, _, _)) when isApp gt && isApp gb ->
-     let (_, _, ctb) = destProd (infer_type env c) in
-     if isApp ctb then
-       let (f_base, _) = destApp (unshift ctb) in
-       let f_goal = f_base in
-       let args_base = Array.to_list (snd (destApp gt)) in
-       let args_goal = List.map unshift (Array.to_list (snd (destApp gb))) in
-       let cs = [c] in
-       let strategies = default_fun_strategies in
-       {env; args_base; args_goal; cs; f_base; f_goal; strategies}
-     else
-       failwith "Cannot infer property to generalize"
-  | _ ->
-     failwith "Goal is inconsistent with term to generalize" 
-
-(*
  * Configure abstracton by a function given the environment,
  * goal type, and the candidate
  *)
 let configure_fun_from_goal env goal c : abstraction_config =
   let (_, _, goal_body) = destProd goal in
-  configure_fun_goal_body env goal_body c
+  configure_fun_goal_body default_fun_strategies env goal_body c
