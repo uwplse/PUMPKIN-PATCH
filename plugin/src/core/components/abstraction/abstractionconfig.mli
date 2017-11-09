@@ -2,6 +2,7 @@ open Environ
 open Term
 open Abstracters
 open Candidates
+open Searchopts
 
 (* --- Configuring Abstraction --- *)
 
@@ -17,6 +18,18 @@ type abstraction_config =
     strategies : abstraction_strategy list;
   }
 
-(* Configure abstraction for a fixpoint *)
+(*
+ * Given an environment, a list of differences between fixpoint cases,
+ * and a list of candidates, configure function abstraction.
+ *
+ * This produces one configuration for each difference.
+ *)
 val configure_fixpoint_cases :
   env -> types list -> candidates -> abstraction_config list
+
+(*
+ * Given an environment, a lemma to cut by, and a list of candidates,
+ * configure argument abstraction.
+ *)
+val configure_cut_args :
+  env -> cut_lemma -> candidates -> abstraction_config

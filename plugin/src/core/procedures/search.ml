@@ -55,56 +55,6 @@ let to_search_function search opts d : search_function =
   let update_goals = update_search_goals opts d in
   (fun d -> search opts (update_goals d))
 
-(* --- Interacting with abstraction --- *)
-
-(*
- * Get the arguments for abstraction by arguments
- * Also a workaround
- *
- * TODO why is this here?
- * Figure out what to do with this
- *)
-let rec get_lifting_goal_args pi (app : types) : types =
-  match kind_of_term app with
-  | Lambda (n, t, b) ->
-     mkProd (n, t, get_lifting_goal_args (pi + 1) b)
-  | App (f, args) ->
-     mkApp (mkRel pi, args)
-  | _ ->
-     failwith "Cannot infer goals for generalizing arguments"
-
-(* Same as above, but for arguments *)
-(* TODO why is this here? etc *)
-let configure_cut_args strategies (env : env) (lemma : types) (app : types) (cs : candidates) : abstraction_config list =
-  let env_cut = push_rel (Anonymous, None, lemma) env in
-  let (_, _, b) = destLambda app in
-  let g = reduce_remove_identities env (get_lifting_goal_args 1 b) in
-  let rec configure en c g : abstraction_config =
-    match (kind_of_term c, kind_of_term g) with
-    | (Lambda (n, t, cb), Prod (_, tb, gb)) ->
-       configure (push_rel (n, None, t) en) cb gb
-    | (Lambda (_, _, _), App (lemma, args)) ->
-       let ct = infer_type en g in
-       let rec get_lemma_functions typ =
-         match kind_of_term typ with
-         | Prod (n, t, b) when isProd b ->
-            let (f_base, f_goal) = get_lemma_functions b in
-            (mkLambda (n, t, f_base), mkLambda (n, t, f_goal))
-         | Prod (n, t, b) ->
-            (t, unshift b)
-         | _ ->
-            failwith "Could not infer arguments to generalize"
-       in
-       let (f_base, f_goal) = get_lemma_functions (infer_type en lemma) in
-       let args_base = Array.to_list args in
-       let args_goal = args_base in
-       let cs = [c] in
-       let env = en in
-       {env; args_base; args_goal; cs; f_base; f_goal; strategies}
-    | _ ->
-       failwith "Goal is inconsistent with term to generalize"
-  in List.map (fun c -> configure env_cut (shift c) g) cs
-
 (* --- Abstraction for search --- *)
 
 (*
@@ -728,14 +678,8 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
   | ConclusionCase (Some cut) ->
      let patches = reduce_all remove_unused_hypos env patches in
      let generalized =
-       flat_map
-         abstract_with_strategies
-         (configure_cut_args
-            no_reduce_strategies
-            env
-            (get_lemma cut)
-            (get_app cut)
-            patches)
+       abstract_with_strategies
+         (configure_cut_args env cut patches)
      in List.hd generalized
   | _ ->
      Printf.printf "%s\n" "SUCCESS";

@@ -38,7 +38,9 @@ val has_cut_type_strict : env -> cut_lemma -> types -> bool
  *)
 val has_cut_type_strict_rev : env -> cut_lemma -> types -> bool
 
-(* Test if a term has the type of the lemma or its reverse *)
+(*
+ * Test if a term has the type of the lemma or its reverse
+ *)
 val has_cut_type_strict_sym : env -> cut_lemma -> types -> bool
 
 (*
@@ -52,6 +54,13 @@ val filter_cut : env -> cut_lemma -> types list -> types list
  * These terms can have extra hypotheses
  *)
 val filter_applies_cut : env -> cut_lemma -> types list -> types list
+
+(*
+ * Filter a list of terms to those that are consistent with the cut type
+ * Offset these terms by the same amount (so return the subterm
+ * that actually can have the cut type).
+ *)
+val filter_consistent_cut : env -> cut_lemma -> types list -> types list
 
 (*
  * This returns true when the candidates we have patch the lemma we cut by

@@ -11,6 +11,7 @@ open Utilities
 open Proofdiff
 open Reducers
 open Assumptions
+open Printing
 
 (* --- Auxiliary --- *)
 
@@ -112,6 +113,18 @@ let has_cut_type_app env cut trm =
   with _ ->
     false
 
+(* Check if a term is consistent with the cut type *)
+let consistent_with_cut env cut trm =
+  let rec consistent en c t =
+    match kinds_of_terms (c, t) with
+    | (Prod (n, t, cb), Lambda (_, _, b)) when isProd cb && isLambda b ->
+       consistent (push_rel (n, None, t) en) cb b
+    | (Prod (_, ct, cb), Lambda (_, _, _)) ->
+       true
+    | _ ->
+       false
+  in consistent env (get_lemma cut) trm
+
 (* Filter a list of terms to those with the (loose) cut lemma type *)
 let filter_cut env cut trms =
   List.filter (has_cut_type env cut) trms
@@ -121,8 +134,22 @@ let filter_applies_cut env cut trms =
   List.filter (has_cut_type_app env cut) trms
 
 (*
- * This returns true when the candidates we have patch the lemma we cut by
+ * Filter a list of terms to those that are consistent with the cut type
+ * Enter the term lambdas so that they are offset by the same amount
  *)
+let filter_consistent_cut env cut trms =
+  let rec make_consistent en c t =
+    match kinds_of_terms (c, t) with
+    | (Prod (n, t, cb), Lambda (_, _, b)) when isProd cb && isLambda b ->
+       make_consistent (push_rel (n, None, t) en) cb b
+    | _ ->
+       t
+  in
+  List.map
+    (make_consistent env (get_lemma cut))
+    (List.filter (consistent_with_cut env cut) trms)
+
+(* This returns true when the candidates we have patch the lemma we cut by *)
 let are_cut env cut cs =
   List.length (filter_cut env cut cs) = List.length cs
 
