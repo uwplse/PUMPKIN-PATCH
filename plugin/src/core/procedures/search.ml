@@ -57,6 +57,16 @@ let to_search_function search opts d : search_function =
 
 (* --- Abstraction for search --- *)
 
+(* TODO move and explain *)
+let configure_args strategies env (d_type : types proof_diff) cs =
+  let new_goal_type = new_proof d_type in
+  let old_goal_type = old_proof d_type in
+  let (f_base, args_n) = destApp new_goal_type in
+  let (f_goal, _) = destApp old_goal_type in
+  let args_base = Array.to_list args_n in
+  let args_goal = args_base in
+  {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+
 (*
  * Try to abstract candidate patches given the goal types of the old proof
  * and the new proof. This assumes the candidate patches are specialized
@@ -67,34 +77,28 @@ let to_search_function search opts d : search_function =
  * If the goal types are not both function applications, then they are not
  * specialized, so we have nothing to abstract, and we return the original list.
  *
- * If the goal types are both specialized, then we lift (see lifting.ml/i) to
- * try to abstract them.
- *
- * TODO why separate from other lifting functions?
- * Should this also be partially in configuration?
+ * If the goal types are both specialized, then we abstract
+ * (see abstraction component).
  *)
-let try_lift_candidates strategies (d : lift_goal_diff) (cfs : candidates) : candidates =
+let try_lift_candidates strategies (d : lift_goal_diff) (cs : candidates) : candidates =
   let goals = goal_types d in
   let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
-  if goals_are_apps && non_empty cfs then
-    let (env, d_type, cs) = merge_lift_diff_envs d cfs in
+  if goals_are_apps && non_empty cs then
+    let (env, d_type, cs) = merge_lift_diff_envs d cs in
     let new_goal_type = new_proof d_type in
     let old_goal_type = old_proof d_type in
     let (f_base, args_n) = destApp new_goal_type in
     let (f_goal, args_o) = destApp old_goal_type in
-    map_if
-      (all_convertible env (Array.to_list args_n))
-      (fun args ->
-        let args_base = args in
-        let args_goal = args in
-        let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
-        let lcs = abstract_with_strategies abstraction_config in
-        let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
-        List.map (unshift_local (num_new_rels - 1) num_new_rels) lcs)
-      (always give_up)
-      (Array.to_list args_o)
+    if all_convertible env (Array.to_list args_n) (Array.to_list args_o) then
+      let config = configure_args strategies env d_type cs in
+      let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
+      List.map
+        (unshift_local (num_new_rels - 1) num_new_rels)
+        (abstract_with_strategies config)
+    else
+      give_up
   else
-    cfs
+    cs
 
 (* --- Application --- *)
 

@@ -27,6 +27,10 @@ type abstraction_config =
     strategies : abstraction_strategy list;
   }
 
+(* --- Defaults --- *)
+
+
+
 (* --- Fixpoints --- *)
 
 (*
