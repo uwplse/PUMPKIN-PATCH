@@ -127,13 +127,12 @@ let specialize n trm : unit =
   let specialized = reducer env (intern env evm trm) in
   define_term n env evm specialized
   
-(* Abstract a term by a function *)
-(* TODO expose both args and props, etc *)
+(* Abstract a term by a function or arguments *)
 let abstract n trm goal : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let c = lookup_definition env (intern env evm trm) in
   let goal_type = intern env evm goal in
-  let config = configure_fun_from_goal env goal_type c in
+  let config = configure_from_goal env goal_type c in
   let abstracted = abstract_with_strategies config in
   if List.length abstracted > 0 then
     define_term n env evm (List.hd abstracted)

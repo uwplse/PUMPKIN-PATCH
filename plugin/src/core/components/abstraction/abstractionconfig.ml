@@ -30,33 +30,42 @@ type abstraction_config =
 
 (* --- Common functionality --- *)
 
+(* Default strategies *)
+let default_arg_strategies = reduce_strategies
+let default_fun_strategies = reduce_strategies_prop
+
 (*
- * Configure abstraction by a function given the environment,
+ * Configure abstraction by a function or arguments given the environment,
  * the body of the goal, and the candidate
  *)
-let rec configure_fun_goal_body strategies env goal c : abstraction_config =
+let rec configure_goal_body env goal c : abstraction_config =
   match kinds_of_terms (goal, c) with
   | (Prod (_, _, gb), Lambda (n, t, cb)) when isProd gb && isLambda cb ->
-     configure_fun_goal_body strategies (push_rel (n, None, t) env) gb cb
+     configure_goal_body (push_rel (n, None, t) env) gb cb
   | (Prod (_, gt, gb), Lambda (_, _, _)) when isApp gt && isApp gb ->
-     let (_, _, ctb) = destProd (infer_type env c) in
+     let (_, ctt, ctb) = destProd (infer_type env c) in
      if isApp ctb then
+       let cs = [c] in
        let (f_base, _) = destApp (unshift ctb) in
-       let f_goal = f_base in
        let args_base = Array.to_list (snd (destApp gt)) in
        let args_goal = List.map unshift (Array.to_list (snd (destApp gb))) in
-       let cs = [c] in
-       {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+       if List.for_all2 eq_constr args_base args_goal then (* argument *)
+	 if isApp ctt then
+	   let f_goal = fst (destApp ctt) in
+	   let strategies = default_arg_strategies in
+	   {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+	 else
+	   failwith "Cannot infer argument to abstract"
+       else (* function *)
+	 let f_goal = f_base in
+	 let strategies = default_fun_strategies in
+	 {env; args_base; args_goal; cs; f_base; f_goal; strategies}
      else
-       failwith "Cannot infer function to abstract"
+       failwith "Cannot infer function or argument to abstract"
   | _ ->
      failwith "Goal is inconsistent with term to abstract" 
 
 (* --- Defaults --- *)
-
-(* Default strategies *)
-let default_arg_strategies = reduce_strategies
-let default_fun_strategies = reduce_strategies_prop
 
 (*
  * Default configuration for abstracting arguments for a list of candidates,
@@ -96,7 +105,7 @@ let configure_fixpoint_cases env (diffs : types list) (cs : candidates) =
   let goals = List.map (apply_prop 1) diffs in
   flat_map
     (fun goal ->
-      List.map (configure_fun_goal_body default_fun_strategies env goal) cs)
+      List.map (configure_goal_body env goal) cs)
     goals
 
 (* --- Cut Lemmas --- *)
@@ -138,9 +147,13 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
 (* --- Goals --- *)
 
 (*
- * Configure abstracton by a function given the environment,
+ * Configure abstracton by a function or arguments given the environment,
  * goal type, and the candidate
+ *
+ * Eventually, we would like to handle multiple cs without
+ * one configuration for each c. Same for the fixpoint case.
  *)
-let configure_fun_from_goal env goal c : abstraction_config =
+let configure_from_goal env goal c : abstraction_config =
   let (_, _, goal_body) = destProd goal in
-  configure_fun_goal_body default_fun_strategies env goal_body c
+  configure_goal_body env goal_body c
+

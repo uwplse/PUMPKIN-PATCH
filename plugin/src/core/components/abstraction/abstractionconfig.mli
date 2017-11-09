@@ -65,8 +65,9 @@ val configure_cut_args :
  *)
 
 (*
- * Give an environment, a goal type, and a candidate, configure function
- * abstraction.
+ * Give an environment, a goal type, and a candidate, configure abstraction.
+ *
+ * Automatically infer which kind of abstraction to try from the goal type.
  *)
-val configure_fun_from_goal :
+val configure_from_goal :
   env -> types -> types -> abstraction_config
