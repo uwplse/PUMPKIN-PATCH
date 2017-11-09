@@ -57,16 +57,6 @@ let to_search_function search opts d : search_function =
 
 (* --- Abstraction for search --- *)
 
-(* TODO move and explain *)
-let configure_args strategies env (d_type : types proof_diff) cs =
-  let new_goal_type = new_proof d_type in
-  let old_goal_type = old_proof d_type in
-  let (f_base, args_n) = destApp new_goal_type in
-  let (f_goal, _) = destApp old_goal_type in
-  let args_base = Array.to_list args_n in
-  let args_goal = args_base in
-  {env; args_base; args_goal; cs; f_base; f_goal; strategies}
-
 (*
  * Try to abstract candidate patches given the goal types of the old proof
  * and the new proof. This assumes the candidate patches are specialized
@@ -80,7 +70,7 @@ let configure_args strategies env (d_type : types proof_diff) cs =
  * If the goal types are both specialized, then we abstract
  * (see abstraction component).
  *)
-let try_lift_candidates strategies (d : lift_goal_diff) (cs : candidates) : candidates =
+let try_lift_candidates (d : lift_goal_diff) (cs : candidates) : candidates =
   let goals = goal_types d in
   let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
   if goals_are_apps && non_empty cs then
@@ -90,7 +80,7 @@ let try_lift_candidates strategies (d : lift_goal_diff) (cs : candidates) : cand
     let (f_base, args_n) = destApp new_goal_type in
     let (f_goal, args_o) = destApp old_goal_type in
     if all_convertible env (Array.to_list args_n) (Array.to_list args_o) then
-      let config = configure_args strategies env d_type cs in
+      let config = configure_args env d_type cs in
       let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
       List.map
         (unshift_local (num_new_rels - 1) num_new_rels)
@@ -359,7 +349,7 @@ let rec search_case_paths search opts (d : goal_case_diff) : types option =
           | FixpointCase ((_, _), cut) when are_cut env cut cs ->
              Some candidate
           | _ ->
-             let lcs = try_lift_candidates reduce_strategies d_goal cs in
+             let lcs = try_lift_candidates d_goal cs in
              if non_empty lcs then
                Some (List.hd lcs)
              else

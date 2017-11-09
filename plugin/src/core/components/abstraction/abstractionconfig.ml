@@ -8,6 +8,7 @@ open Collections
 open Searchopts
 open Reducers
 open Printing
+open Proofdiff
 
 (* --- Configuring Abstraction --- *)
 
@@ -29,17 +30,31 @@ type abstraction_config =
 
 (* --- Defaults --- *)
 
+(* Default strategies *)
+let default_arg_strategies = reduce_strategies
+let default_fun_strategies = reduce_strategies_prop
 
-
-(* --- Fixpoints --- *)
+(*
+ * Default configuration for abstracting arguments for a list of candidates,
+ * given the difference in goals d_type in a common environment env
+ *)
+let configure_args env (d_type : types proof_diff) cs =
+  let new_goal_type = new_proof d_type in
+  let old_goal_type = old_proof d_type in
+  let (f_base, args_n) = destApp new_goal_type in
+  let (f_goal, _) = destApp old_goal_type in
+  let args_base = Array.to_list args_n in
+  let args_goal = args_base in
+  let strategies = default_arg_strategies in
+  {env; args_base; args_goal; cs; f_base; f_goal; strategies}
 
 (*
  * Abstract a term by a function for a fixpoint
  *)
-let rec configure_fixpoint_case strategies (env : env) (c : types) (g : types) : abstraction_config =
+let rec configure_fixpoint_case (env : env) (c : types) (g : types) : abstraction_config =
   match (kind_of_term c, kind_of_term g) with
   | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
-     configure_fixpoint_case strategies (push_rel (n, None, t) env) cb gb
+     configure_fixpoint_case (push_rel (n, None, t) env) cb gb
   | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
      let (_, _, ctb) = destProd (infer_type env c) in
      if isApp ctb then
@@ -48,6 +63,7 @@ let rec configure_fixpoint_case strategies (env : env) (c : types) (g : types) :
        let args_base = [gt] in
        let args_goal = [unshift gtg] in
        let cs = [c] in
+       let strategies = default_fun_strategies in
        {env; args_base; args_goal; cs; f_base; f_goal; strategies}
      else
        failwith "Cannot infer property to generalize"
@@ -60,20 +76,15 @@ let rec configure_fixpoint_case strategies (env : env) (c : types) (g : types) :
  * and a list of candidates
  *)
 let configure_fixpoint_cases env (diffs : types list) (cs : candidates) =
-  flat_map
-    (fun c ->
-      List.map
-        (configure_fixpoint_case reduce_strategies_prop env c)
-        diffs)
-    cs
+  flat_map (fun c -> List.map (configure_fixpoint_case env c) diffs) cs
 
 (* --- Cut Lemmas --- *)
 
 (* Given some cut lemma application, configure arguments to abstract *)
-let rec configure_args env (app : types) cs : abstraction_config =
+let rec configure_args_cut_app env (app : types) cs : abstraction_config =
   match kind_of_term app with
   | Lambda (n, t, b) ->
-     configure_args (push_rel (n, None, t) env) b cs
+     configure_args_cut_app (push_rel (n, None, t) env) b cs
   | App (f, args) ->
      let rec get_lemma_functions typ =
        match kind_of_term typ with
@@ -99,6 +110,6 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
   if List.length cs > 0 then
     let (_, _, b) = destLambda (get_app cut) in
     let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
-    configure_args env_cut b cs
+    configure_args_cut_app env_cut b cs
   else
     failwith "No candidates are consistent with the cut lemma type"

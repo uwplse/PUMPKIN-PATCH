@@ -3,6 +3,7 @@ open Term
 open Abstracters
 open Candidates
 open Searchopts
+open Proofdiff
 
 (* --- Configuring Abstraction --- *)
 
@@ -18,6 +19,15 @@ type abstraction_config =
     strategies : abstraction_strategy list;
   }
 
+(* --- Defaults --- *)
+
+(*
+ * Given an environment, a difference in goal types, and a list of candidates,
+ * configure the default configuration for abstraction of arguments
+ *)
+val configure_args :
+  env -> types proof_diff -> candidates -> abstraction_config
+
 (*
  * Given an environment, a list of differences between fixpoint cases,
  * and a list of candidates, configure function abstraction.
@@ -26,6 +36,8 @@ type abstraction_config =
  *)
 val configure_fixpoint_cases :
   env -> types list -> candidates -> abstraction_config list
+
+(* --- Cut Lemmas --- *)
 
 (*
  * Given an environment, a lemma to cut by, and a list of candidates,
