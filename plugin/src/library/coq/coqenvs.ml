@@ -19,11 +19,16 @@ let all_rel_indexes (env : env) : int list =
 let lookup_all_rels (env : env) : Context.rel_declaration list =
   lookup_rels (all_rel_indexes env) env
 
-(* Push something to the highest position in an environment *)
+(*
+ * Push something to the highest position in an environment.
+ * 
+ * Note: We need pop_rel_conext (nb_rel env) env rather than empty_env
+ * because empty_env does not contain global definitions like nat.
+ *)
 let push_last ((n, b, t) : Context.rel_declaration) (env : env) : env =
   List.fold_left
     (fun en (na, bo, ty) -> push_rel (na, bo, ty) en)
-    empty_env
+    (pop_rel_context (nb_rel env) env)
     ((n, b, t) :: (List.rev (lookup_all_rels env)))
 
 (* --- Getting bindings for terms --- *)
