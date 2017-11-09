@@ -191,10 +191,6 @@ END
 
 (*
  * Abstract a term by a function
- *
- * We don't yet expose top-level functionality for abstracting
- * by arguments, though it's used internally by patch finding
- * procedures
  *)
 VERNAC COMMAND EXTEND AbstractCandidate CLASSIFIED AS SIDEFF
 | [ "Abstract" constr(trm) "to" constr(goal) "as" ident(n)] ->
