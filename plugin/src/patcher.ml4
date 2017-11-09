@@ -126,39 +126,19 @@ let specialize n trm : unit =
   let reducer = specialize_body specialize_term in
   let specialized = reducer env (intern env evm trm) in
   define_term n env evm specialized
-
+  
 (* Abstract a term by a function *)
-(* TODO move into configuration configure_from_goal,
-   expose both args and props, etc *)
+(* TODO expose both args and props, etc *)
 let abstract n trm goal : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let c = lookup_definition env (intern env evm trm) in
   let goal_type = intern env evm goal in
-  let strategies = no_reduce_strategies_prop in
-  let (_, _, goal_b) = destProd goal_type in
-  let rec abstract_term env c g =
-    match (kind_of_term c, kind_of_term g) with
-    | (Lambda (n, t, cb), Prod (_, tb, gb)) when isLambda cb && isProd gb ->
-       abstract_term (push_rel (n, None, t) env) cb gb
-    | (Lambda (_, _, _), Prod (_, gt, gtg)) when isApp gt && isApp gtg ->
-       let (_, _, ctb) = destProd (infer_type env c) in
-       if isApp ctb then
-         let (f_base, _) = destApp (unshift ctb) in
-         let f_goal = f_base in
-         let args_base = Array.to_list (snd (destApp gt)) in
-         let args_goal = List.map unshift (Array.to_list (snd (destApp gtg))) in
-	 let cs = [c] in
-         let abstraction_config = {env; args_base; args_goal; cs; f_base; f_goal; strategies} in
-         let lcs = abstract_with_strategies abstraction_config in
-         if List.length lcs > 0 then
-           define_term n env evm (List.hd lcs)
-         else
-           failwith "Failed to generalize"
-       else
-         failwith "Cannot infer property to generalize"
-    | _ ->
-       failwith "Goal is inconsistent with term to generalize"
-  in abstract_term env c goal_b
+  let config = configure_fun_from_goal env goal_type c in
+  let abstracted = abstract_with_strategies config in
+  if List.length abstracted > 0 then
+    define_term n env evm (List.hd abstracted)
+  else
+    failwith "Failed to generalize"
 
 (* Factor a term into a sequence of lemmas *)
 let factor n trm : unit =

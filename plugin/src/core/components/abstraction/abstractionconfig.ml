@@ -113,3 +113,36 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
     configure_args_cut_app env_cut b cs
   else
     failwith "No candidates are consistent with the cut lemma type"
+
+(* --- Goals --- *)
+
+(*
+ * Configure abstraction by a function given the environment,
+ * the body of the goal, and the candidate
+ *)
+let rec configure_fun_goal_body env goal c : abstraction_config =
+  match kinds_of_terms (goal, c) with
+  | (Prod (_, _, gb), Lambda (n, t, cb)) when isProd gb && isLambda cb ->
+     configure_fun_goal_body (push_rel (n, None, t) env) gb cb
+  | (Prod (_, gt, gb), Lambda (_, _, _)) when isApp gt && isApp gb ->
+     let (_, _, ctb) = destProd (infer_type env c) in
+     if isApp ctb then
+       let (f_base, _) = destApp (unshift ctb) in
+       let f_goal = f_base in
+       let args_base = Array.to_list (snd (destApp gt)) in
+       let args_goal = List.map unshift (Array.to_list (snd (destApp gb))) in
+       let cs = [c] in
+       let strategies = default_fun_strategies in
+       {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+     else
+       failwith "Cannot infer property to generalize"
+  | _ ->
+     failwith "Goal is inconsistent with term to generalize" 
+
+(*
+ * Configure abstracton by a function given the environment,
+ * goal type, and the candidate
+ *)
+let configure_fun_from_goal env goal c : abstraction_config =
+  let (_, _, goal_body) = destProd goal in
+  configure_fun_goal_body env goal_body c

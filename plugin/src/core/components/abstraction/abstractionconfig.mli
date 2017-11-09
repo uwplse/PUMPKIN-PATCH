@@ -40,8 +40,32 @@ val configure_fixpoint_cases :
 (* --- Cut Lemmas --- *)
 
 (*
+ * These configuration functions are for when you cut search by a certain lemma,
+ * so the type of the candidate may not be formatted well enough to infer how
+ * to abstract it, but the supplied cut lemma type may be.
+ * In those cases, we go with the cut lemma, though improvements
+ * to search and abstraction should make this obsolete.
+ *)
+
+(*
  * Given an environment, a lemma to cut by, and a list of candidates,
  * configure argument abstraction.
  *)
 val configure_cut_args :
   env -> cut_lemma -> candidates -> abstraction_config
+
+(* --- Goals --- *)
+
+(*
+ * These configuration functions are for the top-level abstract
+ * command, which takes a goal type. We use the goal type
+ * to infer how to abstract the function rather than the type of the candidate,
+ * since this gives the user more control over abstraction.
+ *)
+
+(*
+ * Give an environment, a goal type, and a candidate, configure function
+ * abstraction.
+ *)
+val configure_fun_from_goal :
+  env -> types -> types -> abstraction_config
