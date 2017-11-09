@@ -84,15 +84,11 @@ let get_arg_abstract_goal_type (config : abstraction_config) : types =
 let get_concrete_prop (config : abstraction_config) (concrete : closure) : closure =
   let (env, args) = concrete in
   let p = config.f_base in
-  let p_typ = infer_type env p in
+  let prop_type = infer_type env p in
   let num_args = nb_rel env in
-  let env_p =
-    List.fold_left
-      (fun env (n, b, t) ->
-        push_rel (n, b, t) env)
-      (push_rel (Anonymous, None, p_typ) (pop_rel_context num_args env))
-      (lookup_rels (List.rev (from_one_to num_args)) env)
-  in (env_p, p :: (List.tl args))
+  let env_prop = push_last (Anonymous, None, prop_type) env in
+  (* TODO duplicate logic w/ goal finding *)
+  (env_prop, p :: (List.tl args))
 
 (* Get the concrete environment and arguments to abstract *)
 let get_concrete config strategy : closure =
@@ -135,7 +131,7 @@ let get_abstract config concrete strategy : closure =
   | Property ->
      let args_abs = config.args_base in
      let (env_p, args_p) = concrete in
-     let p = mkRel (List.length args_p) in
+     let p = mkRel (nb_rel env_p) in
      let base_abs = specialize_using s env_p p (Array.of_list args_abs) in
      (env_p, List.append (p :: List.tl args_abs) [base_abs])
 
@@ -151,8 +147,8 @@ let get_abstraction_opts config strategy : abstraction_options =
      { concrete; abstract; goal_type; num_to_abstract }
   | Property ->
      let goal_type = get_prop_abstract_goal_type config in
-     let (_, args_p) = concrete in
-     let num_to_abstract = List.length args_p in
+     let (env, _) = concrete in
+     let num_to_abstract = nb_rel env in
      { concrete; abstract; goal_type; num_to_abstract }
 
 (* Abstract candidates with a provided abstraction strategy *)
