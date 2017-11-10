@@ -206,94 +206,9 @@ let configure_reset_goals change (d : goal_case_diff) : goal_case_diff =
      d
 
 (*
- * If we are searching for a change in conclusion, then
- * depending on whether the first different term is a constructor
- * or an induction principle, assume the type is positive or negative,
- * respectively, and search accordingly
- *
- * This is a heuristic and may sometimes be wrong, so we should
- * expose an option to users as well (TODO)
- *)
-let configure_kind_of_conclusion cut (d : goal_proof_diff) : kind_of_change =
-  let (trm_o, trm_n) = proof_terms d in
-  let rec configure trm_o trm_n =
-    match kinds_of_terms (trm_o, trm_n) with
-    | (Lambda (_, _, b_o), _) ->
-       configure b_o trm_n
-    | (_, Lambda (_, _, b_n)) ->
-       configure trm_o b_n
-    | (App (f_o, _), App (f_n, _)) when isConstruct f_o && isConstruct f_n ->
-       ConclusionCase cut
-    | _ ->
-       Conclusion
-  in configure trm_o trm_n
-
-(*
- * Configure the kind of change to search for (type difference detection).
- * Search for a difference in type only if the type is a product
- * that takes a non-convertible premise, and that premise is a different
- * inductive type with the same shape.
- *
- * Otherwise, if the new conclusion contains some constant function that has
- * changed from a constant function in the same place in the old conclusion,
- * but all of its arguments are the same, then search for a difference in
- * definitions.
- *
- * Otherwise, search for a change in conclusion.
- *)
-let configure_kind_of_change (d : goal_proof_diff) (cut : cut_lemma option) : kind_of_change =
-  let d_goals = erase_proofs d in
-  let goals = goal_types d_goals in
-  let env = context_env (old_proof d_goals) in
-  let r = reduce_remove_identities env in
-  let old_goal = r (fst goals) in
-  let new_goal = r (snd goals) in
-  let rec configure env typ_o typ_n =
-    match kinds_of_terms (typ_o, typ_n) with
-    | (Prod (n_o, t_o, b_o), Prod (_, t_n, b_n)) ->
-       if (not (convertible env t_o t_n)) then
-         let change = InductiveType (t_o, t_n) in
-         let d_typs = difference t_o t_n no_assumptions in
-         if same_shape env d_typs then
-           InductiveType (t_o, t_n)
-         else
-           Conclusion
-       else
-         configure (push_rel (n_o, None, t_o) env) b_o b_n
-    | (App (f_o, args_o), App (f_n, args_n)) ->
-       let args_o = Array.to_list args_o in
-       let args_n = Array.to_list args_n in
-       if (not (List.length args_o = List.length args_n)) then
-         Conclusion
-       else
-         if isConst f_o && isConst f_n && (not (convertible env f_o f_n)) then
-           if all_convertible env args_o args_n then
-             if not (Option.has_some cut) then
-               failwith "Must supply cut lemma for change in fixpoint"
-             else
-               FixpointCase ((f_o, f_n), Option.get cut)
-           else
-             Conclusion
-         else
-           let arg_confs = List.map2 (configure env) args_o args_n in
-           if List.for_all is_conclusion arg_confs then
-             Conclusion
-           else
-             List.find (fun change -> not (is_conclusion change)) arg_confs
-    | _ ->
-       Conclusion
-  in
-  let change = configure env old_goal new_goal in
-  if is_conclusion change then
-    configure_kind_of_conclusion cut d
-  else
-    change
-
-(*
  * Build configuration options for the search based on the goal diff
  *)
-let configure_search (d : goal_proof_diff) (cut : cut_lemma option) : options =
-  let change = configure_kind_of_change d cut in
+let configure_search d (change : kind_of_change) (cut : cut_lemma option) =
   {
     is_ind = false;
     change = change;

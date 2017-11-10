@@ -46,4 +46,5 @@ val set_is_ind : options -> bool -> options
 (* --- Type difference detection & search configuration --- *)
 
 (* Build configuration options for the search *)
-val configure_search : goal_proof_diff -> cut_lemma option -> options
+val configure_search :
+  goal_proof_diff -> kind_of_change -> cut_lemma option -> options

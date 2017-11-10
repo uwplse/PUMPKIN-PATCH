@@ -25,6 +25,7 @@ open Collections
 open Coqenvs
 open Cutlemma
 open Kindofchange
+open Differencing
 
 (*
  * Plugin for patching Coq proofs given a change.
@@ -55,7 +56,8 @@ let configure trm1 trm2 cut : goal_proof_diff * options =
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
   let d = add_goals (difference c1 c2 no_assumptions) in
-  (d, configure_search d lemma)
+  let change = find_kind_of_change d lemma in
+  (d, configure_search d change lemma)
 
 (* Common inversion functionality *)
 let invert_patch n env evm patch =

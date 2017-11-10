@@ -5,6 +5,8 @@ open Proofdiff
 open Candidates
 open Environ
 open Term
+open Cutlemma
+open Kindofchange
 
 (* --- Differencing of types & terms --- *)
 
@@ -12,6 +14,12 @@ open Term
  * Find the difference between the cases of two fixpoints
  *)
 val diff_fix_cases : env -> types -> types -> candidates
+
+(*
+ * Given a difference in proofs with goals and an optional lemma to cut by,
+ * determine what has changed about the proof
+ *)
+val find_kind_of_change : goal_proof_diff -> cut_lemma option -> kind_of_change
 
 
 (* --- Differencing of proofs --- *)
