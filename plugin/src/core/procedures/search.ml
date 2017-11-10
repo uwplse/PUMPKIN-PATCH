@@ -28,6 +28,8 @@ open Factoring
 open Differencing
 open Candidates
 open Zooming
+open Cutlemma
+open Kindofchange
 
 (* --- Debugging --- *)
 

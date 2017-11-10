@@ -1,6 +1,8 @@
 Utilities
 Collections
+
 Category
+
 Coqterms
 Coqenvs
 Printing
@@ -9,16 +11,22 @@ Debruijn
 Substitution
 Filters
 Reducers
+
 Candidates
 Assumptions
 Merging
 Proofcat
 Proofcatterms
+Cutlemma
+Kindofchange
+
 Evaluation
 Expansion
 Proofdiff
 Zooming
+
 Searchopts
+
 Specialization
 Abstracters
 Abstractionconfig
@@ -26,7 +34,9 @@ Abstraction
 Factoring
 Inverting
 Differencing
+
 Search
 Theorem
+
 Patcher
 

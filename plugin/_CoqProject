@@ -48,6 +48,10 @@ src/library/proofsearch/representation/proofcat.mli
 src/library/proofsearch/representation/proofcat.ml
 src/library/proofsearch/representation/proofcatterms.mli
 src/library/proofsearch/representation/proofcatterms.ml
+src/library/proofsearch/representation/cutlemma.mli
+src/library/proofsearch/representation/cutlemma.ml
+src/library/proofsearch/representation/kindofchange.mli
+src/library/proofsearch/representation/kindofchange.ml
 
 src/library/proofsearch/compilation/evaluation.mli
 src/library/proofsearch/compilation/evaluation.ml

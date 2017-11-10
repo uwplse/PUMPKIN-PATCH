@@ -4,6 +4,7 @@ open Abstracters
 open Candidates
 open Searchopts
 open Proofdiff
+open Cutlemma
 
 (* --- Configuring Abstraction --- *)
 

@@ -9,6 +9,7 @@ open Searchopts
 open Reducers
 open Printing
 open Proofdiff
+open Cutlemma
 
 (* --- Configuring Abstraction --- *)
 

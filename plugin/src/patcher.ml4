@@ -23,6 +23,8 @@ open Specialization
 open Factoring
 open Collections
 open Coqenvs
+open Cutlemma
+open Kindofchange
 
 (*
  * Plugin for patching Coq proofs given a change.
