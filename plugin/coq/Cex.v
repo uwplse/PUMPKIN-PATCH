@@ -94,6 +94,28 @@ Proof.
 Abort.
 
 (*
+ * Of course, we could to this:
+ *)
+Theorem patch_diff_tactics_abstract:
+  forall (n m p : nat),
+    n <= m ->
+    m <= p ->
+    n <= p ->
+    n <= p + 1.
+Proof.
+  intros. apply le_plus_trans. auto.
+Qed.
+
+(*
+ * But to do that, we need to model the application tactic and understand
+ * what it means to abstract it. This would not work for every tactic.
+ *
+ * For a really simple contrived example, I could write a tactic that works
+ * exactly like apply but requires that you supply every argument. Then
+ * the problem would be fully reduced to the term case.
+ *)
+
+(*
  * The term approach PUMPKIN PATCH uses doesn't rely on the
  * tactics, which makes it orthogonal to whether the tactic
  * proofs refer to specific parts of the proof that change.
