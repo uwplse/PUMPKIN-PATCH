@@ -5,10 +5,28 @@ open Environ
 open Proofdiff
 open Cutlemma
 open Kindofchange
+open Candidates
+open Zooming
 
 (* --- Options for search --- *)
 
 type options
+
+(* --- Configuring options --- *)
+
+(* Build configuration options for the search *)
+val configure_search :
+  goal_proof_diff -> kind_of_change -> cut_lemma option -> options
+
+(* --- Modifying options --- *)
+
+(* Set the inductive case flag *)
+val set_is_ind : options -> bool -> options
+
+(* Set the kind of change *)
+val set_change : options -> kind_of_change -> options
+
+(* --- Using options --- *)
 
 (* Update the goals of search *)
 val update_search_goals :
@@ -34,17 +52,22 @@ val is_app : options -> goal_proof_diff -> bool
 (* Get the kind of change *)
 val get_change : options -> kind_of_change
 
-(* Set the kind of change *)
-val set_change : options -> kind_of_change -> options
-
 (* Determine whether we are in the inductive case of search *)
 val is_ind : options -> bool
 
-(* Set the inductive case flag *)
-val set_is_ind : options -> bool -> options
+(*
+ * Udate the goals and terms for a diff.
+ * Use the options to determine how to update the goals,
+ * and replace the terms with the supplied old and new types.
+ *)
+val update_terms_goals :
+  options -> types -> types -> goal_proof_diff -> goal_proof_diff
 
-(* --- Type difference detection & search configuration --- *)
-
-(* Build configuration options for the search *)
-val configure_search :
-  goal_proof_diff -> kind_of_change -> cut_lemma option -> options
+(*
+ * Convert a search function that takes a set of options to a
+ * search_function that is independent of options, which
+ * can be used by zooming.
+ *)
+val to_search_function :
+  (options -> goal_proof_diff -> candidates) -> options -> goal_proof_diff ->
+  search_function

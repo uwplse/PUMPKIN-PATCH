@@ -4,7 +4,6 @@ open Environ
 open Term
 open Coqterms
 open Coqenvs
-open Substitution
 open Debruijn
 open Proofcat
 open Proofcatterms
@@ -44,18 +43,6 @@ let debug_search (d : goal_proof_diff) : unit =
   debug_term env_o old_goal "old goal";
   debug_term env_n new_goal "new goal";
   print_separator ()
-
-(* --- Using options for search --- *)
-
-(* Keep the same assumptions, but update the goals and terms for a diff *)
-let eval_with_terms_goals opts t_o t_n d =
-  let update = update_search_goals opts d in
-  update (erase_goals (eval_with_terms t_o t_n d))
-
-(* Convert search to a search_function for zooming *)
-let to_search_function search opts d : search_function =
-  let update_goals = update_search_goals opts d in
-  (fun d -> search opts (update_goals d))
 
 (* --- Abstraction for search --- *)
 
@@ -138,9 +125,9 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
   | (App (f_o, args_o), App (f_n, args_n)) when same_length args_o args_n ->
      (match get_change opts with
       | InductiveType (_, _) ->
-         search_f opts (eval_with_terms_goals opts f_o f_n d)
+         search_f opts (update_terms_goals opts f_o f_n d)
       | FixpointCase ((_, _), cut) ->
-         let f = search_f opts (eval_with_terms_goals opts f_o f_n d) in
+         let f = search_f opts (update_terms_goals opts f_o f_n d) in
          let f_cut = (filter_cut env cut) f in
          if non_empty f_cut then
            f_cut
@@ -148,7 +135,7 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
            let args =
              diff_args
                (fun a_o a_n ->
-                 let d_a = eval_with_terms_goals opts a_n a_o (reverse d) in
+                 let d_a = update_terms_goals opts a_n a_o (reverse d) in
                  search_arg opts d_a)
                args_o
                args_n
@@ -158,7 +145,7 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
          let args =
            diff_args
              (fun a_o a_n ->
-	       let d = eval_with_terms_goals opts a_o a_n d in
+	       let d = update_terms_goals opts a_o a_n d in
 	       if no_diff opts d then
 		 give_up
 	       else
@@ -175,7 +162,7 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
          if all_convertible env (Array.to_list args_o) (Array.to_list args_n) then
            let specialize = specialize_using specialize_no_reduce env in
            let combine_app = combine_cartesian specialize in
-	   let f = search_f opts (eval_with_terms_goals opts f_o f_n d) in
+	   let f = search_f opts (update_terms_goals opts f_o f_n d) in
 	   let args = List.map (fun a_o -> [a_o]) (Array.to_list args_o)
            in combine_app f (combine_cartesian_append (Array.of_list args))
          else

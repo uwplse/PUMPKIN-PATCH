@@ -14,6 +14,7 @@ open Assumptions
 open Printing
 open Kindofchange
 open Cutlemma
+open Zooming
 
 (* --- Auxiliary --- *)
 
@@ -52,17 +53,6 @@ type options =
     reset_goals : goal_case_diff -> goal_case_diff;
     is_app : goal_proof_diff -> bool;
   }
-
-let update_search_goals opts = opts.update_goals
-let swap_search_goals opts = opts.swap_goals
-let reset_case_goals opts = opts.reset_goals
-let same_h opts = opts.same_h
-let is_app opts = opts.is_app
-let get_change opts = opts.change
-let is_ind opts = opts.is_ind
-
-let set_change opts change = { opts with change = change }
-let set_is_ind opts is_ind = { opts with is_ind = is_ind }
 
 (* --- Configuring options --- *)
 
@@ -218,3 +208,29 @@ let configure_search d (change : kind_of_change) (cut : cut_lemma option) =
     reset_goals = configure_reset_goals change;
     is_app = configure_is_app change;
   }
+
+(* --- Modifying options --- *)
+
+let set_change opts change = { opts with change = change }
+let set_is_ind opts is_ind = { opts with is_ind = is_ind }
+
+(* --- Using options --- *)
+
+let update_search_goals opts = opts.update_goals
+let swap_search_goals opts = opts.swap_goals
+let reset_case_goals opts = opts.reset_goals
+let same_h opts = opts.same_h
+let is_app opts = opts.is_app
+let get_change opts = opts.change
+let is_ind opts = opts.is_ind
+
+(* Keep the same assumptions, but update the goals and terms for a diff *)
+let update_terms_goals opts t_o t_n d =
+  let update = update_search_goals opts d in
+  update (erase_goals (eval_with_terms t_o t_n d))
+
+(* Convert search to a search_function for zooming *)
+let to_search_function search opts d : search_function =
+  let update_goals = update_search_goals opts d in
+  (fun d -> search opts (update_goals d))
+
