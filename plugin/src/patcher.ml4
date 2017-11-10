@@ -149,7 +149,7 @@ let abstract n trm goal : unit =
       let reconstructed = reconstruct_lambda config.env reduced in
       define_term n env evm reconstructed
   else
-    failwith "Failed to generalize"
+    failwith "Failed to abstract"
 
 (* Factor a term into a sequence of lemmas *)
 let factor n trm : unit =
@@ -189,9 +189,7 @@ VERNAC COMMAND EXTEND SpecializeCandidate CLASSIFIED AS SIDEFF
   [ specialize n trm ]
 END
 
-(*
- * Abstract a term by a function
- *)
+(* Abstract a term by a function or by its arguments *)
 VERNAC COMMAND EXTEND AbstractCandidate CLASSIFIED AS SIDEFF
 | [ "Abstract" constr(trm) "to" constr(goal) "as" ident(n)] ->
   [ abstract n trm goal ]
