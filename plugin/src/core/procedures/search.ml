@@ -119,7 +119,6 @@ let try_lift_candidates (d : lift_goal_diff) (cs : candidates) : candidates =
  * but the other doesn't, this function has no clue what to do.
  *)
 let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
-  let same_length o n = (Array.length o = Array.length n) in
   let (_, env) = fst (old_proof (dest_goals d)) in
   match kinds_of_terms (proof_terms d) with
   | (App (f_o, args_o), App (f_n, args_n)) when same_length args_o args_n ->
@@ -525,10 +524,7 @@ let applies_ih opts (d : goal_proof_diff) : bool =
     (fun (t1, t2) ->
       let (f1, args1) = destApp t1 in
       let (f2, args2) = destApp t2 in
-      let nargs1 = Array.length args1 in
-      let nargs2 = Array.length args2 in
-      let same_nargs = (nargs1 = nargs2) in
-      is_ind opts && same_nargs && isLambda f1 && isLambda f2)
+      is_ind opts && same_length args1 args2 && isLambda f1 && isLambda f2)
     (always false)
     (proof_terms d)
 

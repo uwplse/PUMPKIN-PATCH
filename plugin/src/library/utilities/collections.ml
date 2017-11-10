@@ -169,3 +169,8 @@ let get_some (l : 'a option list) : 'a list =
 let singleton_array (a : 'a) : 'a array =
   Array.make 1 a
 
+(*
+ * Return true if two arrays are the same length
+ *)
+let same_length (a1 : 'a array) (a2 : 'b array) : bool =
+  Array.length a1 = Array.length a2

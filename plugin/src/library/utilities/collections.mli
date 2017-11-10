@@ -115,3 +115,9 @@ val singleton_array : 'a -> 'a array
  * Return true if a list has at least one element
  *)
 val non_empty : 'a list -> bool
+
+(*
+ * Return true if two arrays are the same length
+ *)
+val same_length : 'a array -> 'b array -> bool
+
