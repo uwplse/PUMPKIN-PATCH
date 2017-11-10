@@ -57,7 +57,7 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
   let o = (old_goal_type, old_term_sub) in
   (env, difference o n assums)
 
-(* --- Differencing of types --- *)
+(* --- Differencing of types & terms --- *)
 
 (*
  * Gets the change in the case of a fixpoint branch.
@@ -141,6 +141,8 @@ let diff_fix_cases env (old_term : types) (new_term : types) : candidates =
   | _ ->
      failwith "Not a fixpoint"
 
+(* --- Differencing of proofs --- *)
+
 (*
  * If the kind of change is a change in conclusion, then
  * determine whether the first different term is a constructor or
@@ -164,7 +166,7 @@ let find_kind_of_conclusion cut (d : goal_proof_diff) =
   in configure trm_o trm_n
 
 (*
- * Determine the kind of change to search for (type differencing).
+ * Determine the kind of change to search for (type differencing for proofs).
  * Search for a difference in type only if the type is a product
  * that takes a non-convertible premise, and that premise is a different
  * inductive type with the same shape.
@@ -223,8 +225,6 @@ let find_kind_of_change (d : goal_proof_diff) (cut : cut_lemma option) =
     find_kind_of_conclusion cut d
   else
     change
-
-(* --- Differencing of proofs --- *)
 
 (*
  * Try to identify the new proof term inside of the old proof term
