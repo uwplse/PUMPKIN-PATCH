@@ -656,7 +656,7 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : 
        if non_empty inverted then
          let patch = List.hd inverted in
          Printf.printf "%s\n" "SUCCESS";
-         List.hd inverted
+         patch
        else
          let patch = default in
          Printf.printf "%s\n" "FAILURE";
@@ -666,6 +666,3 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : 
          return_patch opts env inverted
        else
          failwith "Could not find patch"
-
-
-
