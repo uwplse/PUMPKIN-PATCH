@@ -121,3 +121,8 @@ val non_empty : 'a list -> bool
  *)
 val same_length : 'a array -> 'b array -> bool
 
+(*
+ * Apply a function which applies to two lists to two arrays
+ *)
+val apply_to_arrays :
+  ('a list -> 'b list -> 'c) -> 'a array -> 'b array -> 'c

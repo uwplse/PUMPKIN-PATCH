@@ -68,7 +68,7 @@ let try_lift_candidates (d : lift_goal_diff) (cs : candidates) : candidates =
     let old_goal_type = old_proof d_type in
     let (f_base, args_n) = destApp new_goal_type in
     let (f_goal, args_o) = destApp old_goal_type in
-    if all_convertible env (Array.to_list args_n) (Array.to_list args_o) then
+    if args_convertible env args_n args_o then
       let config = configure_args env d_type cs in
       let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
       List.map
@@ -158,7 +158,7 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
          else
            args
       | Conclusion ->
-         if all_convertible env (Array.to_list args_o) (Array.to_list args_n) then
+         if args_convertible env args_o args_n then
            let specialize = specialize_using specialize_no_reduce env in
            let combine_app = combine_cartesian specialize in
 	   let f = search_f opts (update_terms_goals opts f_o f_n d) in

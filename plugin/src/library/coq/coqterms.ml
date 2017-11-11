@@ -294,6 +294,12 @@ let rec concls_convertible (env : env) (typ1 : types) (typ2 : types) : bool =
 let all_convertible (env : env) (l1 : types list) (l2 : types list) : bool =
   List.for_all2 (convertible env) l1 l2
 
+(*
+ * Check if two arrays of arguments are all convertible with each other
+ *)
+let args_convertible (env : env) (a1 : types array) (a2 : types array) : bool =
+  apply_to_arrays (all_convertible env) a1 a2
+
 (* --- Types --- *)
 
 (* Infer the type of trm in env, using the unsafe type judgment

@@ -174,3 +174,9 @@ let singleton_array (a : 'a) : 'a array =
  *)
 let same_length (a1 : 'a array) (a2 : 'b array) : bool =
   Array.length a1 = Array.length a2
+
+(*
+ * Apply a function which applies to two lists to two arrays
+ *)
+let apply_to_arrays (f : 'a list -> 'b list -> 'c) a b : 'c =
+  f (Array.to_list a) (Array.to_list b)

@@ -133,6 +133,12 @@ val concls_convertible : env -> types -> types -> bool
  *)
 val all_convertible : env -> types list -> types list -> bool
 
+(*
+ * Check whether all terms in two arrays of arguments are convertible in an
+ * environment
+ *)
+val args_convertible : env -> types array -> types array -> bool
+
 (* --- Types of terms --- *)
 
 (* Infer the type of a term in an environment, using Coq's unsafe type judgment *)

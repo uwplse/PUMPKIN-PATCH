@@ -57,6 +57,15 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
   let o = (old_goal_type, old_term_sub) in
   (env, difference o n assums)
 
+(* --- Recursive differencing --- *)
+
+(*
+ * Using some differencing function between terms,
+ * recursively difference the arguments
+ *)
+let diff_args (diff : types -> types -> candidates) args_o args_n : candidates =
+  flat_map2 diff (Array.to_list args_o) (Array.to_list args_n)
+
 (* --- Differencing of types & terms --- *)
 
 (*
@@ -87,9 +96,7 @@ let rec get_goal_fix env (old_term : types) (new_term : types) : candidates =
          let red_new = r new_term in
          match kinds_of_terms (red_old, red_new) with
          | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
-            let args1 = Array.to_list args1 in
-            let args2 = Array.to_list args2 in
-            flat_map2 (get_goal_reduced env) args1 args2
+            diff_args (get_goal_reduced env) args1 args2
          | _ when not (eq_constr red_old red_new) ->
             let r = reduce_unfold env in
             [r (mkProd (Anonymous, old_term, shift new_term))]
@@ -104,16 +111,12 @@ let rec diff_fix_case env (old_term : types) (new_term : types) : candidates =
   | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when conv t1 t2 ->
      diff_fix_case (push_rel (n1, None, t1) env) b1 b2
   | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
-     if Array.length bs1 = Array.length bs2 then
-       let bs1 = Array.to_list bs1 in
-       let bs2 = Array.to_list bs2 in
+     if same_length bs1 bs2 then
        let env_m = push_rel (Anonymous, None, m1) env in
-       let get_goals = get_goal_fix env_m in
+       let diff_bs = diff_args (get_goal_fix env_m) in
        List.map
          unshift
-         (List.append
-            (flat_map2 get_goals bs1 bs2)
-            (flat_map2 get_goals bs2 bs1))
+         (List.append (diff_bs bs1 bs2) (diff_bs bs2 bs1))
      else
        give_up
   | _ ->
@@ -125,11 +128,9 @@ let diff_fix_cases env (old_term : types) (new_term : types) : candidates =
   let new_term = unwrap_definition env new_term in
   match kinds_of_terms (old_term, new_term) with
   | (Fix ((_, i), (nso, tso, dso)), Fix ((_, j), (_, tsn, dsn))) when i = j ->
-    if all_convertible env (Array.to_list tso) (Array.to_list tsn) then
+    if args_convertible env tso tsn then
       let env_fix = push_rel_context (bindings_for_fix nso tso) env in
-      let dso = Array.to_list dso in
-      let dsn = Array.to_list dsn in
-      let ds = flat_map2 (diff_fix_case env_fix) dso dsn in
+      let ds = diff_args (diff_fix_case env_fix) dso dsn in
       let lambdas = List.map (reconstruct_lambda env_fix) ds in
       let apps =
         List.map
@@ -198,13 +199,11 @@ let find_kind_of_change (d : goal_proof_diff) (cut : cut_lemma option) =
        else
          diff (push_rel (n_o, None, t_o) env) b_o b_n
     | (App (f_o, args_o), App (f_n, args_n)) ->
-       let args_o = Array.to_list args_o in
-       let args_n = Array.to_list args_n in
-       if (not (List.length args_o = List.length args_n)) then
+       if (not (same_length args_o args_n)) then
          Conclusion
        else
          if isConst f_o && isConst f_n && (not (convertible env f_o f_n)) then
-           if all_convertible env args_o args_n then
+           if args_convertible env args_o args_n then
              if not (Option.has_some cut) then
                failwith "Must supply cut lemma for change in fixpoint"
              else
@@ -212,7 +211,8 @@ let find_kind_of_change (d : goal_proof_diff) (cut : cut_lemma option) =
            else
              Conclusion
          else
-           let arg_confs = List.map2 (diff env) args_o args_n in
+           let conf_args = apply_to_arrays (List.map2 (diff env)) in
+           let arg_confs = conf_args args_o args_n in
            if List.for_all is_conclusion arg_confs then
              Conclusion
            else
@@ -327,11 +327,3 @@ let identity_candidates (d : goal_proof_diff) : candidates =
   let (new_goal, _) = new_proof d in
   [identity_term (context_env new_goal) (context_term new_goal)]
 
-(* --- Recursive differencing --- *)
-
-(*
- * Using some differencing function between terms,
- * recursively difference the arguments
- *)
-let diff_args diff_arg args_o args_n : candidates =
-  flat_map2 diff_arg (Array.to_list args_o) (Array.to_list args_n)
