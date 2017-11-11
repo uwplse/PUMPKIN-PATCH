@@ -44,39 +44,6 @@ let debug_search (d : goal_proof_diff) : unit =
   debug_term env_n new_goal "new goal";
   print_separator ()
 
-(* --- Abstraction for search --- *)
-
-(*
- * Try to abstract candidate patches given the goal types of the old proof
- * and the new proof. This assumes the candidate patches are specialized
- * (for example, with type P 0 for some P) and tries to abstract them (into P n).
- *
- * If the list of candidates are empty, then this returns the empty list.
- *
- * If the goal types are not both function applications, then they are not
- * specialized, so we have nothing to abstract, and we return the original list.
- *
- * If the goal types are both specialized, then we abstract
- * (see abstraction component).
- *)
-let try_lift_candidates (d : lift_goal_diff) (cs : candidates) : candidates =
-  let goals = goal_types d in
-  let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
-  if goals_are_apps && non_empty cs then
-    let (env, d_type, cs) = merge_lift_diff_envs d cs in
-    let new_goal_type = new_proof d_type in
-    let old_goal_type = old_proof d_type in
-    if fun_args_convertible env old_goal_type new_goal_type then
-      let config = configure_args env d_type cs in
-      let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
-      List.map
-        (unshift_local (num_new_rels - 1) num_new_rels)
-        (abstract_with_strategies config)
-    else
-      give_up
-  else
-    cs
-
 (* --- Application --- *)
 
 (*
@@ -335,7 +302,7 @@ let rec search_case_paths search opts (d : goal_case_diff) : types option =
           | FixpointCase ((_, _), cut) when are_cut env cut cs ->
              Some candidate
           | _ ->
-             let lcs = try_lift_candidates d_goal cs in
+             let lcs = try_abstract_inductive d_goal cs in
              if non_empty lcs then
                Some (List.hd lcs)
              else

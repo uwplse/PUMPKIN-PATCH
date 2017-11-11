@@ -14,6 +14,7 @@ open Coqenvs
 open Utilities
 open Candidates
 open Coqenvs
+open Proofdiff
 
 (* Internal options for abstraction *)
 type abstraction_options =
@@ -163,8 +164,6 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
  * Try to abstract candidates with an ordered list of abstraction strategies
  * Return as soon as one is successful
  * If all fail, return the empty list
- *
- * TODO clean types after generalizing w args
  *)
 let abstract_with_strategies (config : abstraction_config) : candidates =
   let abstract_using = abstract_with_strategy config in
@@ -179,3 +178,34 @@ let abstract_with_strategies (config : abstraction_config) : candidates =
     | _ ->
        []
   in try_abstract_using config.strategies
+
+(*
+ * Try to abstract candidates in an inductive proof by their arguments
+ * given the goal types of the old proof and the new proof.
+ * This assumes the candidate patches are specialized (for example,
+ * with type P 0 for some P) and tries to abstract them (into P n).
+ *
+ * If the list of candidates are empty, then this returns the empty list.
+ *
+ * If the goal types are not both function applications, then they are not
+ * specialized, so we have nothing to abstract, and we return the original list.
+ *
+ * If the goal types are both specialized, then we abstract.
+ *)
+let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) : candidates =
+  let goals = goal_types d in
+  let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
+  if goals_are_apps && non_empty cs then
+    let (env, d_type, cs) = merge_lift_diff_envs d cs in
+    let new_goal_type = new_proof d_type in
+    let old_goal_type = old_proof d_type in
+    if fun_args_convertible env old_goal_type new_goal_type then
+      let config = configure_args env d_type cs in
+      let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
+      List.map
+        (unshift_local (num_new_rels - 1) num_new_rels)
+        (abstract_with_strategies config)
+    else
+      give_up
+  else
+    cs
