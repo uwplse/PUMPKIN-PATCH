@@ -300,6 +300,20 @@ let all_convertible (env : env) (l1 : types list) (l2 : types list) : bool =
 let args_convertible (env : env) (a1 : types array) (a2 : types array) : bool =
   apply_to_arrays (all_convertible env) a1 a2
 
+(*
+ * Check whether the arguments to two applied functions are all convertible
+ * in an environment.
+ *
+ * This fails with an error if the supplied terms are not applied functions.
+ *)
+let fun_args_convertible (env : env) (t1 : types) (t2 : types) : bool =
+  if not (isApp t1 && isApp t2) then
+    failwith "Need an application to check if arguments are convertible"
+  else
+    let (_, args1) = destApp t1 in
+    let (_, args2) = destApp t2 in
+    args_convertible env args1 args2
+
 (* --- Types --- *)
 
 (* Infer the type of trm in env, using the unsafe type judgment

@@ -66,9 +66,7 @@ let try_lift_candidates (d : lift_goal_diff) (cs : candidates) : candidates =
     let (env, d_type, cs) = merge_lift_diff_envs d cs in
     let new_goal_type = new_proof d_type in
     let old_goal_type = old_proof d_type in
-    let (f_base, args_n) = destApp new_goal_type in
-    let (f_goal, args_o) = destApp old_goal_type in
-    if args_convertible env args_n args_o then
+    if fun_args_convertible env old_goal_type new_goal_type then
       let config = configure_args env d_type cs in
       let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
       List.map

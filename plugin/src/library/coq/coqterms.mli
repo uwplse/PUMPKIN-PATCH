@@ -139,6 +139,14 @@ val all_convertible : env -> types list -> types list -> bool
  *)
 val args_convertible : env -> types array -> types array -> bool
 
+(*
+ * Check whether the arguments to two applied functions are all convertible
+ * in an environment.
+ *
+ * This fails with an error if the supplied terms are not applied functions.
+ *)
+val fun_args_convertible : env -> types -> types -> bool
+
 (* --- Types of terms --- *)
 
 (* Infer the type of a term in an environment, using Coq's unsafe type judgment *)
