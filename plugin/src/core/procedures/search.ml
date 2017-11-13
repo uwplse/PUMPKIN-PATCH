@@ -78,13 +78,13 @@ let diff_final opts diff_arg env_o env_n args_o args_n d =
     (Array.of_list
        (diff_args
           (fun d_a ->
-            let arg_o = old_proof d_a in
-            let arg_n = new_proof d_a in
-            let d_a = update_terms_goals opts arg_n arg_o d in
             let specialize = specialize_using specialize_no_reduce env_o in
-            List.map
-              (fun p -> specialize p (singleton_array arg_o))
-              (diff_arg opts d_a))
+            let apply p = specialize p (singleton_array (old_proof d_a)) in
+            diff_terms
+              (fun d_a -> List.map apply (diff_arg opts d_a))
+              d
+              opts
+              (reverse d_a))
           (difference final_args_o final_args_n (assumptions d))))
 
 (*
