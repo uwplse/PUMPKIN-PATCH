@@ -91,10 +91,10 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
       | InductiveType (_, _) ->
          search_f opts (update_terms_goals opts f_o f_n d)
       | FixpointCase ((_, _), cut) ->
-         let f = search_f opts (update_terms_goals opts f_o f_n d) in
-         let f_cut = (filter_cut env cut) f in
-         if non_empty f_cut then
-           f_cut
+         let d_f = update_terms_goals opts f_o f_n d in
+         let f = filter_diff (search_f opts) (filter_cut env cut) d_f in
+         if non_empty f then
+           f
          else
            let args =
              diff_args

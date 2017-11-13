@@ -47,3 +47,13 @@ val identity_candidates : goal_proof_diff -> candidates
  *)
 val diff_args :
   (types -> types -> candidates) -> types array -> types array -> candidates
+
+(*
+ * Apply some differencing function between terms
+ * Filter the result using the supplied filter
+ *)
+val filter_diff :
+  (goal_proof_diff -> candidates) ->
+  (candidates -> candidates) ->
+  goal_proof_diff -> candidates
+

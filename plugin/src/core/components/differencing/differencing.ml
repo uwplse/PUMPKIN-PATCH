@@ -63,8 +63,18 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
  * Using some differencing function between terms,
  * recursively difference the arguments
  *)
-let diff_args (diff : types -> types -> candidates) args_o args_n : candidates =
-  flat_map2 diff (Array.to_list args_o) (Array.to_list args_n)
+let diff_args (diff : types -> types -> candidates) args_o args_n =
+  apply_to_arrays (flat_map2 diff) args_o args_n
+
+(*
+ * Apply some differencing function between proofs
+ * Filter the result using the supplied filter
+ *)
+let filter_diff (diff : goal_proof_diff -> candidates) filter d : candidates =
+  filter (diff d)
+
+(* TODO convert between term diff and proof_diff diff, add types for both,
+   make interfaces use one of them *)
 
 (* --- Differencing of types & terms --- *)
 
