@@ -127,8 +127,8 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
            let specialize = specialize_using specialize_no_reduce env in
            let combine_app = combine_cartesian specialize in
 	   let f = search_f opts (update_terms_goals opts f_o f_n d) in
-	   let args = List.map (fun a_o -> [a_o]) (Array.to_list args_o)
-           in combine_app f (combine_cartesian_append (Array.of_list args))
+	   let args = Array.map (fun a_o -> [a_o]) args_o in
+           combine_app f (combine_cartesian_append args)
          else
            give_up)
   | _ ->
