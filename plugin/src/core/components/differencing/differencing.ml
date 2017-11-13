@@ -1,5 +1,6 @@
 (* --- Differencing Component --- *)
 
+open Proofcat
 open Proofcatterms
 open Searchopts
 open Proofdiff
@@ -16,6 +17,20 @@ open Collections
 open Coqenvs
 open Cutlemma
 open Kindofchange
+open Printing
+
+type ('a, 'b) differencer = 'a proof_diff -> 'b
+
+type 'a candidate_differencer = ('a, candidates) differencer
+type proof_differencer = (context_object * proof_cat) candidate_differencer
+type term_differencer = types candidate_differencer
+type args_differencer = (types array) candidate_differencer
+
+type 'a change_detector = ('a, kind_of_change) differencer
+type proof_change_detector = (context_object * proof_cat) change_detector
+
+type 'a predicate_differencer = ('a, bool) differencer
+type proof_diff_predicate = (context_object * proof_cat) predicate_differencer
 
 (* --- Utilities --- *)
 
@@ -57,102 +72,7 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
   let o = (old_goal_type, old_term_sub) in
   (env, difference o n assums)
 
-(* --- Recursive differencing --- *)
-
-(*
- * Using some differencing function between terms,
- * recursively difference the arguments
- *)
-let diff_args (diff : types -> types -> candidates) args_o args_n =
-  apply_to_arrays (flat_map2 diff) args_o args_n
-
-(*
- * Apply some differencing function between proofs
- * Filter the result using the supplied filter
- *)
-let filter_diff (diff : goal_proof_diff -> candidates) filter d : candidates =
-  filter (diff d)
-
-(* TODO convert between term diff and proof_diff diff, add types for both,
-   make interfaces use one of them *)
-
-(* --- Differencing of types & terms --- *)
-
-(*
- * Gets the change in the case of a fixpoint branch.
- * These are the goals for abstraction.
- * Since semantic differencing doesn't have a good model of fixpoints yet,
- * this is a little complicated, and currently works directly over
- * the old representation. It's also the only function so far
- * to delta-reduce, which we can learn from.
- *
- * But basically this detects a change in a fixpoint case and
- * just is super preliminary.
- * After the prototype we should model fixpoints better.
- *)
-let rec get_goal_fix env (old_term : types) (new_term : types) : candidates =
-  if eq_constr old_term new_term then
-    give_up
-  else
-    match kinds_of_terms (old_term, new_term) with
-    | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when convertible env t1 t2 ->
-       List.map
-         (fun c -> mkProd (n1, t1, c))
-         (get_goal_fix (push_rel (n1, None, t1) env) b1 b2)
-    | _ ->
-       let rec get_goal_reduced env old_term new_term =
-         let r = reduce_unfold_whd env in
-         let red_old = r old_term in
-         let red_new = r new_term in
-         match kinds_of_terms (red_old, red_new) with
-         | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
-            diff_args (get_goal_reduced env) args1 args2
-         | _ when not (eq_constr red_old red_new) ->
-            let r = reduce_unfold env in
-            [r (mkProd (Anonymous, old_term, shift new_term))]
-         | _ ->
-            give_up
-       in get_goal_reduced env old_term new_term
-
-(* Same as the above, but at the top-level for the fixpoint case *)
-let rec diff_fix_case env (old_term : types) (new_term : types) : candidates =
-  let conv = convertible env in
-  match kinds_of_terms (old_term, new_term) with
-  | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when conv t1 t2 ->
-     diff_fix_case (push_rel (n1, None, t1) env) b1 b2
-  | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
-     if same_length bs1 bs2 then
-       let env_m = push_rel (Anonymous, None, m1) env in
-       let diff_bs = diff_args (get_goal_fix env_m) in
-       List.map
-         unshift
-         (List.append (diff_bs bs1 bs2) (diff_bs bs2 bs1))
-     else
-       give_up
-  | _ ->
-     give_up
-
-(* Same as above, for all of the cases of a fixpoint *)
-let diff_fix_cases env (old_term : types) (new_term : types) : candidates =
-  let old_term = unwrap_definition env old_term in
-  let new_term = unwrap_definition env new_term in
-  match kinds_of_terms (old_term, new_term) with
-  | (Fix ((_, i), (nso, tso, dso)), Fix ((_, j), (_, tsn, dsn))) when i = j ->
-    if args_convertible env tso tsn then
-      let env_fix = push_rel_context (bindings_for_fix nso tso) env in
-      let ds = diff_args (diff_fix_case env_fix) dso dsn in
-      let lambdas = List.map (reconstruct_lambda env_fix) ds in
-      let apps =
-        List.map
-          (fun t -> mkApp (t, singleton_array new_term))
-          lambdas
-      in unique eq_constr (reduce_all reduce_term env apps)
-    else
-      failwith "Cannot infer goals for generalizing change in definition"
-  | _ ->
-     failwith "Not a fixpoint"
-
-(* --- Differencing of proofs --- *)
+(* --- Determining what has changed --- *)
 
 (*
  * If the kind of change is a change in conclusion, then
@@ -189,7 +109,7 @@ let find_kind_of_conclusion cut (d : goal_proof_diff) =
  *
  * Otherwise, search for a change in conclusion.
  *)
-let find_kind_of_change (d : goal_proof_diff) (cut : cut_lemma option) =
+let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
   let d_goals = erase_proofs d in
   let goals = goal_types d_goals in
   let env = context_env (old_proof d_goals) in
@@ -235,6 +155,120 @@ let find_kind_of_change (d : goal_proof_diff) (cut : cut_lemma option) =
     find_kind_of_conclusion cut d
   else
     change
+
+
+(* --- Recursive differencing --- *)
+
+(*
+ * Convert a differencing function that takes a diff into one between two terms
+ *
+ * In other words, take an old diff d with assumptions that still hold, and:
+ * 1. Update the terms and goals of the diff d to use those terms
+ * 2. Apply the differencing function to the new diff
+ *)
+let diff_terms (diff : proof_differencer) d opts d_t : candidates =
+  diff (update_terms_goals opts (old_proof d_t) (new_proof d_t) d)
+
+(*
+ * Using some term differencer, recursively difference the arguments
+ *)
+let diff_args (diff : term_differencer) d_args =
+  let assums = assumptions d_args in
+  let diff_arg a_o a_n = diff (difference a_o a_n assums) in
+  apply_to_arrays (flat_map2 diff_arg) (old_proof d_args) (new_proof d_args)
+
+(*
+ * Apply some differencing function
+ * Modify the result using the supplied modifier
+ *)
+let modify_diff (diff : ('a, 'b) differencer) modify d : 'b =
+  modify (diff d)
+
+(* --- Differencing of types & terms --- *)
+
+(*
+ * Gets the change in the case of a fixpoint branch.
+ * These are the goals for abstraction.
+ * Since semantic differencing doesn't have a good model of fixpoints yet,
+ * this is a little complicated, and currently works directly over
+ * the old representation. It's also the only function so far
+ * to delta-reduce, which we can learn from.
+ *
+ * But basically this detects a change in a fixpoint case and
+ * just is super preliminary.
+ * After the prototype we should model fixpoints better.
+ *)
+let rec get_goal_fix env (d : types proof_diff) : candidates =
+  let old_term = old_proof d in
+  let new_term = new_proof d in
+  let assums = assumptions d in
+  if eq_constr old_term new_term then
+    give_up
+  else
+    match kinds_of_terms (old_term, new_term) with
+    | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when convertible env t1 t2 ->
+       List.map
+         (fun c -> mkProd (n1, t1, c))
+         (get_goal_fix (push_rel (n1, None, t1) env) (difference b1 b2 assums))
+    | _ ->
+       let reduce_hd = reduce_unfold_whd env in
+       let rec get_goal_reduced d =
+         let red_old = reduce_hd (old_proof d) in
+         let red_new = reduce_hd (new_proof d) in
+         match kinds_of_terms (red_old, red_new) with
+         | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
+            diff_args get_goal_reduced (difference args1 args2 no_assumptions)
+         | _ when not (eq_constr red_old red_new) ->
+            [reduce_unfold env (mkProd (Anonymous, red_old, shift red_new))]
+         | _ ->
+            give_up
+       in get_goal_reduced (difference old_term new_term no_assumptions)
+
+(* Same as the above, but at the top-level for the fixpoint case *)
+let rec diff_fix_case env (d : types proof_diff) : candidates =
+  let old_term = old_proof d in
+  let new_term = new_proof d in
+  let assums = assumptions d in
+  let conv = convertible env in
+  match kinds_of_terms (old_term, new_term) with
+  | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when conv t1 t2 ->
+     diff_fix_case (push_rel (n1, None, t1) env) (difference b1 b2 assums)
+  | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
+     if same_length bs1 bs2 then
+       let env_m = push_rel (Anonymous, None, m1) env in
+       let diff_bs = diff_args (get_goal_fix env_m) in
+       List.map
+         unshift
+         (List.append
+            (diff_bs (difference bs1 bs2 assums))
+            (diff_bs (difference bs2 bs1 assums)))
+     else
+       give_up
+  | _ ->
+     give_up
+
+(* Same as above, for all of the cases of a fixpoint *)
+let diff_fix_cases env (d : types proof_diff) : candidates =
+  let old_term = unwrap_definition env (old_proof d) in
+  let new_term = unwrap_definition env (new_proof d) in
+  let assums = assumptions d in
+  match kinds_of_terms (old_term, new_term) with
+  | (Fix ((_, i), (nso, tso, dso)), Fix ((_, j), (_, tsn, dsn))) when i = j ->
+    if args_convertible env tso tsn then
+      let env_fix = push_rel_context (bindings_for_fix nso tso) env in
+      let ds = diff_args (diff_fix_case env_fix) (difference dso dsn assums) in
+      let lambdas = List.map (reconstruct_lambda env_fix) ds in
+      let apps =
+        List.map
+          (fun t -> mkApp (t, singleton_array new_term))
+          lambdas
+      in unique eq_constr (reduce_all reduce_term env apps)
+    else
+      failwith "Cannot infer goals for generalizing change in definition"
+  | _ ->
+     failwith "Not a fixpoint"
+
+(* --- Differencing of proofs --- *)
 
 (*
  * Try to identify the new proof term inside of the old proof term
@@ -290,7 +324,8 @@ let build_app_candidates (env : env) (old_term : types) (new_term : types) =
  *
  * Currently heuristics-driven, and does not work for all cases.
  *)
-let find_difference (opts : options) (d : goal_term_diff) : candidates =
+let find_difference (opts : options) (d : goal_proof_diff) : candidates =
+  let d = proof_to_term d in
   let d = swap_search_goals opts d in
   let d_dest = dest_goals d in
   let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in

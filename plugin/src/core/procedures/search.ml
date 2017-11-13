@@ -92,30 +92,23 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
          search_f opts (update_terms_goals opts f_o f_n d)
       | FixpointCase ((_, _), cut) ->
          let d_f = update_terms_goals opts f_o f_n d in
-         let f = filter_diff (search_f opts) (filter_cut env cut) d_f in
+         let f = modify_diff (search_f opts) (filter_cut env cut) d_f in
          if non_empty f then
            f
          else
-           let args =
-             diff_args
-               (fun a_o a_n ->
-                 let d_a = update_terms_goals opts a_n a_o (reverse d) in
-                 search_arg opts d_a)
-               args_o
-               args_n
-           in (filter_cut env cut) args
+           modify_diff
+             (diff_args (diff_terms (search_arg opts) (reverse d) opts))
+             (filter_cut env cut)
+             (difference args_n args_o no_assumptions)
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          let opts = set_change opts Conclusion in
          let args =
            diff_args
-             (fun a_o a_n ->
-	       let d = update_terms_goals opts a_o a_n d in
-	       if no_diff opts d then
-		 give_up
-	       else
-                 search_arg opts d)
-	     args_o
-             args_n
+             (diff_terms
+                (map_if (no_diff opts) (always give_up) (search_arg opts))
+                d
+                opts)
+	     (difference args_o args_n no_assumptions)
          in
          if Option.has_some cut then
            let args_lambdas = List.map (reconstruct_lambda env) args in
@@ -551,7 +544,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
     if non_empty patches then
       patches
     else
-      (*2b*) find_difference opts (proof_to_term d)
+      (*2b*) find_difference opts d
   else if applies_ih opts d then
     (*3*) search_app search search opts (trim_ihs d)
   else
@@ -566,7 +559,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
            give_up
     | _ ->
        if is_app opts d then
-         (*6a*) let patches = find_difference opts (proof_to_term d) in
+         (*6a*) let patches = find_difference opts d in
          if non_empty patches then
            patches
          else
@@ -616,7 +609,7 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
          abstract_with_strategies
          (configure_fixpoint_cases
             env
-            (diff_fix_cases env old_type new_type)
+            (diff_fix_cases env (difference old_type new_type no_assumptions))
             specialized_fs_terms)
      in List.hd generalized
   | ConclusionCase (Some cut) ->

@@ -1,5 +1,6 @@
 (* --- Differencing Component --- *)
 
+open Proofcat
 open Searchopts
 open Proofdiff
 open Candidates
@@ -8,12 +9,25 @@ open Term
 open Cutlemma
 open Kindofchange
 
+type ('a, 'b) differencer = 'a proof_diff -> 'b
+
+type 'a candidate_differencer = ('a, candidates) differencer
+type proof_differencer = (context_object * proof_cat) candidate_differencer
+type term_differencer = types candidate_differencer
+type args_differencer = (types array) candidate_differencer
+
+type 'a change_detector = ('a, kind_of_change) differencer
+type proof_change_detector = (context_object * proof_cat) change_detector
+
+type 'a predicate_differencer = ('a, bool) differencer
+type proof_diff_predicate = (context_object * proof_cat) predicate_differencer
+
 (* --- Differencing of types & terms --- *)
 
 (*
  * Find the difference between the cases of two fixpoints
  *)
-val diff_fix_cases : env -> types -> types -> candidates
+val diff_fix_cases : env -> term_differencer
 
 (* --- Differencing of proofs --- *)
 
@@ -21,39 +35,44 @@ val diff_fix_cases : env -> types -> types -> candidates
  * Given a difference in proofs with goals and an optional lemma to cut by,
  * determine what has changed about the proof
  *)
-val find_kind_of_change : goal_proof_diff -> cut_lemma option -> kind_of_change
+val find_kind_of_change : cut_lemma option -> proof_change_detector
 
 (*
  * Primitive differencing function
  *)
-val find_difference : options -> goal_term_diff -> candidates
+val find_difference : options -> proof_differencer
 
 (*
  * Determine if two proof diffs are identical
  *)
-val no_diff : options -> goal_proof_diff -> bool
+val no_diff : options -> proof_diff_predicate
 
 (*
  * Return the identity candidates applied to the type
  * of the new proof in the diff
  *)
-val identity_candidates : goal_proof_diff -> candidates
+val identity_candidates : proof_differencer
 
 (* --- Recursive differencing --- *)
 
 (*
- * Using some differencing function between terms,
- * recursively difference the arguments
+ * Convert a proof differencer to a term differencer
+ *
+ * In other words, update the goals and terms of the current diff using
+ * the supplied options, then apply the supplied differencing function
+ * to the difference in terms.
  *)
-val diff_args :
-  (types -> types -> candidates) -> types array -> types array -> candidates
+val diff_terms :
+  proof_differencer -> goal_proof_diff -> options -> term_differencer
 
 (*
- * Apply some differencing function between terms
- * Filter the result using the supplied filter
+ * Using some term differencer, recursively difference the arguments
  *)
-val filter_diff :
-  (goal_proof_diff -> candidates) ->
-  (candidates -> candidates) ->
-  goal_proof_diff -> candidates
+val diff_args : term_differencer -> args_differencer
+
+(*
+ * Apply some differencing function
+ * Modify the result using the supplied modifier
+ *)
+val modify_diff : ('a, 'b) differencer -> ('b -> 'b) -> ('a, 'b) differencer
 
