@@ -87,34 +87,31 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
   let (_, env) = fst (old_proof (dest_goals d)) in
   match kinds_of_terms (proof_terms d) with
   | (App (f_o, args_o), App (f_n, args_n)) when same_length args_o args_n ->
-     let diff_rec search = diff_terms (search opts) d opts in
+     let diff_rec search opts = diff_terms (search opts) d opts in
      let d_f = difference f_o f_n no_assumptions in
      let d_args = difference args_o args_n no_assumptions in
      (match get_change opts with
       | InductiveType (_, _) ->
-         diff_rec search_f d_f
+         diff_rec search_f opts d_f
       | FixpointCase ((_, _), cut) ->
          let filter_diff_cut diff = filter_diff (filter_cut env cut) diff in
-         let fs = filter_diff_cut (diff_rec search_f) d_f in
+         let fs = filter_diff_cut (diff_rec search_f opts) d_f in
          if non_empty fs then
            fs
          else
-           filter_diff_cut (diff_args (diff_rec search_arg)) (reverse d_args)
+           let d_args_rev = reverse d_args in
+           filter_diff_cut (diff_args (diff_rec search_arg opts)) d_args_rev
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
-         let opts = set_change opts Conclusion in
-         let args =
-           diff_args
-             (diff_terms
-                (map_if (no_diff opts) (always give_up) (search_arg opts))
-                d
-                opts)
-	     d_args
-         in
-         if Option.has_some cut then
-           let args_lambdas = List.map (reconstruct_lambda env) args in
-           filter_applies_cut env (Option.get cut) args_lambdas
-         else
-           args
+         let diff_arg o d = if no_diff o d then give_up else search_arg o d in
+         filter_diff
+           (fun args ->
+             if Option.has_some cut then
+               let args_lambdas = List.map (reconstruct_lambda env) args in
+               filter_applies_cut env (Option.get cut) args_lambdas
+             else
+               args)
+           (diff_args (diff_rec diff_arg (set_change opts Conclusion)))
+	   d_args
       | Conclusion ->
          if args_convertible env args_o args_n then
            let specialize = specialize_using specialize_no_reduce env in
