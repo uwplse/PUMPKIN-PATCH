@@ -71,21 +71,17 @@ let debug_search (d : goal_proof_diff) : unit =
  * in Section 3 is a case where you can see an extra argument we don't
  * want to specialize by.
  *)
-let diff_final opts diff_arg env_o env_n args_o args_n d =
+let diff_final opts diff_arg specialize args_o args_n d =
   let final_args_o = singleton_array (List.hd args_o) in
   let final_args_n = singleton_array (List.hd args_n) in
   combine_cartesian_append
     (Array.of_list
        (diff_args
           (fun d_a ->
-            let specialize = specialize_using specialize_no_reduce env_o in
             let apply p = specialize p (singleton_array (new_proof d_a)) in
-            diff_terms
-              (fun d_a -> List.map apply (diff_arg opts d_a))
-              d
-              opts
-              d_a)
-          (difference final_args_n final_args_o (assumptions d))))
+            let diff_apply d_a = List.map apply (diff_arg opts d_a) in
+            diff_terms diff_apply d opts d_a)
+          (difference final_args_n final_args_o no_assumptions)))
 
 (*
  * Search an application of an induction principle.
@@ -106,8 +102,6 @@ let search_app_ind search_ind search_arg opts d : candidates =
     let assums = assumptions d_zoom in
     let (o, npms_old, final_args_old) = old_proof d_zoom in
     let (n, npms_new, final_args_new) = new_proof d_zoom in
-    let env_o = context_env (fst (old_proof d)) in
-    let env_n = context_env (fst (new_proof d)) in
     let f = search_ind opts (difference (o, npms_old) (n, npms_new) assums) in
     match get_change opts with
     | InductiveType (_, _) ->
@@ -115,11 +109,13 @@ let search_app_ind search_ind search_arg opts d : candidates =
     | FixpointCase ((_, _), _) ->
        f
     | _ ->
+       (* TODO by inspecting type, determine how many to specialize by *)
        if non_empty final_args_old then
          let args_o = final_args_old in
          let args_n = final_args_new in
-         let args = diff_final opts search_arg env_o env_n args_o args_n d in
+         let env_o = context_env (fst (old_proof d)) in
          let specialize = specialize_using specialize_no_reduce env_o in
+         let args = diff_final opts search_arg specialize args_o args_n d in
          combine_cartesian specialize f args
        else
          f
