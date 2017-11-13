@@ -25,7 +25,10 @@ type ('a, 'b) differencer = 'a proof_diff -> 'b
 type 'a candidate_differencer = ('a, candidates) differencer
 type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
-type args_differencer = (types array) candidate_differencer
+type flat_args_differencer = (types array) candidate_differencer
+
+type 'a candidate_list_differencer = ('a, candidates list) differencer
+type args_differencer = (types array) candidate_list_differencer
 
 type 'a change_detector = ('a, kind_of_change) differencer
 type proof_change_detector = (context_object * proof_cat) change_detector
@@ -275,11 +278,21 @@ let diff_terms (diff : proof_differencer) d opts d_t : candidates =
 
 (*
  * Using some term differencer, recursively difference the arguments
+ * Return a single list of all of the differences flattened, which
+ * does not correspond to each argument
+ *)
+let diff_args_flat (diff : term_differencer) d_args =
+  let assums = assumptions d_args in
+  let diff_arg a_o a_n = diff (difference a_o a_n assums) in
+  apply_to_arrays (flat_map2 diff_arg) (old_proof d_args) (new_proof d_args)
+
+(*
+ * Same, but don't flatten
  *)
 let diff_args (diff : term_differencer) d_args =
   let assums = assumptions d_args in
   let diff_arg a_o a_n = diff (difference a_o a_n assums) in
-  apply_to_arrays (flat_map2 diff_arg) (old_proof d_args) (new_proof d_args)
+  apply_to_arrays (List.map2 diff_arg) (old_proof d_args) (new_proof d_args)
 
 (*
  * Apply some differencing function
@@ -344,7 +357,7 @@ let diff_app opts diff_f diff_arg (d : goal_proof_diff) : candidates =
            fs
          else
            let d_args_rev = reverse d_args in
-           filter_diff_cut (diff_args (diff_rec diff_arg opts)) d_args_rev
+           filter_diff_cut (diff_args_flat (diff_rec diff_arg opts)) d_args_rev
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          let diff_arg o d = if no_diff o d then give_up else diff_arg o d in
          filter_diff
@@ -354,7 +367,7 @@ let diff_app opts diff_f diff_arg (d : goal_proof_diff) : candidates =
                filter_applies_cut env (Option.get cut) args_lambdas
              else
                args)
-           (diff_args (diff_rec diff_arg (set_change opts Conclusion)))
+           (diff_args_flat (diff_rec diff_arg (set_change opts Conclusion)))
 	   d_args
       | Conclusion ->
          if args_convertible env args_o args_n then
@@ -401,7 +414,8 @@ let rec get_goal_fix env (d : types proof_diff) : candidates =
          let red_new = reduce_hd (new_proof d) in
          match kinds_of_terms (red_old, red_new) with
          | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
-            diff_args get_goal_reduced (difference args1 args2 no_assumptions)
+            let d_args = difference args1 args2 no_assumptions in
+            diff_args_flat get_goal_reduced d_args
          | _ when not (eq_constr red_old red_new) ->
             [reduce_unfold env (mkProd (Anonymous, red_old, shift red_new))]
          | _ ->
@@ -420,7 +434,7 @@ let rec diff_fix_case env (d : types proof_diff) : candidates =
   | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
      if same_length bs1 bs2 then
        let env_m = push_rel (Anonymous, None, m1) env in
-       let diff_bs = diff_args (get_goal_fix env_m) in
+       let diff_bs = diff_args_flat (get_goal_fix env_m) in
        List.map
          unshift
          (List.append
@@ -440,7 +454,8 @@ let diff_fix_cases env (d : types proof_diff) : candidates =
   | (Fix ((_, i), (nso, tso, dso)), Fix ((_, j), (_, tsn, dsn))) when i = j ->
     if args_convertible env tso tsn then
       let env_fix = push_rel_context (bindings_for_fix nso tso) env in
-      let ds = diff_args (diff_fix_case env_fix) (difference dso dsn assums) in
+      let d_ds = difference dso dsn assums in
+      let ds = diff_args_flat (diff_fix_case env_fix) d_ds in
       let lambdas = List.map (reconstruct_lambda env_fix) ds in
       let apps =
         List.map
