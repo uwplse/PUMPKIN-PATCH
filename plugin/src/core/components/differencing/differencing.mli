@@ -76,3 +76,15 @@ val diff_args : term_differencer -> args_differencer
  *)
 val filter_diff : ('b -> 'b) -> ('a, 'b) differencer -> ('a, 'b) differencer
 
+(*
+ * Given a search function and a difference between terms,
+ * if the terms are applications (f args) and (f' args'),
+ * then recursively diff the functions and/or arguments.
+ *
+ * Use the options to determine how to combine the results.
+ *)
+val diff_app :
+  options ->
+  (options -> proof_differencer) -> (* diff f *)
+  (options -> proof_differencer) -> (* diff each arg *)
+  proof_differencer
