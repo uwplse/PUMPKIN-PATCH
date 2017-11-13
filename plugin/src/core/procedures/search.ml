@@ -87,21 +87,19 @@ let search_app search_f search_arg opts (d : goal_proof_diff) : candidates =
   let (_, env) = fst (old_proof (dest_goals d)) in
   match kinds_of_terms (proof_terms d) with
   | (App (f_o, args_o), App (f_n, args_n)) when same_length args_o args_n ->
+     let diff_rec search = diff_terms (search opts) d opts in
      let d_f = difference f_o f_n no_assumptions in
      let d_args = difference args_o args_n no_assumptions in
      (match get_change opts with
       | InductiveType (_, _) ->
-         diff_terms (search_f opts) d opts d_f
+         diff_rec search_f d_f
       | FixpointCase ((_, _), cut) ->
-         let filter = filter_cut env cut in
-         let fs = modify_diff (diff_terms (search_f opts) d opts) filter d_f in
+         let filter_diff_cut diff = filter_diff (filter_cut env cut) diff in
+         let fs = filter_diff_cut (diff_rec search_f) d_f in
          if non_empty fs then
            fs
          else
-           modify_diff
-             (diff_args (diff_terms (search_arg opts) (reverse d) opts))
-             filter
-             (reverse d_args)
+           filter_diff_cut (diff_args (diff_rec search_arg)) (reverse d_args)
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          let opts = set_change opts Conclusion in
          let args =

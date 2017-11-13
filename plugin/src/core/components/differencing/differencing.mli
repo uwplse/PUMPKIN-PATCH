@@ -72,7 +72,7 @@ val diff_args : term_differencer -> args_differencer
 
 (*
  * Apply some differencing function
- * Modify the result using the supplied modifier
+ * Filter the result using the supplied modifier
  *)
-val modify_diff : ('a, 'b) differencer -> ('b -> 'b) -> ('a, 'b) differencer
+val filter_diff : ('b -> 'b) -> ('a, 'b) differencer -> ('a, 'b) differencer
 

@@ -179,10 +179,10 @@ let diff_args (diff : term_differencer) d_args =
 
 (*
  * Apply some differencing function
- * Modify the result using the supplied modifier
+ * Filter the result using the supplied modifier
  *)
-let modify_diff (diff : ('a, 'b) differencer) modify d : 'b =
-  modify (diff d)
+let filter_diff filter (diff : ('a, 'b) differencer) d : 'b =
+  filter (diff d)
 
 (* --- Differencing of types & terms --- *)
 
