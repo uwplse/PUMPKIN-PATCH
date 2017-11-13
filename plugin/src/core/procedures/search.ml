@@ -79,13 +79,13 @@ let diff_final opts diff_arg env_o env_n args_o args_n d =
        (diff_args
           (fun d_a ->
             let specialize = specialize_using specialize_no_reduce env_o in
-            let apply p = specialize p (singleton_array (old_proof d_a)) in
+            let apply p = specialize p (singleton_array (new_proof d_a)) in
             diff_terms
               (fun d_a -> List.map apply (diff_arg opts d_a))
               d
               opts
-              (reverse d_a))
-          (difference final_args_o final_args_n (assumptions d))))
+              d_a)
+          (difference final_args_n final_args_o (assumptions d))))
 
 (*
  * Search an application of an induction principle.
