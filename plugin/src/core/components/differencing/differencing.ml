@@ -387,16 +387,6 @@ let diff_app opts diff_f diff_arg (d : goal_proof_diff) : candidates =
  * then specialize to any final arguments.
  *
  * For changes in constructors or fixpoint cases, don't specialize.
- *
- * This currently has an integration bug with multiple arguments.
- * That is, it does now let you apply to multiple final arguments,
- * but when they exist the lambda term that wraps it ends up
- * with extraneous arguments, which should not be true.
- * Patch 5 in Regress.v is an example of this.
- *
- * We need more effort/time here to understand how to fix this.
- *
- * TODO clean up, clean input types
  *)
 let diff_app_ind opts diff_ind diff_arg (d : goal_proof_diff) : candidates =
   let d_proofs = erase_goals d in
@@ -418,16 +408,18 @@ let diff_app_ind opts diff_ind diff_arg (d : goal_proof_diff) : candidates =
     | _ ->
        if non_empty args_o then
          let env_o = context_env (fst (old_proof d)) in
-         let (_, _, prop_typ_ctx) = prop o npms_old in
-         let prop_typ = context_term prop_typ_ctx in
+         let (_, prop_trm_ext, _) = prop o npms_old in
+         let prop_trm = ext_term prop_trm_ext in
          let rec prop_arity p =
            match kind_of_term p with
+           | Lambda (_, _, b) ->
+              1 + prop_arity b
            | Prod (_, _, b) ->
               1 + prop_arity b
            | _ ->
               0
          in
-         let arity = prop_arity prop_typ in
+         let arity = prop_arity prop_trm in
          let specialize = specialize_using specialize_no_reduce env_o in
          let final_args_o = Array.of_list (fst (split_at arity args_o)) in
          let final_args_n = Array.of_list (fst (split_at arity args_n)) in
