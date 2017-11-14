@@ -47,31 +47,13 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- Induction --- *)
 
 (*
- * Update the assumptions in a case of the inductive proof
- * Shift by the number of morphisms in the case,
- * assuming they are equal when they are convertible
- *)
-let update_case_assums (d_ms : (arrow list) proof_diff) : equal_assumptions =
-  List.fold_left2
-    (fun assums dst_o dst_n ->
-      let d_dst = difference dst_o dst_n assums in
-      let (env, d_goal, _) = merge_lift_diff_envs d_dst [] in
-      if convertible env (old_proof d_goal) (new_proof d_goal) then
-        assume_local_equal assums
-      else
-        shift_assumptions assums)
-    (assumptions d_ms)
-    (conclusions (remove_last (old_proof d_ms)))
-    (conclusions (remove_last (new_proof d_ms)))
-
-(*
  * Search a case of a difference in proof categories.
  * Return a patch if we find one.
  *
  * This breaks it up into arrows and then searches those
  * in the order of the sort function.
  *)
-let search_case search opts sort (d : proof_cat_diff) : candidates =
+let diff_sort_ind_case opts sort diff (d : proof_cat_diff) : candidates =
   let o = old_proof d in
   let n = new_proof d in
   let ms_o = morphisms o in
@@ -79,7 +61,7 @@ let search_case search opts sort (d : proof_cat_diff) : candidates =
   let d_ms = difference ms_o ms_n (assumptions d) in
   diff_ind_case
     opts
-    (search opts)
+    (diff opts)
     (reset_case_goals
        opts
        (map_diffs
@@ -90,9 +72,9 @@ let search_case search opts sort (d : proof_cat_diff) : candidates =
 (*
  * Base case: Prefer arrows later in the proof
  *)
-let search_base_case search opts (d : proof_cat_diff) : candidates =
+let diff_base_case opts diff (d : proof_cat_diff) : candidates =
   let sort _ ms = List.rev ms in
-  search_case search (set_is_ind opts false) sort d
+  diff_sort_ind_case (set_is_ind opts false) sort diff d
 
 (*
  * Inductive case: Prefer arrows closest to an IH,
@@ -102,34 +84,50 @@ let search_base_case search opts (d : proof_cat_diff) : candidates =
  * arrows are traversed in exactly the same order for each proof.
  * If there is a bug in this, this may be why.
  *)
-let search_inductive_case search opts (d : proof_cat_diff) : candidates =
+let diff_inductive_case opts diff (d : proof_cat_diff) : candidates =
   let sort c ms = List.stable_sort (closer_to_ih c (find_ihs c)) ms in
-  search_case search (set_is_ind opts true) sort d
+  diff_sort_ind_case (set_is_ind opts true) sort diff d
+
+(*
+ * TODO move, explain
+ *)
+let unshift_case opts d trm : types =
+  let o = old_proof d in
+  if is_conclusion (get_change opts) then
+    unshift_by (List.length (morphisms o)) trm
+  else
+    trm
+
+(*
+ * TODO move, explain
+ *)
+let diff_base_or_inductive_case opts diff (d : proof_cat_diff) : candidates =
+  let o = old_proof d in
+  if has_ihs o then
+    diff_inductive_case opts diff d
+  else
+    diff_base_case opts diff d
+
+(*
+ * TODO move, explain
+ *)
+let expand_constrs (d : proof_cat_diff) : proof_cat_diff =
+  let o = expand_constr (old_proof d) in
+  let n = expand_constr (new_proof d) in
+  difference o n (assumptions d)
 
 (*
  * Search in a case, then adjust the patch so it type-checks
  * in the original envionment.
  *
- * If there is a bug here, then the unshift number may not generalize
+ * If there is a bug here, then the offset may not generalize
  * for all cases.
  *)
-let search_and_check_case search opts (d : proof_cat_diff) : candidates =
-  let o = expand_constr (old_proof d) in
-  let n = expand_constr (new_proof d) in
-  let assums = assumptions d in
-  let d = difference o n assums in
-  let offset =
-    if is_conclusion (get_change opts) then
-      List.length (morphisms o)
-    else
-      0
-  in
+let diff_and_check_case opts diff (d : proof_cat_diff) : candidates =
+  let d_exp = expand_constrs d in
   List.map
-    (unshift_by offset)
-    (if has_ihs o then
-       search_inductive_case search opts d
-     else
-       search_base_case search opts d)
+    (unshift_case opts d_exp)
+    (diff_base_or_inductive_case opts diff d_exp)
 
 (*
  * Search in a diff that has been broken up into different cases.
@@ -141,7 +139,7 @@ let search_and_check_case search opts (d : proof_cat_diff) : candidates =
 let rec search_and_check_cases search opts (ds : proof_cat_diff list) : candidates =
   match ds with
   | d :: tl ->
-     let patches = search_and_check_case search opts d in
+     let patches = diff_and_check_case opts search d in
      if non_empty patches then
        patches
      else
@@ -178,7 +176,7 @@ let base_cases_first (cs : proof_cat list) : proof_cat list =
  * are lists of different lengths, and this currently only searches for patches
  * that are for changes in conclusions.
  *)
-let search_for_patch_inductive search opts (d : (proof_cat * int) proof_diff) : candidates =
+let search_for_patch_inductive (search : options -> goal_proof_diff -> candidates) opts (d : (proof_cat * int) proof_diff) : candidates =
   let (o, nparams) = old_proof d in
   let (n, nparams_n) = new_proof d in
   if not (nparams = nparams_n) then

@@ -188,6 +188,14 @@ val reduce_letin : goal_proof_diff -> goal_proof_diff
 (* Given a difference in proofs, trim applications of the IH *)
 val reduce_trim_ihs : goal_proof_diff -> goal_proof_diff
 
+(* --- Assumptions --- *)
+
+(*
+ * Update the assumptions in the difference between a case of an inductive proof
+ * Assume terms are equal when they are convertible, and offset accordingly
+ *)
+val update_case_assums : (arrow list) proof_diff -> equal_assumptions
+
 (* --- Questions about a difference between proofs --- *)
 
 (*

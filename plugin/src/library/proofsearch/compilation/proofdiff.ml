@@ -276,6 +276,26 @@ let reduce_trim_ihs (d : goal_proof_diff) : goal_proof_diff =
   let (old_term, new_term) = map_tuple trim_ih (proof_terms d) in
   eval_with_terms old_term new_term d
 
+(* --- Assumptions --- *)
+
+(*
+ * Update the assumptions in a case of the inductive proof
+ * Shift by the number of morphisms in the case,
+ * assuming they are equal when they are convertible
+ *)
+let update_case_assums (d_ms : (arrow list) proof_diff) : equal_assumptions =
+  List.fold_left2
+    (fun assums dst_o dst_n ->
+      let d = difference dst_o dst_n assums in
+      let (env, d_goal, _) = merge_lift_diff_envs d [] in
+      if convertible env (old_proof d_goal) (new_proof d_goal) then
+        assume_local_equal assums
+      else
+        shift_assumptions assums)
+    (assumptions d_ms)
+    (conclusions (remove_last (old_proof d_ms)))
+    (conclusions (remove_last (new_proof d_ms)))
+
 (* --- Questions about differences between proofs --- *)
 
 let constructor_types (env : env) (mutind_body : mutual_inductive_body) =
@@ -317,6 +337,8 @@ let same_shape (env : env) (d : types proof_diff) : bool =
  *
  * Fail if they are not the same shape
  * For now, assume only one constructor changes
+ *
+ * TODO move to differencing component
  *)
 let ind_type_diff (env : env) (d : types proof_diff) : types proof_diff =
   assert (same_shape env d);
