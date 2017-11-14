@@ -75,10 +75,10 @@ let base_cases_first (cs : proof_cat list) : proof_cat list =
  * are lists of different lengths, and this currently only searches for patches
  * that are for changes in conclusions.
  *)
-let search_for_patch_inductive (search : options -> goal_proof_diff -> candidates) opts (d : (proof_cat * int) proof_diff) : candidates =
-  let (o, nparams) = old_proof d in
+let diff_inductive opts diff (d : (proof_cat * int) proof_diff) : candidates =
+  let (o, nparams_o) = old_proof d in
   let (n, nparams_n) = new_proof d in
-  if not (nparams = nparams_n) then
+  if not (nparams_o = nparams_n) then
     give_up
   else
     zoom_map
@@ -87,7 +87,7 @@ let search_for_patch_inductive (search : options -> goal_proof_diff -> candidate
         let old_cases = base_cases_first (split (old_proof d)) in
         let new_cases = base_cases_first (split (new_proof d)) in
         let ds = dest_cases (difference old_cases new_cases assums) in
-        List.map (unshift_by nparams) (diff_ind_cases opts search ds))
+        List.map (unshift_by nparams_o) (diff_ind_cases opts diff ds))
       []
       id
       (fun d ->
@@ -102,8 +102,8 @@ let search_for_patch_inductive (search : options -> goal_proof_diff -> candidate
                     intro_common (Option.get d)
                   else
                     intro (Option.get d))
-                (params (old_proof d) nparams)
-                (params (new_proof d) nparams)
+                (params (old_proof d) nparams_o)
+                (params (new_proof d) nparams_n)
                 (Some d))))
       (difference o n (assumptions d))
 
@@ -172,7 +172,7 @@ let applies_ih opts (d : goal_proof_diff) : bool =
  *)
 let rec search (opts : options) (d : goal_proof_diff) : candidates =
   let d = reduce_letin (reduce_casts d) in
-  let search_ind = search_for_patch_inductive search in
+  let search_ind = fun opts -> diff_inductive opts search in
   if no_diff opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
