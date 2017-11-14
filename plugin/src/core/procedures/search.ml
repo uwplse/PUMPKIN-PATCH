@@ -47,6 +47,27 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- Induction --- *)
 
 (*
+ * TODO explain, move
+ *)
+let rec diff_cases diff (d : goal_case_diff) : candidates =
+  let d_goal = erase_proofs d in
+  match diff_proofs d with
+  | ((h1 :: t1), (h2 :: t2)) ->
+     let d_t = add_to_diff d_goal t1 t2 in
+     (try
+        let c1 = eval_proof_arrow h1 in
+        let c2 = eval_proof_arrow h2 in
+        let cs = diff (add_to_diff d_goal c1 c2) in
+        if non_empty cs then
+          cs
+        else
+          diff_cases diff d_t
+      with _ ->
+        diff_cases diff d_t)
+  | _ ->
+     give_up
+
+(*
  * Given an ordered pair of lists of arrows to explore in the base case,
  * search the difference between each one.
  *
@@ -74,34 +95,20 @@ let debug_search (d : goal_proof_diff) : unit =
  * we don't lift, but we could eventually try to apply the induction
  * principle for the constructor version to get a more general patch.
  *)
-let rec diff_case_paths opts diff (d : goal_case_diff) : candidates =
-  match diff_proofs d with
-  | ((h1 :: t1), (h2 :: t2)) ->
-     let d_goal = erase_proofs d in
-     let d_t = add_to_diff d_goal t1 t2 in
-     (try
-        let c1 = eval_proof_arrow h1 in
-        let c2 = eval_proof_arrow h2 in
-        let cs = diff opts (add_to_diff d_goal c1 c2) in
-        if non_empty cs then
-          let ((_, env), _) = old_proof (dest_goals d) in
-          match get_change opts with
-          | InductiveType (_, _) ->
-             cs
-          | FixpointCase ((_, _), cut) when are_cut env cut cs ->
-             cs
-          | _ ->
-             let lcs = try_abstract_inductive d_goal cs in
-             if non_empty lcs then
-               lcs
-             else
-               diff_case_paths opts diff d_t
-        else
-          diff_case_paths opts diff d_t
-      with _ ->
-        diff_case_paths opts diff d_t)
-  | (_, _) ->
-     give_up
+let diff_case_paths opts diff (d : goal_case_diff) : candidates =
+  let d_goal = erase_proofs d in
+  let env = context_env (old_proof d_goal) in
+  diff_cases
+    (fun d_h ->
+      let cs = diff opts d_h in
+      match get_change opts with
+      | InductiveType (_, _) ->
+         cs
+      | FixpointCase ((_, _), cut) when are_cut env cut cs ->
+         cs
+      | _ ->
+         try_abstract_inductive d_goal cs)
+    d
 
 (*
  * Update the assumptions in a case of the inductive proof
