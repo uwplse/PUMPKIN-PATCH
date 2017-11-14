@@ -80,6 +80,15 @@ val context_as_app  : context_object -> types * types array
 val params : proof_cat -> int -> arrow list
 
 (*
+ * From a proof category that represents an inductive proof, get
+ * the inductive property
+ *
+ * This assumes the proof category represents an inductive proof
+ * It has undefined behavior if you call it otherwise
+ *)
+val prop : proof_cat -> int -> arrow
+
+(*
  * Get the only extension in a proof category as a term
  * Fail if there are no extensions
  * Fail if there are multiple extensions

@@ -89,9 +89,8 @@ Qed.
 Patch Proof old5 new5 as patch5.
 
 Definition expectedPatch5 :=
-  fun (n m : nat) (l1 l2 : list nat) (_ : ListSum l1 n) (_ : ListSum (l1 ++ l2) (n + m)) =>
-    (fun (H1 : list nat) (H2 : nat) (_ : ListSum H1 H2) (_ : ListSum (H1 ++ l2) (H2 + m)) (H4 : ListSum (nil ++ l2) (0 + m)) =>
-       eq_rec_r (fun l : list nat => ListSum l m) H4 (rev_involutive l2)) l1.
+  fun (n m : nat) (l1 l2 : list nat) (_ : ListSum l1 n) (_ _ : ListSum (l1 ++ l2) (n + m)) (H2 : ListSum (nil ++ l2) (0 + m)) =>
+    eq_rec_r (fun l : list nat => ListSum l m) H2 (rev_involutive l2).
 
 Theorem testPatch5 :
   patch5 = expectedPatch5.

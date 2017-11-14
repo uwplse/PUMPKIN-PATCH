@@ -149,6 +149,13 @@ let params (c : proof_cat) (npms : int) : arrow list =
   fst (params_and_prop c npms)
 
 (*
+ * From a proof category that represents an inductive proof,
+ * get the inductive property
+ *)
+let prop (c : proof_cat) (npms : int) : arrow =
+  snd (params_and_prop c npms)
+
+(*
  * Get the only extension in a proof category as a term
  * Fail if there are no extensions
  * Fail if there are multiple extensions

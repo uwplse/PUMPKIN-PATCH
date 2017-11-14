@@ -50,30 +50,20 @@ let debug_search (d : goal_proof_diff) : unit =
  * After doing induction, search the difference in final arguments
  * That we, differencing can detect the final arguments to apply to
  *
- * Right now, this is limiting. It does actually let you apply
- * to different final arguments, (it will recursively search
- * the difference in those arguments), but it assumes that there is only
- * one argument the property applies to.
+ * This currently has a bug with multiple arguments.
+ * That is, it does now let you apply to multiple final arguments,
+ * but when they exist the lambda term that wraps it ends up
+ * with extraneous arguments, which should not be true.
+ * Patch 5 in Regress.v is an example of this.
  *
- * So, for example, the conclusion of the nat induction principle is:
- *   forall (n : nat), P n
- *
- * This looks for that n once it finds the difference in P, so it
- * can tell specialization what to do. But it doesn't handle
- * induction principles where the conclusion is something like:
- *   forall t1 t2, P t1 t2
- *
- * The correct way to fix this when we make semantic differencing
- * better is to detect how many arguments the conclusion of the induction
- * principle takes, and only look that far. Because we want to specialize
- * by that argument, but we don't want to specialize by extra arguments
- * that show up afterward, like hypothesis. The example in the paper
- * in Section 3 is a case where you can see an extra argument we don't
- * want to specialize by.
+ * To fix this, we need to understand how to specialize to the last
+ * term, which is the hypothesis, and not always the same hypothesis.
+ * We could also abstract the arguments beyond arity here.
+ * This needs more effort/time.
  *)
-let diff_final opts diff_arg specialize args_o args_n d =
-  let final_args_o = singleton_array (List.hd args_o) in
-  let final_args_n = singleton_array (List.hd args_n) in
+let diff_final opts diff_arg specialize args_o args_n d arity =
+  let final_args_o = Array.of_list (fst (split_at arity args_o)) in
+  let final_args_n = Array.of_list (fst (split_at arity args_n)) in
   combine_cartesian_append
     (Array.of_list
        (diff_args
@@ -109,13 +99,22 @@ let search_app_ind search_ind search_arg opts d : candidates =
     | FixpointCase ((_, _), _) ->
        f
     | _ ->
-       (* TODO by inspecting type, determine how many to specialize by *)
        if non_empty final_args_old then
          let args_o = final_args_old in
          let args_n = final_args_new in
          let env_o = context_env (fst (old_proof d)) in
+         let (_, _, prop_typ_ctx) = prop o npms_old in
+         let prop_typ = context_term prop_typ_ctx in
+         let rec prop_arity p =
+           match kind_of_term p with
+           | Prod (_, _, b) ->
+              1 + prop_arity b
+           | _ ->
+              0
+         in
+         let arity = prop_arity prop_typ in
          let specialize = specialize_using specialize_no_reduce env_o in
-         let args = diff_final opts search_arg specialize args_o args_n d in
+         let args = diff_final opts search_arg specialize args_o args_n d arity in
          combine_cartesian specialize f args
        else
          f
