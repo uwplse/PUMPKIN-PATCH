@@ -31,7 +31,6 @@ type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
 type flat_args_differencer = (types array) candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
-type proof_cat_differencer = proof_cat candidate_differencer
 
 type 'a candidate_list_differencer = ('a, candidates list) differencer
 type args_differencer = (types array) candidate_list_differencer
@@ -563,6 +562,24 @@ let diff_and_unshift_case opts diff (d : proof_cat_diff) : candidates =
       else
         trm)
     (diff_base_or_inductive_case opts diff d_exp)
+
+(*
+ * Search in a diff that has been broken up into different cases.
+ * That is, search the base case, inductive case, and so on separately.
+ *
+ * For now, we only return the first patch we find.
+ * We may want to return more later.
+ *)
+let rec diff_ind_cases opts diff (ds : proof_cat_diff list) : candidates =
+  match ds with
+  | d :: tl ->
+     let patches = diff_and_unshift_case opts diff d in
+     if non_empty patches then
+       patches
+     else
+       diff_ind_cases opts diff tl
+  | [] ->
+     []
 
 (* --- Differencing of types & terms --- *)
 

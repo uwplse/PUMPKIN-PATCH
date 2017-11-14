@@ -47,24 +47,6 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- Induction --- *)
 
 (*
- * Search in a diff that has been broken up into different cases.
- * That is, search the base case, inductive case, and so on separately.
- *
- * For now, we only return the first patch we find.
- * We may want to return more later.
- *)
-let rec search_and_check_cases search opts (ds : proof_cat_diff list) : candidates =
-  match ds with
-  | d :: tl ->
-     let patches = diff_and_unshift_case opts search d in
-     if non_empty patches then
-       patches
-     else
-       search_and_check_cases search opts tl
-  | [] ->
-     []
-
-(*
  * Sort cs so that the base cases are first in the list
  * This is not yet tested
  * This is also not yet optimized
@@ -105,7 +87,7 @@ let search_for_patch_inductive (search : options -> goal_proof_diff -> candidate
         let old_cases = base_cases_first (split (old_proof d)) in
         let new_cases = base_cases_first (split (new_proof d)) in
         let ds = dest_cases (difference old_cases new_cases assums) in
-        List.map (unshift_by nparams) (search_and_check_cases search opts ds))
+        List.map (unshift_by nparams) (diff_ind_cases opts search ds))
       []
       id
       (fun d ->
