@@ -124,6 +124,11 @@ val find_ihs : proof_cat -> arrow list
  *)
 val closer_to_ih : proof_cat -> arrow list -> arrow -> arrow -> int
 
+(*
+ * Sort a list of proof_cats so that the base cases are first in the list
+ *)
+val base_cases_first : proof_cat list -> proof_cat list
+
 (* --- Debruijn --- *)
 
 (* Unshifts the index of an extension if it is not locally bound *)

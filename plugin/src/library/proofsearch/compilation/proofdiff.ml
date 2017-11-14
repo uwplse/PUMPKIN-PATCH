@@ -404,4 +404,3 @@ let induct_over_same_h eq (d : goal_proof_diff) : bool =
 let num_new_bindings (f : 'a -> env) (d : 'a proof_diff) =
   let assums = assumptions d in
   num_assumptions (complement_assumptions assums (f (old_proof d)))
-

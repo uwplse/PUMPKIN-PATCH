@@ -220,6 +220,22 @@ let closer_to_ih c (ihs : arrow list) (m1 : arrow) (m2 : arrow) : int =
   else
     compare m1_ih_prox m2_ih_prox (* start closer to IH *)
 
+(*
+ * Sort cs so that the base cases are first in the list
+ *)
+let base_cases_first (cs : proof_cat list) : proof_cat list =
+  List.stable_sort
+    (fun c1 c2 ->
+      let c1_is_ind = has_ihs c1 in
+      let c2_is_ind = has_ihs c2 in
+      if c1_is_ind && not c2_is_ind then
+        1
+      else if not c2_is_ind && c1_is_ind then
+        -1
+      else
+        0)
+    cs
+
 (* --- Debruijn --- *)
 
 (* Unshifts the index of an extension if it is not locally bound *)

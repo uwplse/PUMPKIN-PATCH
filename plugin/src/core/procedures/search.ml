@@ -47,24 +47,6 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- Induction --- *)
 
 (*
- * Sort cs so that the base cases are first in the list
- * This is not yet tested
- * This is also not yet optimized
- *)
-let base_cases_first (cs : proof_cat list) : proof_cat list =
-  List.stable_sort
-    (fun c1 c2 ->
-      let c1_is_ind = has_ihs c1 in
-      let c2_is_ind = has_ihs c2 in
-      if c1_is_ind && not c2_is_ind then
-        1
-      else if not c2_is_ind && c1_is_ind then
-        -1
-      else
-        0)
-    cs
-
-(*
  * Search an inductive proof for a patch.
  * That is, break it into cases, and search those cases for patches.
  *
@@ -94,14 +76,15 @@ let diff_inductive opts diff (d : (proof_cat * int) proof_diff) : candidates =
         intro_common
           (Option.get
              (List.fold_right2
-                (fun pm1 pm2 (d : proof_cat_diff option) ->
+                (fun pm1 pm2 (d_opt : proof_cat_diff option) ->
+                  let d = Option.get d_opt in
                   let e1 = map_ext id pm1 in
                   let e2 = map_ext id pm2 in
-                  let assums = assumptions (Option.get d) in
+                  let assums = assumptions d in
                   if extensions_equal_assums e1 e2 assums then
-                    intro_common (Option.get d)
+                    intro_common d
                   else
-                    intro (Option.get d))
+                    intro d)
                 (params (old_proof d) nparams_o)
                 (params (new_proof d) nparams_n)
                 (Some d))))
