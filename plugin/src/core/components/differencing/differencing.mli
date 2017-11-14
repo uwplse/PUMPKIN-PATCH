@@ -121,12 +121,13 @@ val diff_app_ind :
   proof_differencer
 
 (*
- * Given the difference between a given case for two inductive proofs,
- * diff the case using the supplied differencer, then try to abstract
- * using the supplied abstracter.
+ * Convert a proof differencer into a case differencer for a given
+ * case of an inductive proof.
+ *
+ * Use the options to determine how to abstract.
  *)
-val diff_case :
-  (candidates -> candidates) -> (* abstract *)
-  proof_differencer -> (* diff *)
+val diff_ind_case :
+  options ->
+  proof_differencer ->
   case_differencer
 

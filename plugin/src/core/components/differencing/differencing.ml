@@ -21,6 +21,7 @@ open Printing
 open Specialization
 open Zooming
 open Evaluation
+open Abstraction
 
 type ('a, 'b) differencer = 'a proof_diff -> 'b
 
@@ -472,6 +473,24 @@ let rec diff_case abstract diff (d : goal_case_diff) : candidates =
         diff_case abstract diff d_t)
   | _ ->
      give_up
+
+(*
+ * Given an ordered pair of lists of arrows to explore in the base case,
+ * search the difference between each one.
+ *
+ * Stop as soon as we find a patch and return any of the patches.
+ *
+ * We try to lift the candidates we find for changes in conclusions.
+ * Right now we don't handle the constructor argument case because it should
+ * never get here, but if proofs are nested they could,
+ * so we need to extend this for that later.
+ *
+ * When it's a change in constructor or fixpoint case then
+ * we don't lift, but we could eventually try to apply the induction
+ * principle for the constructor version to get a more general patch.
+ *)
+let diff_ind_case opts diff (d : goal_case_diff) : candidates =
+  diff_case (abstract_case opts d) diff d
 
 (* --- Differencing of types & terms --- *)
 

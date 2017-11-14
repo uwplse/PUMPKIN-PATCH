@@ -47,27 +47,6 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- Induction --- *)
 
 (*
- * Given an ordered pair of lists of arrows to explore in the base case,
- * search the difference between each one.
- *
- * Stop as soon as we find a patch and return any of the patches.
- *
- * We try to lift the candidates we find for changes in conclusions.
- * Right now we don't handle the constructor argument case because it should
- * never get here, but if proofs are nested they could,
- * so we need to extend this for that later.
- *
- * When it's a change in constructor or fixpoint case then
- * we don't lift, but we could eventually try to apply the induction
- * principle for the constructor version to get a more general patch.
- *)
-let diff_case_paths opts diff (d : goal_case_diff) : candidates =
-  diff_case
-    (abstract_case opts d)
-    (diff opts)
-    d
-
-(*
  * Update the assumptions in a case of the inductive proof
  * Shift by the number of morphisms in the case,
  * assuming they are equal when they are convertible
@@ -97,9 +76,9 @@ let search_case search opts sort (d : proof_cat_diff) : candidates =
   let n = new_proof d in
   let ms_o = morphisms o in
   let ms_n = morphisms n in
-  diff_case_paths
+  diff_ind_case
     opts
-    search
+    (search opts)
     (reset_case_goals
        opts
        (map_diffs
