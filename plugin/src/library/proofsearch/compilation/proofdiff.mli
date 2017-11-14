@@ -185,6 +185,9 @@ val reduce_casts : goal_proof_diff -> goal_proof_diff
 (* Given a differrence in proofs, weak head reduce any let-ins *)
 val reduce_letin : goal_proof_diff -> goal_proof_diff
 
+(* Given a difference in proofs, trim applications of the IH *)
+val reduce_trim_ihs : goal_proof_diff -> goal_proof_diff
+
 (* --- Questions about a difference between proofs --- *)
 
 (*

@@ -264,6 +264,18 @@ let reduce_letin (d : goal_proof_diff) : goal_proof_diff =
   else
     d
 
+(* Given a term, trim off the IH, assuming it's an application *)
+let trim_ih (trm : types) : types =
+  assert (isApp trm);
+  let (f, args) = destApp trm in
+  let args_trim = Array.sub args 0 ((Array.length args) - 1) in
+  mkApp (f, args_trim)
+
+(* Given a diff, trim off the IHs, assuming the terms are applications *)
+let reduce_trim_ihs (d : goal_proof_diff) : goal_proof_diff =
+  let (old_term, new_term) = map_tuple trim_ih (proof_terms d) in
+  eval_with_terms old_term new_term d
+
 (* --- Questions about differences between proofs --- *)
 
 let constructor_types (env : env) (mutind_body : mutual_inductive_body) =

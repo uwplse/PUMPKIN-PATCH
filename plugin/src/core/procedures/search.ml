@@ -46,20 +46,6 @@ let debug_search (d : goal_proof_diff) : unit =
 
 (* --- Induction --- *)
 
-(* Given a term, trim off the IH, assuming it's an application *)
-let trim_ih (trm : types) : types =
-  assert (isApp trm);
-  let (f, args) = destApp trm in
-  let args_trim = Array.sub args 0 ((Array.length args) - 1) in
-  mkApp (f, args_trim)
-
-(* Given a diff, trim off the IHs, assuming the terms are applications *)
-let trim_ihs (d : goal_proof_diff) : goal_proof_diff =
-  let (old_term, new_term) = map_tuple trim_ih (proof_terms d) in
-  eval_with_terms old_term new_term d
-
-(* --- Induction --- *)
-
 (*
  * Given an ordered pair of lists of arrows to explore in the base case,
  * search the difference between each one.
@@ -88,35 +74,34 @@ let trim_ihs (d : goal_proof_diff) : goal_proof_diff =
  * we don't lift, but we could eventually try to apply the induction
  * principle for the constructor version to get a more general patch.
  *)
-let rec search_case_paths search opts (d : goal_case_diff) : types option =
+let rec search_case_paths opts diff (d : goal_case_diff) : candidates =
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
      let d_goal = erase_proofs d in
      let d_t = add_to_diff d_goal t1 t2 in
-     let ((_, env), _) = old_proof (dest_goals d) in
      (try
         let c1 = eval_proof_arrow h1 in
         let c2 = eval_proof_arrow h2 in
-        let cs = search opts (add_to_diff d_goal c1 c2) in
+        let cs = diff opts (add_to_diff d_goal c1 c2) in
         if non_empty cs then
-          let candidate = List.hd cs in
+          let ((_, env), _) = old_proof (dest_goals d) in
           match get_change opts with
           | InductiveType (_, _) ->
-             Some candidate
+             cs
           | FixpointCase ((_, _), cut) when are_cut env cut cs ->
-             Some candidate
+             cs
           | _ ->
              let lcs = try_abstract_inductive d_goal cs in
              if non_empty lcs then
-               Some (List.hd lcs)
+               lcs
              else
-               search_case_paths search opts d_t
+               search_case_paths opts diff d_t
         else
-          search_case_paths search opts d_t
+          search_case_paths opts diff d_t
       with _ ->
-        search_case_paths search opts d_t)
+        search_case_paths opts diff d_t)
   | (_, _) ->
-     None
+     give_up
 
 (*
  * Update the assumptions in a case of the inductive proof
@@ -143,14 +128,14 @@ let update_case_assums (d : proof_cat_diff) ms_o ms_n : equal_assumptions =
  * This breaks it up into arrows and then searches those
  * in the order of the sort function.
  *)
-let search_case search opts sort (d : proof_cat_diff) : types option =
+let search_case search opts sort (d : proof_cat_diff) : candidates =
   let o = old_proof d in
   let n = new_proof d in
   let ms_o = morphisms o in
   let ms_n = morphisms n in
   search_case_paths
-    search
     opts
+    search
     (reset_case_goals
        opts
        (map_diffs
@@ -161,7 +146,7 @@ let search_case search opts sort (d : proof_cat_diff) : types option =
 (*
  * Base case: Prefer arrows later in the proof
  *)
-let search_base_case search opts (d : proof_cat_diff) : types option =
+let search_base_case search opts (d : proof_cat_diff) : candidates =
   let sort _ ms = List.rev ms in
   search_case search (set_is_ind opts false) sort d
 
@@ -173,7 +158,7 @@ let search_base_case search opts (d : proof_cat_diff) : types option =
  * arrows are traversed in exactly the same order for each proof.
  * If there is a bug in this, this may be why.
  *)
-let search_inductive_case search opts (d : proof_cat_diff) : types option =
+let search_inductive_case search opts (d : proof_cat_diff) : candidates =
   let sort c ms = List.stable_sort (closer_to_ih c (find_ihs c)) ms in
   search_case search (set_is_ind opts true) sort d
 
@@ -184,7 +169,7 @@ let search_inductive_case search opts (d : proof_cat_diff) : types option =
  * If there is a bug here, then the unshift number may not generalize
  * for all cases.
  *)
-let search_and_check_case search opts (d : proof_cat_diff) : types option =
+let search_and_check_case search opts (d : proof_cat_diff) : candidates =
   let o = expand_constr (old_proof d) in
   let n = expand_constr (new_proof d) in
   let assums = assumptions d in
@@ -195,7 +180,7 @@ let search_and_check_case search opts (d : proof_cat_diff) : types option =
     else
       0
   in
-  Option.map
+  List.map
     (unshift_by offset)
     (if has_ihs o then
        search_inductive_case search opts d
@@ -212,9 +197,9 @@ let search_and_check_case search opts (d : proof_cat_diff) : types option =
 let rec search_and_check_cases search opts (ds : proof_cat_diff list) : candidates =
   match ds with
   | d :: tl ->
-     let patch = search_and_check_case search opts d in
-     if Option.has_some patch then
-       [Option.get patch]
+     let patches = search_and_check_case search opts d in
+     if non_empty patches then
+       patches
      else
        search_and_check_cases search opts tl
   | [] ->
@@ -356,7 +341,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
     else
       (*2b*) find_difference opts d
   else if applies_ih opts d then
-    (*3*) diff_app opts search search (trim_ihs d)
+    (*3*) diff_app opts search search (reduce_trim_ihs d)
   else
     match kinds_of_terms (proof_terms d) with
     | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
