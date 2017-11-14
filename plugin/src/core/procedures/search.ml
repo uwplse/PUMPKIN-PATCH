@@ -51,18 +51,20 @@ let debug_search (d : goal_proof_diff) : unit =
  * Shift by the number of morphisms in the case,
  * assuming they are equal when they are convertible
  *)
-let update_case_assums (d : proof_cat_diff) ms_o ms_n : equal_assumptions =
+let update_case_assums (d_ms : (arrow list) proof_diff) assums : equal_assumptions =
+  let ms_o = conclusions (remove_last (old_proof d_ms)) in
+  let ms_n = conclusions (remove_last (new_proof d_ms)) in
   List.fold_left2
     (fun assums dst_o dst_n ->
-      let d_dest = difference dst_o dst_n assums in
-      let (env, d_goal, _) = merge_lift_diff_envs d_dest [] in
+      let d_dst = difference dst_o dst_n assums in
+      let (env, d_goal, _) = merge_lift_diff_envs d_dst [] in
       if convertible env (old_proof d_goal) (new_proof d_goal) then
         assume_local_equal assums
       else
         shift_assumptions assums)
-    (assumptions d)
-    (conclusions (remove_last ms_o))
-    (conclusions (remove_last ms_n))
+    assums
+    ms_o
+    ms_n
 
 (*
  * Search a case of a difference in proof categories.
@@ -76,6 +78,7 @@ let search_case search opts sort (d : proof_cat_diff) : candidates =
   let n = new_proof d in
   let ms_o = morphisms o in
   let ms_n = morphisms n in
+  let d_ms = difference ms_o ms_n no_assumptions in
   diff_ind_case
     opts
     (search opts)
@@ -83,7 +86,7 @@ let search_case search opts sort (d : proof_cat_diff) : candidates =
        opts
        (map_diffs
           (fun (o, ms) -> (terminal o, ms))
-          (always (update_case_assums d ms_o ms_n))
+          (always (update_case_assums d_ms (assumptions d)))
           (add_to_diff d (sort o ms_o) (sort n ms_n))))
 
 (*
