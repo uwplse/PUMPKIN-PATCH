@@ -156,6 +156,11 @@ val dest_lift_goals : lift_goal_diff -> lift_goal_type_diff
  *)
 val dest_cases : case_diff -> proof_cat_diff list
 
+(*
+ * Expand constructors in a proof_cat_diff
+ *)
+val expand_constrs : proof_cat_diff -> proof_cat_diff
+
 (* --- Merging environments for diffs --- *)
 
 (*

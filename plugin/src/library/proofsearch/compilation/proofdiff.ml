@@ -177,6 +177,12 @@ let dest_cases (d : case_diff) : proof_cat_diff list =
   let ns = new_proof d in
   List.map2 (fun o n -> difference o n assums) os ns
 
+(* Expand constructors in a proof_cat_diff *)
+let expand_constrs (d : proof_cat_diff) : proof_cat_diff =
+  let o = expand_constr (old_proof d) in
+  let n = expand_constr (new_proof d) in
+  difference o n (assumptions d)
+
 (* --- Construction and destruction --- *)
 
 (* Get the proof terms for a goal_diff *)

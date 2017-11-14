@@ -109,14 +109,6 @@ let diff_base_or_inductive_case opts diff (d : proof_cat_diff) : candidates =
     diff_base_case opts diff d
 
 (*
- * TODO move, explain
- *)
-let expand_constrs (d : proof_cat_diff) : proof_cat_diff =
-  let o = expand_constr (old_proof d) in
-  let n = expand_constr (new_proof d) in
-  difference o n (assumptions d)
-
-(*
  * Search in a case, then adjust the patch so it type-checks
  * in the original envionment.
  *
