@@ -74,7 +74,7 @@ let debug_search (d : goal_proof_diff) : unit =
  * we don't lift, but we could eventually try to apply the induction
  * principle for the constructor version to get a more general patch.
  *)
-let rec search_case_paths opts diff (d : goal_case_diff) : candidates =
+let rec diff_case_paths opts diff (d : goal_case_diff) : candidates =
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
      let d_goal = erase_proofs d in
@@ -95,11 +95,11 @@ let rec search_case_paths opts diff (d : goal_case_diff) : candidates =
              if non_empty lcs then
                lcs
              else
-               search_case_paths opts diff d_t
+               diff_case_paths opts diff d_t
         else
-          search_case_paths opts diff d_t
+          diff_case_paths opts diff d_t
       with _ ->
-        search_case_paths opts diff d_t)
+        diff_case_paths opts diff d_t)
   | (_, _) ->
      give_up
 
@@ -133,7 +133,7 @@ let search_case search opts sort (d : proof_cat_diff) : candidates =
   let n = new_proof d in
   let ms_o = morphisms o in
   let ms_n = morphisms n in
-  search_case_paths
+  diff_case_paths
     opts
     search
     (reset_case_goals
