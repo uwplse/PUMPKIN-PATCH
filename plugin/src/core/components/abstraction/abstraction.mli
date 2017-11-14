@@ -7,6 +7,7 @@ open Coqterms
 open Candidates
 open Abstractionconfig
 open Proofdiff
+open Searchopts
 
 (*--- Abstraction ---*)
 
@@ -18,10 +19,10 @@ open Proofdiff
 val abstract_with_strategies : abstraction_config -> types list
 
 (*
- * Try to abstract candidates in an inductive proof by their arguments
- * given the goal types of the old proof and the new proof.
- *
+ * Abstract candidates in a case of an inductive proof.
+ * Use the options to determine whether or not to abstract,
+ * and how to abstract if we should abstract.
  * If there is nothing to abstract or if we cannot determine what to
  * abstract, then return the original list.
  *)
-val try_abstract_inductive : lift_goal_diff -> candidates -> candidates
+val abstract_case : options -> goal_case_diff -> candidates -> candidates

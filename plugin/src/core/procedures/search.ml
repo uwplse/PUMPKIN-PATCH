@@ -62,17 +62,8 @@ let debug_search (d : goal_proof_diff) : unit =
  * principle for the constructor version to get a more general patch.
  *)
 let diff_case_paths opts diff (d : goal_case_diff) : candidates =
-  let d_goal = erase_proofs d in
-  let env = context_env (old_proof d_goal) in
   diff_case
-    (fun cs ->
-      match get_change opts with
-      | InductiveType (_, _) ->
-         cs
-      | FixpointCase ((_, _), cut) when are_cut env cut cs ->
-         cs
-      | _ ->
-         try_abstract_inductive d_goal cs)
+    (abstract_case opts d)
     (diff opts)
     d
 

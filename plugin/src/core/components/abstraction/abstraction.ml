@@ -1,5 +1,6 @@
 (* --- Abstraction Component --- *)
 
+open Proofcatterms
 open Abstracters
 open Abstractionconfig
 open Environ
@@ -15,6 +16,8 @@ open Utilities
 open Candidates
 open Coqenvs
 open Proofdiff
+open Searchopts
+open Cutlemma
 
 (* Internal options for abstraction *)
 type abstraction_options =
@@ -209,3 +212,21 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) : candidates =
       give_up
   else
     cs
+
+(*
+ * Abstract candidates in a case of an inductive proof.
+ * Use the options to determine whether or not to abstract,
+ * and how to abstract if we should abstract.
+ * If there is nothing to abstract or if we cannot determine what to
+ * abstract, then return the original list.
+ *)
+let abstract_case (opts : options) (d : goal_case_diff) cs : candidates =
+  let d_goal = erase_proofs d in
+  let env = context_env (old_proof d_goal) in
+  match get_change opts with
+  | InductiveType (_, _) ->
+     cs
+  | FixpointCase ((_, _), cut) when are_cut env cut cs ->
+     cs
+  | _ ->
+     try_abstract_inductive d_goal cs
