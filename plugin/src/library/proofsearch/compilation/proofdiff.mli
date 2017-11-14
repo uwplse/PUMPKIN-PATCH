@@ -174,10 +174,16 @@ val merge_lift_diff_envs :
 val merge_diff_closures :
   goal_type_term_diff -> types list -> merged_closure
 
-(* --- Reduction --- *)
+(* --- Reduction and Simplification --- *)
 
 (* Reduce the terms inside of a goal_proof_diff *)
 val reduce_diff : reducer -> goal_proof_diff -> goal_proof_diff
+
+(* Given a difference in proofs, trim down any casts and get the terms *)
+val reduce_casts : goal_proof_diff -> goal_proof_diff
+
+(* Given a differrence in proofs, weak head reduce any let-ins *)
+val reduce_letin : goal_proof_diff -> goal_proof_diff
 
 (* --- Questions about a difference between proofs --- *)
 

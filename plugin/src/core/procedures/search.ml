@@ -58,33 +58,6 @@ let trim_ihs (d : goal_proof_diff) : goal_proof_diff =
   let (old_term, new_term) = map_tuple trim_ih (proof_terms d) in
   eval_with_terms old_term new_term d
 
-(* --- Casts --- *)
-
-(* Given a difference in proofs, trim down any casts and get the terms *)
-let rec erase_casts (d : goal_proof_diff) : goal_proof_diff =
-  match kinds_of_terms (proof_terms d) with
-  | (Cast (t, _, _), _) ->
-     erase_casts (eval_with_old_term t d)
-  | (_, Cast (t, _, _)) ->
-     erase_casts (eval_with_new_term t d)
-  | _ ->
-     d
-
-(* --- LetIn --- *)
-
-(* Given a difference in proofs, substitute the head let ins *)
-let simplify_letin (d : goal_proof_diff) : goal_proof_diff =
-  let (o, n) = proof_terms d in
-  if isLetIn o || isLetIn n then
-    let d_dest = dest_goals d in
-    let ((_, old_env), _) = old_proof d_dest in
-    let ((_, new_env), _) = new_proof d_dest in
-    let o' = reduce_whd_if_let_in old_env o in
-    let n' = reduce_whd_if_let_in new_env n in
-    eval_with_terms o' n' d
-  else
-    d
-
 (* --- Induction --- *)
 
 (*
@@ -372,8 +345,7 @@ let applies_ih opts (d : goal_proof_diff) : bool =
  * 6b. When the condition for 6a holds but 6a fails, then treat it like 3.
  *)
 let rec search (opts : options) (d : goal_proof_diff) : candidates =
-  let d = erase_casts d in
-  let d = simplify_letin d in
+  let d = reduce_letin (reduce_casts d) in
   let search_ind = search_for_patch_inductive search in
   if no_diff opts d then
     (*1*) identity_candidates d

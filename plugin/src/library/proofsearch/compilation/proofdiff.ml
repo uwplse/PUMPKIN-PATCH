@@ -230,7 +230,7 @@ let goal_types (d : lift_goal_diff) : types * types =
   let (new_goal_type, _) = new_proof d_type_env in
   (old_goal_type, new_goal_type)
 
-(* --- Reduction --- *)
+(* --- Reduction and Simplification --- *)
 
 (* Reduce the terms inside of a goal_proof_diff *)
 let reduce_diff (r : reducer) (d : goal_proof_diff) : goal_proof_diff =
@@ -240,6 +240,29 @@ let reduce_diff (r : reducer) (d : goal_proof_diff) : goal_proof_diff =
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
   eval_with_terms (r env_o o) (r env_n n) d
+
+(* Given a difference in proofs, trim down any casts and get the terms *)
+let rec reduce_casts (d : goal_proof_diff) : goal_proof_diff =
+  match kinds_of_terms (proof_terms d) with
+  | (Cast (t, _, _), _) ->
+     reduce_casts (eval_with_old_term t d)
+  | (_, Cast (t, _, _)) ->
+     reduce_casts (eval_with_new_term t d)
+  | _ ->
+     d
+
+(* Given a difference in proofs, substitute the head let ins *)
+let reduce_letin (d : goal_proof_diff) : goal_proof_diff =
+  let (o, n) = proof_terms d in
+  if isLetIn o || isLetIn n then
+    let d_dest = dest_goals d in
+    let ((_, old_env), _) = old_proof d_dest in
+    let ((_, new_env), _) = new_proof d_dest in
+    let o' = reduce_whd_if_let_in old_env o in
+    let n' = reduce_whd_if_let_in new_env n in
+    eval_with_terms o' n' d
+  else
+    d
 
 (* --- Questions about differences between proofs --- *)
 
