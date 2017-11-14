@@ -15,6 +15,7 @@ type 'a candidate_differencer = ('a, candidates) differencer
 type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
 type flat_args_differencer = (types array) candidate_differencer
+type ind_proof_differencer = (proof_cat * int) candidate_differencer
 
 type 'a candidate_list_differencer = ('a, candidates list) differencer
 type args_differencer = (types array) candidate_list_differencer
@@ -87,8 +88,7 @@ val diff_args : term_differencer -> args_differencer
 val filter_diff : ('b -> 'b) -> ('a, 'b) differencer -> ('a, 'b) differencer
 
 (*
- * Given a search function and a difference between terms,
- * if the terms are applications (f args) and (f' args'),
+ * If the proofs are applications (f args) and (f' args'),
  * then recursively diff the functions and/or arguments.
  *
  * Use the options to determine how to combine the results.
@@ -96,5 +96,18 @@ val filter_diff : ('b -> 'b) -> ('a, 'b) differencer -> ('a, 'b) differencer
 val diff_app :
   options ->
   (options -> proof_differencer) -> (* diff f *)
+  (options -> proof_differencer) -> (* diff each arg *)
+  proof_differencer
+
+(*
+ * If the proofs are applications (f args) and (f' args'),
+ * where f is an induction principle,
+ * then recursively diff the functions and/or arguments.
+ *
+ * Use the options to determine how to combine the results.
+ *)
+val diff_app_ind :
+  options ->
+  (options -> ind_proof_differencer) -> (* diff f *)
   (options -> proof_differencer) -> (* diff each arg *)
   proof_differencer

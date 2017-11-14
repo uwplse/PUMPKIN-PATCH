@@ -44,82 +44,7 @@ let debug_search (d : goal_proof_diff) : unit =
   debug_term env_n new_goal "new goal";
   print_separator ()
 
-(* --- Application --- *)
-
-(*
- * After doing induction, search the difference in final arguments
- * That we, differencing can detect the final arguments to apply to
- *
- * This currently has a bug with multiple arguments.
- * That is, it does now let you apply to multiple final arguments,
- * but when they exist the lambda term that wraps it ends up
- * with extraneous arguments, which should not be true.
- * Patch 5 in Regress.v is an example of this.
- *
- * To fix this, we need to understand how to specialize to the last
- * term, which is the hypothesis, and not always the same hypothesis.
- * We could also abstract the arguments beyond arity here.
- * This needs more effort/time.
- *)
-let diff_final opts diff_arg specialize args_o args_n d arity =
-  let final_args_o = Array.of_list (fst (split_at arity args_o)) in
-  let final_args_n = Array.of_list (fst (split_at arity args_n)) in
-  combine_cartesian_append
-    (Array.of_list
-       (diff_args
-          (fun d_a ->
-            let apply p = specialize p (singleton_array (new_proof d_a)) in
-            let diff_apply d_a = List.map apply (diff_arg opts d_a) in
-            diff_terms diff_apply d opts d_a)
-          (difference final_args_n final_args_o no_assumptions)))
-
-(*
- * Search an application of an induction principle.
- * Basically, use the normal induction differencing function,
- * then specialize to any final arguments (the reduction step
- * happens later for now).
- *
- * For changes in constructors or fixpoint cases, don't specialize.
- *)
-let search_app_ind search_ind search_arg opts d : candidates =
-  let d_proofs = erase_goals d in
-  let o = old_proof d_proofs in
-  let n = new_proof d_proofs in
-  let d_ind = difference (o, 0, []) (n, 0, []) (assumptions d) in
-  let d_opt = zoom_same_hypos d_ind in
-  if Option.has_some d_opt then
-    let d_zoom = Option.get d_opt in
-    let assums = assumptions d_zoom in
-    let (o, npms_old, final_args_old) = old_proof d_zoom in
-    let (n, npms_new, final_args_new) = new_proof d_zoom in
-    let f = search_ind opts (difference (o, npms_old) (n, npms_new) assums) in
-    match get_change opts with
-    | InductiveType (_, _) ->
-       f
-    | FixpointCase ((_, _), _) ->
-       f
-    | _ ->
-       if non_empty final_args_old then
-         let args_o = final_args_old in
-         let args_n = final_args_new in
-         let env_o = context_env (fst (old_proof d)) in
-         let (_, _, prop_typ_ctx) = prop o npms_old in
-         let prop_typ = context_term prop_typ_ctx in
-         let rec prop_arity p =
-           match kind_of_term p with
-           | Prod (_, _, b) ->
-              1 + prop_arity b
-           | _ ->
-              0
-         in
-         let arity = prop_arity prop_typ in
-         let specialize = specialize_using specialize_no_reduce env_o in
-         let args = diff_final opts search_arg specialize args_o args_n d arity in
-         combine_cartesian specialize f args
-       else
-         f
-  else
-    give_up
+(* --- Induction --- *)
 
 (* Given a term, trim off the IH, assuming it's an application *)
 let trim_ih (trm : types) : types =
@@ -453,7 +378,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
   if no_diff opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
-    (*2a*) let patches = search_app_ind search_ind search opts d in
+    (*2a*) let patches = diff_app_ind opts search_ind search d in
     if non_empty patches then
       patches
     else

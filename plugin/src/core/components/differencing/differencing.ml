@@ -19,6 +19,7 @@ open Cutlemma
 open Kindofchange
 open Printing
 open Specialization
+open Zooming
 
 type ('a, 'b) differencer = 'a proof_diff -> 'b
 
@@ -26,6 +27,7 @@ type 'a candidate_differencer = ('a, candidates) differencer
 type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
 type flat_args_differencer = (types array) candidate_differencer
+type ind_proof_differencer = (proof_cat * int) candidate_differencer
 
 type 'a candidate_list_differencer = ('a, candidates list) differencer
 type args_differencer = (types array) candidate_list_differencer
@@ -378,6 +380,75 @@ let diff_app opts diff_f diff_arg (d : goal_proof_diff) : candidates =
            give_up)
   | _ ->
      give_up
+
+(*
+ * Search an application of an induction principle.
+ * Basically, use the normal induction differencing function,
+ * then specialize to any final arguments.
+ *
+ * For changes in constructors or fixpoint cases, don't specialize.
+ *
+ * This currently has an integration bug with multiple arguments.
+ * That is, it does now let you apply to multiple final arguments,
+ * but when they exist the lambda term that wraps it ends up
+ * with extraneous arguments, which should not be true.
+ * Patch 5 in Regress.v is an example of this.
+ *
+ * We need more effort/time here to understand how to fix this.
+ *
+ * TODO clean up, clean input types
+ *)
+let diff_app_ind opts diff_ind diff_arg (d : goal_proof_diff) : candidates =
+  let d_proofs = erase_goals d in
+  let o = old_proof d_proofs in
+  let n = new_proof d_proofs in
+  let d_ind = difference (o, 0, []) (n, 0, []) (assumptions d) in
+  let d_opt = zoom_same_hypos d_ind in
+  if Option.has_some d_opt then
+    let d_zoom = Option.get d_opt in
+    let assums = assumptions d_zoom in
+    let (o, npms_old, args_o) = old_proof d_zoom in
+    let (n, npms_new, args_n) = new_proof d_zoom in
+    let f = diff_ind opts (difference (o, npms_old) (n, npms_new) assums) in
+    match get_change opts with
+    | InductiveType (_, _) ->
+       f
+    | FixpointCase ((_, _), _) ->
+       f
+    | _ ->
+       if non_empty args_o then
+         let env_o = context_env (fst (old_proof d)) in
+         let (_, _, prop_typ_ctx) = prop o npms_old in
+         let prop_typ = context_term prop_typ_ctx in
+         let rec prop_arity p =
+           match kind_of_term p with
+           | Prod (_, _, b) ->
+              1 + prop_arity b
+           | _ ->
+              0
+         in
+         let arity = prop_arity prop_typ in
+         let specialize = specialize_using specialize_no_reduce env_o in
+         let final_args_o = Array.of_list (fst (split_at arity args_o)) in
+         let final_args_n = Array.of_list (fst (split_at arity args_n)) in
+         let d_args = difference final_args_n final_args_o no_assumptions in
+         combine_cartesian
+           specialize
+           f
+           (combine_cartesian_append
+             (Array.of_list
+                (diff_args
+                   (fun d_a ->
+                     let arg_n = new_proof d_a in
+                     let apply p = specialize p (singleton_array arg_n) in
+                     let diff_apply = filter_diff (List.map apply) in
+                     diff_terms (diff_apply (diff_arg opts)) d opts d_a)
+                   d_args)))
+       else
+         f
+  else
+    give_up
+
 
 (* --- Differencing of types & terms --- *)
 
