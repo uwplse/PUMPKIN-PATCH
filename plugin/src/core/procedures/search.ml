@@ -47,9 +47,18 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- Induction --- *)
 
 (*
- * TODO explain, move
+ * Given an ordered pair of lists of arrows to explore in a case of an
+ * inductive proof, difference each one (using diff).
+ * As soon as we find candidates that can be properly abstracted
+ * (using abstract), return those. Otherwise, recurse.
+ *
+ * For now, we don't combine these in any way, and just look at the
+ * difference between each pair, but without changing the goal type.
+ * In the future we may want to be smarter about this.
+ * To improve this, we need benchmarks for which the head is not the patch,
+ * but another arrow is.
  *)
-let rec diff_cases diff (d : goal_case_diff) : candidates =
+let rec diff_cases abstract diff (d : goal_case_diff) : candidates =
   let d_goal = erase_proofs d in
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
@@ -57,13 +66,13 @@ let rec diff_cases diff (d : goal_case_diff) : candidates =
      (try
         let c1 = eval_proof_arrow h1 in
         let c2 = eval_proof_arrow h2 in
-        let cs = diff (add_to_diff d_goal c1 c2) in
+        let cs = abstract (diff (add_to_diff d_goal c1 c2)) in
         if non_empty cs then
           cs
         else
-          diff_cases diff d_t
+          diff_cases abstract diff d_t
       with _ ->
-        diff_cases diff d_t)
+        diff_cases abstract diff d_t)
   | _ ->
      give_up
 
@@ -72,19 +81,6 @@ let rec diff_cases diff (d : goal_case_diff) : candidates =
  * search the difference between each one.
  *
  * Stop as soon as we find a patch and return any of the patches.
- *
- * For now, we don't combine these in any way, and just look at the
- * difference between each pair, but without changing the goal type.
- * In the future we may want to be smarter about this.
- * All of the benchmarks so far work only with head, so it's unclear
- * what the recursive case should do so far. It might even be better
- * if it's just None like it used to be. Let's see where benchmarks
- * take us.
- *
- * The recursive call means that sometimes we'll end up with non-terms,
- * like the IHs, which not only can't be patches but will error
- * when we try to look. We should eliminate those from the list
- * before calling this.
  *
  * We try to lift the candidates we find for changes in conclusions.
  * Right now we don't handle the constructor argument case because it should
@@ -99,8 +95,7 @@ let diff_case_paths opts diff (d : goal_case_diff) : candidates =
   let d_goal = erase_proofs d in
   let env = context_env (old_proof d_goal) in
   diff_cases
-    (fun d_h ->
-      let cs = diff opts d_h in
+    (fun cs ->
       match get_change opts with
       | InductiveType (_, _) ->
          cs
@@ -108,6 +103,7 @@ let diff_case_paths opts diff (d : goal_case_diff) : candidates =
          cs
       | _ ->
          try_abstract_inductive d_goal cs)
+    (diff opts)
     d
 
 (*
