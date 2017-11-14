@@ -22,6 +22,7 @@ open Specialization
 open Zooming
 open Evaluation
 open Abstraction
+open Utilities
 
 type ('a, 'b) differencer = 'a proof_diff -> 'b
 
@@ -30,7 +31,7 @@ type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
 type flat_args_differencer = (types array) candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
-type case_differencer = (context_object * arrow list) candidate_differencer
+type proof_cat_differencer = proof_cat candidate_differencer
 
 type 'a candidate_list_differencer = ('a, candidates list) differencer
 type args_differencer = (types array) candidate_list_differencer
@@ -491,6 +492,77 @@ let rec diff_case abstract diff (d : goal_case_diff) : candidates =
  *)
 let diff_ind_case opts diff (d : goal_case_diff) : candidates =
   diff_case (abstract_case opts d) diff d
+
+(*
+ * Search a case of a difference in proof categories.
+ * Return a patch if we find one.
+ *
+ * This breaks it up into arrows and then searches those
+ * in the order of the sort function.
+ *)
+let diff_sort_ind_case opts sort diff (d : proof_cat_diff) : candidates =
+  let o = old_proof d in
+  let n = new_proof d in
+  let ms_o = morphisms o in
+  let ms_n = morphisms n in
+  let d_ms = difference ms_o ms_n (assumptions d) in
+  diff_ind_case
+    opts
+    (diff opts)
+    (reset_case_goals
+       opts
+       (map_diffs
+          (fun (o, ms) -> (terminal o, ms))
+          (always (update_case_assums d_ms))
+          (add_to_diff d (sort o ms_o) (sort n ms_n))))
+
+(*
+ * Base case: Prefer arrows later in the proof
+ *)
+let diff_base_case opts diff (d : proof_cat_diff) : candidates =
+  let sort _ ms = List.rev ms in
+  diff_sort_ind_case (set_is_ind opts false) sort diff d
+
+(*
+ * Inductive case: Prefer arrows closest to an IH,
+ * and in a tie, prefer arrows that are later.
+ *
+ * There currently may not be a guarantee that the two
+ * arrows are traversed in exactly the same order for each proof.
+ * If there is a bug in this, this may be why.
+ *)
+let diff_inductive_case opts diff (d : proof_cat_diff) : candidates =
+  let sort c ms = List.stable_sort (closer_to_ih c (find_ihs c)) ms in
+  diff_sort_ind_case (set_is_ind opts true) sort diff d
+
+(*
+ * Depending on whether a proof has inductive hypotheses, difference
+ * it treating it either like a base case (no inductive hypotheses)
+ * or an inductive case (some inductive hypotheses).
+ *)
+let diff_base_or_inductive_case opts diff (d : proof_cat_diff) : candidates =
+  let o = old_proof d in
+  if has_ihs o then
+    diff_inductive_case opts diff d
+  else
+    diff_base_case opts diff d
+
+(*
+ * Diff a case, then adjust the patch so it type-checks
+ * in the original envionment.
+ *
+ * If there is a bug here, then the offset we unshift by may not generalize
+ * for all cases.
+ *)
+let diff_and_unshift_case opts diff (d : proof_cat_diff) : candidates =
+  let d_exp = expand_constrs d in
+  List.map
+    (fun trm ->
+      if is_conclusion (get_change opts) then
+        unshift_by (List.length (morphisms (old_proof d_exp))) trm
+      else
+        trm)
+    (diff_base_or_inductive_case opts diff d_exp)
 
 (* --- Differencing of types & terms --- *)
 

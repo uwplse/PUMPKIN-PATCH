@@ -23,7 +23,7 @@ type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
 type flat_args_differencer = (types array) candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
-type case_differencer = (context_object * arrow list) candidate_differencer
+type proof_cat_differencer = proof_cat candidate_differencer
 
 type 'a candidate_list_differencer = ('a, candidates list) differencer
 type args_differencer = (types array) candidate_list_differencer
@@ -121,13 +121,13 @@ val diff_app_ind :
   proof_differencer
 
 (*
- * Convert a proof differencer into a case differencer for a given
- * case of an inductive proof.
+ * Difference a case of an inductive proof, abstract if necessary, then
+ * adjust the patch so that it type-checks in the original environment.
  *
- * Use the options to determine how to abstract.
+ * Use the options to determine how to abstract and how much to adjust by.
  *)
-val diff_ind_case :
+val diff_and_unshift_case :
   options ->
-  proof_differencer ->
-  case_differencer
+  (options -> proof_differencer) ->
+  proof_cat_differencer
 
