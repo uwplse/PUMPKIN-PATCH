@@ -47,36 +47,6 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- Induction --- *)
 
 (*
- * Given an ordered pair of lists of arrows to explore in a case of an
- * inductive proof, difference each one (using diff).
- * As soon as we find candidates that can be properly abstracted
- * (using abstract), return those. Otherwise, recurse.
- *
- * For now, we don't combine these in any way, and just look at the
- * difference between each pair, but without changing the goal type.
- * In the future we may want to be smarter about this.
- * To improve this, we need benchmarks for which the head is not the patch,
- * but another arrow is.
- *)
-let rec diff_cases abstract diff (d : goal_case_diff) : candidates =
-  let d_goal = erase_proofs d in
-  match diff_proofs d with
-  | ((h1 :: t1), (h2 :: t2)) ->
-     let d_t = add_to_diff d_goal t1 t2 in
-     (try
-        let c1 = eval_proof_arrow h1 in
-        let c2 = eval_proof_arrow h2 in
-        let cs = abstract (diff (add_to_diff d_goal c1 c2)) in
-        if non_empty cs then
-          cs
-        else
-          diff_cases abstract diff d_t
-      with _ ->
-        diff_cases abstract diff d_t)
-  | _ ->
-     give_up
-
-(*
  * Given an ordered pair of lists of arrows to explore in the base case,
  * search the difference between each one.
  *
@@ -94,7 +64,7 @@ let rec diff_cases abstract diff (d : goal_case_diff) : candidates =
 let diff_case_paths opts diff (d : goal_case_diff) : candidates =
   let d_goal = erase_proofs d in
   let env = context_env (old_proof d_goal) in
-  diff_cases
+  diff_case
     (fun cs ->
       match get_change opts with
       | InductiveType (_, _) ->

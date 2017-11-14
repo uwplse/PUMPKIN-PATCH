@@ -20,6 +20,7 @@ open Kindofchange
 open Printing
 open Specialization
 open Zooming
+open Evaluation
 
 type ('a, 'b) differencer = 'a proof_diff -> 'b
 
@@ -28,6 +29,7 @@ type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
 type flat_args_differencer = (types array) candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
+type case_differencer = (context_object * arrow list) candidate_differencer
 
 type 'a candidate_list_differencer = ('a, candidates list) differencer
 type args_differencer = (types array) candidate_list_differencer
@@ -441,6 +443,35 @@ let diff_app_ind opts diff_ind diff_arg (d : goal_proof_diff) : candidates =
   else
     give_up
 
+(*
+ * Given an ordered pair of lists of arrows to explore in a case of an
+ * inductive proof, difference each one (using diff).
+ * As soon as we find candidates that can be properly abstracted
+ * (using abstract), return those. Otherwise, recurse.
+ *
+ * For now, we don't combine these in any way, and just look at the
+ * difference between each pair, but without changing the goal type.
+ * In the future we may want to be smarter about this.
+ * To improve this, we need benchmarks for which the head is not the patch,
+ * but another arrow is.
+ *)
+let rec diff_case abstract diff (d : goal_case_diff) : candidates =
+  let d_goal = erase_proofs d in
+  match diff_proofs d with
+  | ((h1 :: t1), (h2 :: t2)) ->
+     let d_t = add_to_diff d_goal t1 t2 in
+     (try
+        let c1 = eval_proof_arrow h1 in
+        let c2 = eval_proof_arrow h2 in
+        let cs = abstract (diff (add_to_diff d_goal c1 c2)) in
+        if non_empty cs then
+          cs
+        else
+          diff_case abstract diff d_t
+      with _ ->
+        diff_case abstract diff d_t)
+  | _ ->
+     give_up
 
 (* --- Differencing of types & terms --- *)
 

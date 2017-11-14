@@ -1,5 +1,12 @@
 (* --- Differencing Component --- *)
 
+(*
+ * TODO when done refactoring this, hide
+ * anything that doesn't need to be exposed.
+ *
+ * But first, break this into multiple files.
+ *)
+
 open Proofcat
 open Searchopts
 open Proofdiff
@@ -16,6 +23,7 @@ type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
 type flat_args_differencer = (types array) candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
+type case_differencer = (context_object * arrow list) candidate_differencer
 
 type 'a candidate_list_differencer = ('a, candidates list) differencer
 type args_differencer = (types array) candidate_list_differencer
@@ -111,3 +119,14 @@ val diff_app_ind :
   (options -> ind_proof_differencer) -> (* diff f *)
   (options -> proof_differencer) -> (* diff each arg *)
   proof_differencer
+
+(*
+ * Given the difference between a given case for two inductive proofs,
+ * diff the case using the supplied differencer, then try to abstract
+ * using the supplied abstracter.
+ *)
+val diff_case :
+  (candidates -> candidates) -> (* abstract *)
+  proof_differencer -> (* diff *)
+  case_differencer
+
