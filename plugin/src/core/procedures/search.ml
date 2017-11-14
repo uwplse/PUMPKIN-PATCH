@@ -91,16 +91,6 @@ let diff_inductive_case opts diff (d : proof_cat_diff) : candidates =
 (*
  * TODO move, explain
  *)
-let unshift_case opts d trm : types =
-  let o = old_proof d in
-  if is_conclusion (get_change opts) then
-    unshift_by (List.length (morphisms o)) trm
-  else
-    trm
-
-(*
- * TODO move, explain
- *)
 let diff_base_or_inductive_case opts diff (d : proof_cat_diff) : candidates =
   let o = old_proof d in
   if has_ihs o then
@@ -115,10 +105,14 @@ let diff_base_or_inductive_case opts diff (d : proof_cat_diff) : candidates =
  * If there is a bug here, then the offset may not generalize
  * for all cases.
  *)
-let diff_and_check_case opts diff (d : proof_cat_diff) : candidates =
+let diff_and_unshift_case opts diff (d : proof_cat_diff) : candidates =
   let d_exp = expand_constrs d in
   List.map
-    (unshift_case opts d_exp)
+    (fun trm ->
+      if is_conclusion (get_change opts) then
+        unshift_by (List.length (morphisms (old_proof d_exp))) trm
+      else
+        trm)
     (diff_base_or_inductive_case opts diff d_exp)
 
 (*
@@ -131,7 +125,7 @@ let diff_and_check_case opts diff (d : proof_cat_diff) : candidates =
 let rec search_and_check_cases search opts (ds : proof_cat_diff list) : candidates =
   match ds with
   | d :: tl ->
-     let patches = diff_and_check_case opts search d in
+     let patches = diff_and_unshift_case opts search d in
      if non_empty patches then
        patches
      else
