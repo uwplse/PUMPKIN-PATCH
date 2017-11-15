@@ -44,33 +44,6 @@ let debug_search (d : goal_proof_diff) : unit =
   debug_term env_n new_goal "new goal";
   print_separator ()
 
-(* --- Induction --- *)
-
-(*
- * Search an inductive proof for a patch.
- * That is, break it into cases, and search those cases for patches.
- *
- * This does not yet handle nested inducted proofs.
- *
- * This does not yet handle the case when the inductive parameters
- * are lists of different lengths, or where there is a change in hypothesis.
- *)
-let diff_inductive opts diff (d : (proof_cat * int) proof_diff) : candidates =
-  let (o, nparams_o) = old_proof d in
-  let (n, nparams_n) = new_proof d in
-  if not (nparams_o = nparams_n) then
-    give_up
-  else
-    zoom_map
-      (fun d ->
-        let d_sorted = map_diffs (fun c -> base_cases_first (split c)) id d in
-        let ds = dest_cases d_sorted in
-        List.map (unshift_by nparams_o) (diff_ind_cases opts diff ds))
-      []
-      id
-      (intro_params nparams_o)
-      (difference o n (assumptions d))
-
 (* --- General proof terms --- *)
 
 (*
