@@ -1,5 +1,6 @@
 open Proofcat
 open Proofdiff
+open Proofcatterms
 open Expansion
 open Assumptions
 open Coqterms
@@ -92,6 +93,26 @@ let intro_n n (d : proof_cat_diff) : proof_cat_diff option =
  * Shift the assumptions
  *)
 let intro = intro_n 1
+
+(*
+ * Introduce nparams parameters to an inductive diff d
+  *
+ * This assumes both proofs have the same number of parameters,
+ * otherwise it will fail.
+ *)
+let intro_params nparams d =
+  intro_common
+    (Option.get
+       (List.fold_right2
+          (fun (_, e1, _) (_, e2, _) d_opt ->
+            let d = Option.get d_opt in
+            if extensions_equal_assums e1 e2 (assumptions d) then
+              intro_common d
+            else
+              intro d)
+          (params (old_proof d) nparams)
+          (params (new_proof d) nparams)
+          (Some d)))
 
 (* --- Zoomers and using zoomers --- *)
 

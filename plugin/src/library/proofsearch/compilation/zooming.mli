@@ -72,6 +72,12 @@ val intro : proof_cat intro_strategy
  *)
 val intro_n : int -> proof_cat intro_strategy
 
+(*
+ * Introduce the provided number of parameters to an inductive diff
+ * Fail if both proofs do not have the same number of parameters
+ *)
+val intro_params : int -> proof_cat intro_strategy
+
 (* --- Zoomers and applying them --- *)
 
 (*

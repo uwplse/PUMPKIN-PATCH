@@ -51,11 +51,9 @@ let debug_search (d : goal_proof_diff) : unit =
  * That is, break it into cases, and search those cases for patches.
  *
  * This does not yet handle nested inducted proofs.
- * It needs to hook back into search to do that.
  *
  * This does not yet handle the case when the inductive parameters
- * are lists of different lengths, and this currently only searches for patches
- * that are for changes in conclusions.
+ * are lists of different lengths, or where there is a change in hypothesis.
  *)
 let diff_inductive opts diff (d : (proof_cat * int) proof_diff) : candidates =
   let (o, nparams_o) = old_proof d in
@@ -65,29 +63,12 @@ let diff_inductive opts diff (d : (proof_cat * int) proof_diff) : candidates =
   else
     zoom_map
       (fun d ->
-        let assums = assumptions d in
-        let old_cases = base_cases_first (split (old_proof d)) in
-        let new_cases = base_cases_first (split (new_proof d)) in
-        let ds = dest_cases (difference old_cases new_cases assums) in
+        let d_sorted = map_diffs (fun c -> base_cases_first (split c)) id d in
+        let ds = dest_cases d_sorted in
         List.map (unshift_by nparams_o) (diff_ind_cases opts diff ds))
       []
       id
-      (fun d ->
-        intro_common
-          (Option.get
-             (List.fold_right2
-                (fun pm1 pm2 (d_opt : proof_cat_diff option) ->
-                  let d = Option.get d_opt in
-                  let e1 = map_ext id pm1 in
-                  let e2 = map_ext id pm2 in
-                  let assums = assumptions d in
-                  if extensions_equal_assums e1 e2 assums then
-                    intro_common d
-                  else
-                    intro d)
-                (params (old_proof d) nparams_o)
-                (params (new_proof d) nparams_n)
-                (Some d))))
+      (intro_params nparams_o)
       (difference o n (assumptions d))
 
 (* --- General proof terms --- *)
