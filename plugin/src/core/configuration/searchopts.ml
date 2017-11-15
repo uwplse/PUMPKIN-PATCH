@@ -234,3 +234,14 @@ let to_search_function search opts d : search_function =
   let update_goals = update_search_goals opts d in
   (fun d -> search opts (update_goals d))
 
+(*
+ * Check if a term applies the inductive hypothesis
+ * This is naive for now
+ *)
+let applies_ih opts (d : goal_proof_diff) : bool =
+  match kinds_of_terms (proof_terms d) with
+  | (App (f1, args1), App (f2, args2)) ->
+     is_ind opts && same_length args1 args2 && isLambda f1 && isLambda f2
+  | _ ->
+     false
+

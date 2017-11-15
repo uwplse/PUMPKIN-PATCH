@@ -71,3 +71,9 @@ val update_terms_goals :
 val to_search_function :
   (options -> goal_proof_diff -> candidates) -> options -> goal_proof_diff ->
   search_function
+
+(*
+ * Check if the proofs apply the inductive hypothesis
+ *)
+val applies_ih :
+  options -> goal_proof_diff -> bool

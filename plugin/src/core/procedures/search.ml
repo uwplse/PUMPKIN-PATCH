@@ -47,20 +47,6 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- General proof terms --- *)
 
 (*
- * Check if a term applies the inductive hypothesis
- * This is naive for now
- *)
-let applies_ih opts (d : goal_proof_diff) : bool =
-  map_if
-    (fun (t1, t2) -> isApp t1 && isApp t2)
-    (fun (t1, t2) ->
-      let (f1, args1) = destApp t1 in
-      let (f2, args2) = destApp t2 in
-      is_ind opts && same_length args1 args2 && isLambda f1 && isLambda f2)
-    (always false)
-    (proof_terms d)
-
-(*
  * Search for a direct patch given a difference in proof_cats within.
  * This is a collection of heuristics, which
  * we have numbered for clarity, and which we explain at the bottom
