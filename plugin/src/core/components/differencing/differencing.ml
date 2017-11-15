@@ -270,6 +270,21 @@ let identity_candidates (d : goal_proof_diff) : candidates =
 (* --- Recursive differencing --- *)
 
 (*
+ * Try to difference with one differencer
+ * If that fails, then try the next one
+ *)
+let rec try_chain_diffs diffs d =
+  match diffs with
+  | diff_h :: diff_t ->
+     let cs = diff_h d in
+     if non_empty cs then
+       cs
+     else
+       try_chain_diffs diff_t d
+  | _ ->
+     give_up
+
+(*
  * Convert a differencing function that takes a diff into one between two terms
  *
  * In other words, take an old diff d with assumptions that still hold, and:

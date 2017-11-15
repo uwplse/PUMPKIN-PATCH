@@ -47,6 +47,18 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- General proof terms --- *)
 
 (*
+ * TODO explain, move
+ *)
+let diff_reduced opts diff d =
+  let (o, n) = proof_terms d in
+  let d_red = reduce_diff reduce_term d in
+  let (o_red, n_red) = proof_terms d_red in
+  if not ((eq_constr o o_red) && (eq_constr n n_red)) then
+    diff opts d_red
+  else
+    give_up
+
+(*
  * Search for a direct patch given a difference in proof_cats within.
  * This is a collection of heuristics, which
  * we have numbered for clarity, and which we explain at the bottom
@@ -92,6 +104,8 @@ let debug_search (d : goal_proof_diff) : unit =
  *    none of the other heuristics fire, then we use find_difference
  *    to try to find a direct patch by looking at the terms themselves.
  * 6b. When the condition for 6a holds but 6a fails, then treat it like 3.
+ * 6c. When 6b doesn't produce anything, try reducing the diff and calling
+ *    recursively. (Support for this is preliminary.)
  *)
 let rec diff (opts : options) (d : goal_proof_diff) : candidates =
   let d = reduce_letin (reduce_casts d) in
@@ -99,11 +113,10 @@ let rec diff (opts : options) (d : goal_proof_diff) : candidates =
   if no_diff opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
-    (*2a*) let patches = diff_app_ind opts diff_ind diff d in
-    if non_empty patches then
-      patches
-    else
-      (*2b*) find_difference opts d
+    try_chain_diffs
+      [(diff_app_ind opts diff_ind diff); (* 2a *)
+       (find_difference opts)]            (* 2b *)
+      d
   else if applies_ih opts d then
     (*3*) diff_app opts diff diff (reduce_trim_ihs d)
   else
@@ -118,22 +131,11 @@ let rec diff (opts : options) (d : goal_proof_diff) : candidates =
            give_up
     | _ ->
        if is_app opts d then
-         (*6a*) let patches = find_difference opts d in
-         if non_empty patches then
-           patches
-         else
-           (*6b*) let patches = diff_app opts diff diff d in
-           if non_empty patches then
-             patches
-           else
-             (* 6c TODO explain, refactor, support better *)
-             let (o, n) = proof_terms d in
-             let d_red = reduce_diff reduce_term d in
-             let (o_red, n_red) = proof_terms d_red in
-             if not ((eq_constr o o_red) && (eq_constr n n_red)) then
-               diff opts d_red
-             else
-               give_up
+         try_chain_diffs
+           [(find_difference opts);    (* 6a *)
+            (diff_app opts diff diff); (* 6b *)
+            (diff_reduced opts diff)]  (* 6c *)
+           d
        else
          give_up
 

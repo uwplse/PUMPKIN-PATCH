@@ -67,6 +67,13 @@ val identity_candidates : proof_differencer
 (* --- Recursive differencing --- *)
 
 (*
+ * Try to difference with one differencer
+ * If that fails, then try the next one, and so on
+ *)
+val try_chain_diffs :
+  ('a candidate_differencer) list -> 'a proof_diff -> candidates
+
+(*
  * Convert a proof differencer to a term differencer
  *
  * In other words, update the goals and terms of the current diff using
