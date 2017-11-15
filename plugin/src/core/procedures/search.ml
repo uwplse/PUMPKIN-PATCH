@@ -93,27 +93,27 @@ let debug_search (d : goal_proof_diff) : unit =
  *    to try to find a direct patch by looking at the terms themselves.
  * 6b. When the condition for 6a holds but 6a fails, then treat it like 3.
  *)
-let rec search (opts : options) (d : goal_proof_diff) : candidates =
+let rec diff (opts : options) (d : goal_proof_diff) : candidates =
   let d = reduce_letin (reduce_casts d) in
-  let search_ind = fun opts -> diff_inductive opts search in
+  let diff_ind = fun opts -> diff_inductive opts diff in
   if no_diff opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
-    (*2a*) let patches = diff_app_ind opts search_ind search d in
+    (*2a*) let patches = diff_app_ind opts diff_ind diff d in
     if non_empty patches then
       patches
     else
       (*2b*) find_difference opts d
   else if applies_ih opts d then
-    (*3*) diff_app opts search search (reduce_trim_ihs d)
+    (*3*) diff_app opts diff diff (reduce_trim_ihs d)
   else
     match kinds_of_terms (proof_terms d) with
     | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
        if no_diff opts (eval_with_terms t_o t_n d) then
-         (*4*) zoom_wrap_lambda (to_search_function search opts d) n_o t_o d
+         (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
        else
          if is_ind opts || not (is_conclusion (get_change opts)) then
-           (*5*) zoom_unshift (to_search_function search opts d) d
+           (*5*) zoom_unshift (to_search_function diff opts d) d
          else
            give_up
     | _ ->
@@ -122,7 +122,7 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
          if non_empty patches then
            patches
          else
-           (*6b*) let patches = diff_app opts search search d in
+           (*6b*) let patches = diff_app opts diff diff d in
            if non_empty patches then
              patches
            else
@@ -131,18 +131,18 @@ let rec search (opts : options) (d : goal_proof_diff) : candidates =
              let d_red = reduce_diff reduce_term d in
              let (o_red, n_red) = proof_terms d_red in
              if not ((eq_constr o o_red) && (eq_constr n n_red)) then
-               search opts d_red
+               diff opts d_red
              else
                give_up
        else
          give_up
 
-(* Given a configuration, return the appropriate search function *)
-let search_function (opts : options) (should_reduce : bool) =
+(* Given a configuration, return the appropriate differencer *)
+let get_differencer (opts : options) (should_reduce : bool) =
   if should_reduce then
-    (fun opts d -> search opts (reduce_diff reduce_term d))
+    (fun d -> diff opts (reduce_diff reduce_term d))
   else
-    search
+    diff opts
 
 (*
  * Determines final processing step for a patch candidate based on the
@@ -193,13 +193,13 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : 
   let d = if is_fixpoint_case change then reverse d else d in  (* explain *)
   let d = update_search_goals opts d (erase_goals d) in
   let should_reduce = is_inductive_type change in
-  let search = search_function opts should_reduce in
-  let patches = search opts d in
+  let diff = get_differencer opts should_reduce in
+  let patches = diff d in
   let ((_, env), _) = old_proof (dest_goals d) in
   if non_empty patches then
     return_patch opts env patches
   else
-    let rev_patches = search opts (reverse d) in
+    let rev_patches = diff (reverse d) in
     Printf.printf "%s\n" "searched backwards";
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
     let inverted = invert_terms invert_factor env rev_patches in
