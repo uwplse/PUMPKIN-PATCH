@@ -2,31 +2,18 @@
 
 open Environ
 open Term
-open Coqterms
-open Coqenvs
-open Debruijn
-open Proofcat
-open Proofcatterms
 open Assumptions
-open Abstracters
 open Abstraction
 open Abstractionconfig
-open Filters
 open Proofdiff
 open Reducers
 open Specialization
-open Evaluation
-open Expansion
 open Printing
 open Collections
-open Utilities
-open Hofs
 open Inverting
 open Searchopts
 open Factoring
 open Differencing
-open Candidates
-open Zooming
 open Cutlemma
 open Kindofchange
 
