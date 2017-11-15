@@ -83,6 +83,8 @@ src/core/components/inversion/inverting.ml
 
 src/core/components/differencing/differencers.mli
 src/core/components/differencing/differencers.ml
+src/core/components/differencing/changedetectors.mli
+src/core/components/differencing/changedetectors.ml
 src/core/components/differencing/differencing.mli
 src/core/components/differencing/differencing.ml
 

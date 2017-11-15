@@ -25,7 +25,7 @@ open Collections
 open Coqenvs
 open Cutlemma
 open Kindofchange
-open Differencing
+open Changedetectors
 
 (*
  * Plugin for patching Coq proofs given a change.
