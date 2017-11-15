@@ -147,3 +147,9 @@ val diff_inductive :
   (proof_cat * int) proof_diff ->
   candidates
 
+(* --- Top-level differencer --- *)
+
+(*
+ * Given a configuration, return the appropriate top-level differencer
+ *)
+val get_differencer : options -> proof_differencer
