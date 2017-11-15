@@ -81,6 +81,8 @@ src/core/components/factoring/factoring.ml
 src/core/components/inversion/inverting.mli
 src/core/components/inversion/inverting.ml
 
+src/core/components/differencing/differencers.mli
+src/core/components/differencing/differencers.ml
 src/core/components/differencing/differencing.mli
 src/core/components/differencing/differencing.ml
 
