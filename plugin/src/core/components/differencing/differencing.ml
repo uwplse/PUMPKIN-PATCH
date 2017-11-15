@@ -285,6 +285,20 @@ let rec try_chain_diffs diffs d =
      give_up
 
 (*
+ * Try to reduce and then diff
+ * If reducing does not change the term, then give_up to prevent
+ * inifinite recursion
+ *)
+let diff_reduced diff d =
+  let (o, n) = proof_terms d in
+  let d_red = reduce_diff reduce_term d in
+  let (o_red, n_red) = proof_terms d_red in
+  if not ((eq_constr o o_red) && (eq_constr n n_red)) then
+    diff d_red
+  else
+    give_up
+
+(*
  * Convert a differencing function that takes a diff into one between two terms
  *
  * In other words, take an old diff d with assumptions that still hold, and:

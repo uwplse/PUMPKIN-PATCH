@@ -74,6 +74,12 @@ val try_chain_diffs :
   ('a candidate_differencer) list -> 'a proof_diff -> candidates
 
 (*
+ * Reduce and then diff
+ * If reducing has no effect, then give up to prevent inifinite recursion
+ *)
+val diff_reduced : proof_differencer -> proof_differencer
+
+(*
  * Convert a proof differencer to a term differencer
  *
  * In other words, update the goals and terms of the current diff using

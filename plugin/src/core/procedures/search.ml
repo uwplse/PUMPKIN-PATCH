@@ -47,18 +47,6 @@ let debug_search (d : goal_proof_diff) : unit =
 (* --- General proof terms --- *)
 
 (*
- * TODO explain, move
- *)
-let diff_reduced opts diff d =
-  let (o, n) = proof_terms d in
-  let d_red = reduce_diff reduce_term d in
-  let (o_red, n_red) = proof_terms d_red in
-  if not ((eq_constr o o_red) && (eq_constr n n_red)) then
-    diff opts d_red
-  else
-    give_up
-
-(*
  * Search for a direct patch given a difference in proof_cats within.
  * This is a collection of heuristics, which
  * we have numbered for clarity, and which we explain at the bottom
@@ -134,7 +122,7 @@ let rec diff (opts : options) (d : goal_proof_diff) : candidates =
          try_chain_diffs
            [(find_difference opts);    (* 6a *)
             (diff_app opts diff diff); (* 6b *)
-            (diff_reduced opts diff)]  (* 6c *)
+            (diff_reduced (diff opts))]  (* 6c *)
            d
        else
          give_up
