@@ -84,7 +84,7 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
      List.hd patches
 
 (*
- * The top-level search function!
+ * The top-level search procedure!
  *
  * Search in one direction, and if we fail try the other direction.
  * If we find patches, return the head for now, since any patch will do.
