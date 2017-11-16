@@ -216,7 +216,7 @@ The core of PUMPKIN is a set of five core components. We expose four of those co
 1. `Invert trm as id`: given `trm : ... -> T1 -> T2`, search for an inverse term `id : ... -> T2 -> T1`
 2. `Specialize (fun args => f args) as id)`: apply `f` to `args`, reduce the result, and define this as `id`
 3. `Abstract trm to typ as id`: abstract `trm` to a term `id : typ`
-4. `Factor trm using prefix id`: given `trm : T1 -> T2 -> ... -> Tn`, search for factors `id_1: T1 -> T2`, ... , `id_n-1: Tn-1 -> Tn`
+4. `Factor trm using prefix id`: given `trm : T1 -> Tn`, search for factors `id_1: T1 -> T2`, ... , `id_n-1: Tn-1 -> Tn`
 
 There is also an experimental theorem patching command:
 
