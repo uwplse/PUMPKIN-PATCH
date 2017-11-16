@@ -1,4 +1,4 @@
-**PUMPKIN PATCH User Guide**
+# PUMPKIN PATCH User Guide
 
 This is a prototype plugin for finding patches for broken Coq proofs.
 To use PUMPKIN, the programmer modifies a single proof script to provide 
@@ -12,7 +12,7 @@ you can extend it if you are interested. Don't hesitate to reach out
 if you have any questions. Similarly, please let me know if anything I have mentioned
 in this user guide does not work or is unclear.
 
-# Building PUMPKIN
+## Building PUMPKIN
 
 The plugin works for Coq 8.5pl3. If you would like to extend it to handle
 Coq 8.6 or 8.7, please create a branch. I plan to support 8.7 in the future,
@@ -23,7 +23,7 @@ cd plugin
 make
 ```
 
-# Using PUMPKIN
+## Using PUMPKIN
 
 We will walk through a simple example. You can follow along this example
 by looking at the code in [Example.v](/plugin/coq/Example.v).
@@ -110,7 +110,7 @@ We can use `patch` to port this proof to use `new1` instead:
 apply patch. apply new1.
 ```
 
-## Applying Patches
+### Applying Patches
 
 One thing that you'll notice is that in the example above, we applied this patch by hand.
 For now, PUMPKIN does not automatically apply patches that it finds. We are working on a better user experience.
@@ -133,7 +133,7 @@ You can then port your proof to use ```new1``` with no additional changes:
 apply new1.
 ```
 
-## Removing References to Definitions
+### Removing References to Definitions
 
 Sometimes, it is ideal to remove the definition ```old1``` entirely, since ```new1``` is strictly stronger.
 We are in the process of working on an interface that does this automatically.
@@ -155,7 +155,7 @@ Definition patch :=
 You may then remove `old1` from your file.
 You can still apply `patch` or add it to a hint database, since it does not refer to `old1`.
 
-## Cutting Lemmas
+### Cutting Lemmas
 
 For some kinds of proofs, PUMPKIN needs extra guidance to search for a patch.
 The hope is that this will eventually be unecessary, but for now, it is a way to work around
@@ -188,7 +188,7 @@ Patch Proof blindfs_induction.bin_to_nat_pres_incr bin_to_nat_pres_incr cut by (
 The interface for this is a little tricky; we plan to improve this significantly, since it is a useful way to work
 around limitations.
 
-## Support & Limitations
+### Support & Limitations
 
 Speaking of limitations: PUMPKIN is a research prototype, and so it is currently limited in the 
 kinds of proofs and changes it supports. PUMPKIN is best equipped to handle changes in conclusions of inductive proofs.
@@ -209,7 +209,7 @@ determine whether the error is a bug or an unimplemented feature, and use it as 
 With that in mind, we are a small research team, so it may take time to implement all of these features.
 If you would like to contribute directly to the plugin, feel free to cut a pull request.
 
-# Bonus Functionality
+## Bonus Functionality
 
 The core of PUMPKIN is a set of five core components. We expose four of those components as commands:
 
@@ -227,7 +227,7 @@ Patch Theorem oldT1 newT1 oldT2 as newT2.
 This essentially does dependent substitution of `oldT1` with `newT1` inside of `oldT2`, then defines the result as `newT2`.
 Support for this is very preliminary. You can find some examples [here](/plugin/coq/Theorem.v).
 
-# Examples
+## Examples
 
 There are some example proofs to help you get started using PUMPKIN.
 You can find these in the [coq](/plugin/coq) directory.
@@ -244,7 +244,7 @@ The relevant examples are as follows:
 8. [Abstract.v](/plugin/coq/Abstract.v): Example of using the abstraction command
 9. [Theorem.v](/plugin/coq/Theorem.v): Example fo the experimental theorem patching command
 
-# Extending PUMPKIN
+## Extending PUMPKIN
 
 If you've never written a Coq plugin before, you might want to check out
 and toy with my [starter plugin](http://github.com/uwplse/CoqAST/) first. 
@@ -258,7 +258,7 @@ if you are modifying the tool, you may want to use it.
 Minor note: .ml4 files don't appear to work with a lot of emacs OCaml plugins.
 You can run tuareg-mode manually on .ml4 files.
 
-# Contributors
+## Contributors
 
 This plugin is maintained by Talia Ringer with help from Nate Yazdani.
 John Leo and Dan Grossman have made conceptual contributions.
