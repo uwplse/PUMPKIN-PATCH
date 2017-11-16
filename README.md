@@ -216,6 +216,15 @@ The core of PUMPKIN is a set of five core components. We expose four of those co
 3. `Abstract trm to typ as id`: abstract `trm` to a term `id : typ`
 4. `Factor trm using prefix id`: given `trm : T1 -> T2 -> ... -> Tn`, search for factors `id_1: T1 -> T2`, ... , `id_n-1: Tn-1 -> Tn`
 
+There is also an experimental theorem patching command:
+
+```
+Patch Theorem oldT1 newT1 oldT2 as newT2.
+```
+
+This essentially does dependent substitution of `oldT1` with `newT1` inside of `oldT2`, then defines the result as `newT2`.
+Support for this is very preliminary. You can find some examples [here](/plugin/coq/Theorem.v).
+
 # Examples
 
 There are some example proofs to help you get started using PUMPKIN.
