@@ -128,7 +128,7 @@ Hint Resolve patch.
 You can then port your proof to use ```new1``` with no additional changes:
 
 ```
-apply patch. apply new1.
+apply new1.
 ```
 
 ## Removing References to Definitions
