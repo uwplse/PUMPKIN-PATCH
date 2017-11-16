@@ -1,3 +1,5 @@
+**PUMPKIN PATCH User Guide**
+
 This is a prototype plugin for finding patches for broken Coq proofs.
 To use PUMPKIN, the programmer modifies a single proof script to provide 
 an _example_ adaptation of a proof to a change. PUMPKIN generalizes this example 
