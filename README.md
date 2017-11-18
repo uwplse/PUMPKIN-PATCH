@@ -12,6 +12,10 @@ you can extend it if you are interested. Don't hesitate to reach out
 if you have any questions. Similarly, please let me know if anything I have mentioned
 in this user guide does not work or is unclear.
 
+Reading the [paper](http://tlringer.github.io/pdf/pumpkinpaper.pdf) may help if you are interested
+in understanding the internals of the tool. The paper links to a release that captures
+the code as it was when we wrote the paper.
+
 ## Building PUMPKIN
 
 The plugin works for Coq 8.5pl3. If you would like to extend it to handle
