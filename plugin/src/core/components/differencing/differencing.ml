@@ -1,29 +1,17 @@
 (* --- Differencing Component --- *)
 
-open Proofcat
-open Proofcatterms
 open Searchopts
 open Proofdiff
-open Assumptions
-open Term
-open Environ
 open Coqterms
-open Debruijn
 open Reducers
 open Candidates
-open Collections
-open Coqenvs
 open Kindofchange
 open Printing
 open Zooming
-open Utilities
-open Differencers
 open Proofdifferencers
 open Higherdifferencers
 open Appdifferencers
 open Inddifferencers
-
-(* TODO clean above when done refactoring *)
 
 (*
  * Search for a direct patch given a difference in proof_cats within.
@@ -81,7 +69,7 @@ let rec diff (opts : options) (d : goal_proof_diff) : candidates =
   else if induct_over_same_h (same_h opts) d then
     try_chain_diffs
       [(diff_app_ind (diff_inductive diff) diff opts); (* 2a *)
-       (find_difference opts)]            (* 2b *)
+       (find_difference opts)]                         (* 2b *)
       d
   else if applies_ih opts d then
     (*3*) diff_app diff diff opts (reduce_trim_ihs d)
