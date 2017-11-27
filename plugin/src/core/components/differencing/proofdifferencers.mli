@@ -6,12 +6,12 @@ open Differencers
 (*
  * Primitive differencing function
  *)
-val find_difference : options -> proof_differencer
+val find_difference : proof_differencer configurable
 
 (*
  * Determine if two proof diffs are identical
  *)
-val no_diff : options -> proof_diff_predicate
+val no_diff : proof_diff_predicate configurable
 
 (*
  * Return the identity candidates applied to the type

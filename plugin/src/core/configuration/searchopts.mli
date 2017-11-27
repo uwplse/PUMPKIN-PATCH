@@ -31,16 +31,16 @@ val set_change : options -> kind_of_change -> options
 
 (* Update the goals of search *)
 val update_search_goals :
-  options -> goal_proof_diff -> proof_cat_diff -> goal_proof_diff
+  (goal_proof_diff -> proof_cat_diff -> goal_proof_diff) configurable
 
 (* Swap the goals of search *)
-val swap_search_goals : options -> goal_term_diff -> goal_term_diff
+val swap_search_goals : (goal_term_diff -> goal_term_diff) configurable
 
 (* Reset the goals of search for an inductive case *)
-val reset_case_goals : options -> goal_case_diff -> goal_case_diff
+val reset_case_goals : (goal_case_diff -> goal_case_diff) configurable
 
 (* Determine whether two terms induct over the same hypothesis *)
-val same_h : options -> types -> types -> bool
+val same_h : (types -> types -> bool) configurable
 
 (*
  * Determine whether one term applies the other
@@ -48,13 +48,13 @@ val same_h : options -> types -> types -> bool
  * This function has a sense of direction, and the direction is determined
  * by the kind of change
  *)
-val is_app : options -> goal_proof_diff -> bool
+val is_app : (goal_proof_diff -> bool) configurable
 
 (* Get the kind of change *)
-val get_change : options -> kind_of_change
+val get_change : kind_of_change configurable
 
 (* Determine whether we are in the inductive case of search *)
-val is_ind : options -> bool
+val is_ind : bool configurable
 
 (*
  * Udate the goals and terms for a diff.
@@ -62,7 +62,7 @@ val is_ind : options -> bool
  * and replace the terms with the supplied old and new types.
  *)
 val update_terms_goals :
-  options -> types -> types -> goal_proof_diff -> goal_proof_diff
+  (types -> types -> goal_proof_diff -> goal_proof_diff) configurable
 
 (*
  * Convert a search function that takes a set of options to a
@@ -70,11 +70,11 @@ val update_terms_goals :
  * can be used by zooming.
  *)
 val to_search_function :
-  (options -> goal_proof_diff -> candidates) -> options -> goal_proof_diff ->
-  search_function
+  ((goal_proof_diff -> candidates) configurable) ->
+  (goal_proof_diff -> search_function) configurable
 
 (*
  * Check if the proofs apply the inductive hypothesis
  *)
 val applies_ih :
-  options -> goal_proof_diff -> bool
+  (goal_proof_diff -> bool) configurable

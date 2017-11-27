@@ -26,7 +26,7 @@ val diff_reduced : proof_differencer -> proof_differencer
  * to the difference in terms.
  *)
 val diff_terms :
-  proof_differencer -> goal_proof_diff -> options -> term_differencer
+  proof_differencer -> goal_proof_diff -> term_differencer configurable
 
 (*
  * Using some term differencer, recursively difference an array

@@ -25,4 +25,4 @@ val abstract_with_strategies : abstraction_config -> types list
  * If there is nothing to abstract or if we cannot determine what to
  * abstract, then return the original list.
  *)
-val abstract_case : options -> goal_case_diff -> candidates -> candidates
+val abstract_case : (goal_case_diff -> candidates -> candidates) configurable
