@@ -54,6 +54,8 @@ type options =
     is_app : goal_proof_diff -> bool;
   }
 
+type 'a configurable = options -> 'a
+
 (* --- Configuring options --- *)
 
 (*

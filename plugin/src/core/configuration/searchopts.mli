@@ -11,6 +11,7 @@ open Zooming
 (* --- Options for search --- *)
 
 type options
+type 'a configurable = options -> 'a
 
 (* --- Configuring options --- *)
 

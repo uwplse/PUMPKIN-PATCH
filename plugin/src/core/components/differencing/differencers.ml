@@ -22,3 +22,4 @@ type proof_change_detector = (context_object * proof_cat) change_detector
 
 type 'a predicate_differencer = ('a, bool) differencer
 type proof_diff_predicate = (context_object * proof_cat) predicate_differencer
+

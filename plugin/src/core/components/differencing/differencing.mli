@@ -23,31 +23,6 @@ open Differencers
 val diff_fix_cases : env -> term_differencer
 
 (*
- * If the proofs are applications (f args) and (f' args'),
- * then recursively diff the functions and/or arguments.
- *
- * Use the options to determine how to combine the results.
- *)
-val diff_app :
-  options ->
-  (options -> proof_differencer) -> (* diff f *)
-  (options -> proof_differencer) -> (* diff each arg *)
-  proof_differencer
-
-(*
- * If the proofs are applications (f args) and (f' args'),
- * where f is an induction principle,
- * then recursively diff the functions and/or arguments.
- *
- * Use the options to determine how to combine the results.
- *)
-val diff_app_ind :
-  options ->
-  (options -> ind_proof_differencer) -> (* diff f *)
-  (options -> proof_differencer) -> (* diff each arg *)
-  proof_differencer
-
-(*
  * Difference an inductive proof.
  *
  * That is, break the proof into cases and difference each case separately.
@@ -59,8 +34,7 @@ val diff_app_ind :
 val diff_inductive :
   options ->
   (options -> proof_differencer) ->
-  (proof_cat * int) proof_diff ->
-  candidates
+  ind_proof_differencer
 
 (* --- Top-level differencer --- *)
 
