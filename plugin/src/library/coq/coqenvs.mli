@@ -4,6 +4,8 @@ open Declarations
 open Term
 open Names
 
+type 'a contextual = env -> 'a
+
 (* --- General environment management auxiliary functions --- *)
 
 (* Look up all indexes from a list in an environment *)

@@ -13,6 +13,7 @@ open Collections
 open Inverting
 open Searchopts
 open Factoring
+open Fixdifferencers
 open Differencing
 open Cutlemma
 open Kindofchange

@@ -5,6 +5,8 @@ open Term
 open Coqterms
 open Names
 
+type 'a contextual = env -> 'a
+
 (* --- General environment management auxiliary functions --- *)
 
 (* Look up all indexes from is in env *)
@@ -21,7 +23,7 @@ let lookup_all_rels (env : env) : Context.rel_declaration list =
 
 (*
  * Push something to the highest position in an environment.
- * 
+ *
  * Note: We need pop_rel_conext (nb_rel env) env rather than empty_env
  * because empty_env does not contain global definitions like nat.
  *)
