@@ -91,6 +91,8 @@ src/core/components/differencing/higherdifferencers.mli
 src/core/components/differencing/higherdifferencers.ml
 src/core/components/differencing/appdifferencers.mli
 src/core/components/differencing/appdifferencers.ml
+src/core/components/differencing/inddifferencers.mli
+src/core/components/differencing/inddifferencers.ml
 src/core/components/differencing/differencing.mli
 src/core/components/differencing/differencing.ml
 
