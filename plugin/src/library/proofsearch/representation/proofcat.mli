@@ -147,7 +147,7 @@ val maps_to : context_object -> arrow -> bool
 (*
  * Return all objects from which an arrow flows
  *)
-val assumptions : arrow list -> context_object list
+val hypotheses : arrow list -> context_object list
 
 (*
  * Return all objects to which an arrow flows
@@ -296,11 +296,11 @@ val category_contains_arrow : arrow -> proof_cat -> bool
  *)
 val only_arrow : proof_cat -> arrow
 
-(* Determine if an object is an assumption in a proof category *)
-val is_assumption : proof_cat -> context_object -> bool
+(* Determine if an object is a hypothesis in a proof category *)
+val is_hypothesis : proof_cat -> context_object -> bool
 
-(* Determine if an object is not an assumption in a proof category *)
-val is_not_assumption : proof_cat -> context_object -> bool
+(* Determine if an object is not a hypothesis in a proof category *)
+val is_not_hypothesis : proof_cat -> context_object -> bool
 
 (* Apply a function to the list of objects of c *)
 val map_objects : (context_object list -> 'a) -> proof_cat -> 'a

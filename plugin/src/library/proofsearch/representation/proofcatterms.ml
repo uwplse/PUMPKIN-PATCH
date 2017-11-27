@@ -447,7 +447,7 @@ let merge_up_to_index (n : int) (c : proof_cat) : proof_cat =
  * So revisit this later. So far we haven't needed it.
  *)
 let merge_conclusions_nonrec (c : proof_cat) : proof_cat =
-  let non_assums = List.filter (map_dest (is_not_assumption c)) (morphisms c) in
+  let non_assums = List.filter (map_dest (is_not_hypothesis c)) (morphisms c) in
   match conclusions non_assums with
   | h :: t ->
      let os = all_objects_except_those_in t (objects c) in

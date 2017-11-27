@@ -236,7 +236,7 @@ let maps_to (o : context_object) (m : arrow) : bool =
 (*
  * Return all objects from which an arrow in ms flows
  *)
-let assumptions (ms : arrow list) : context_object list =
+let hypotheses (ms : arrow list) : context_object list =
   List.map (fun (src, _, _) -> src) ms
 
 (*
@@ -297,7 +297,7 @@ let combine_arrows (ms1 : arrow list) (ms2 : arrow list) : arrow list =
  * Get all of the objects found in ms
  *)
 let objects_of_arrows (ms : arrow list) : context_object list =
-  combine_objects (assumptions ms) (conclusions ms)
+  combine_objects (hypotheses ms) (conclusions ms)
 
 (* --- Categories --- *)
 
@@ -428,13 +428,13 @@ let only_arrow (c : proof_cat) : arrow =
   assert ((List.length ms) = 1);
   List.hd ms
 
-(* Determine if o is an assumption in c *)
-let is_assumption (c : proof_cat) (o : context_object) : bool =
-  contains_object o (map_arrows assumptions c)
+(* Determine if o is a hypothesis in c *)
+let is_hypothesis (c : proof_cat) (o : context_object) : bool =
+  contains_object o (map_arrows hypotheses c)
 
-(* Determine if o is not an assumption in c *)
-let is_not_assumption (c : proof_cat) (o : context_object) : bool =
-  not (is_assumption c o)
+(* Determine if o is not a hypothesis in c *)
+let is_not_hypothesis (c : proof_cat) (o : context_object) : bool =
+  not (is_hypothesis c o)
 
 (* --- Paths of explicit (not transitive or identity) arrows --- *)
 

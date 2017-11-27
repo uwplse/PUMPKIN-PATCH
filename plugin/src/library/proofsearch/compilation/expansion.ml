@@ -136,12 +136,12 @@ let expand_terminal (c : proof_cat) : proof_cat =
 (*
  * Utility function for expanding inductive proofs
  * Partition the morphisms of a category into two parts:
- * 1. Morphisms that end in a product type that is not an assumption
+ * 1. Morphisms that end in a product type that is not a hypothesis
  * 2. Morphisms that do not
  *)
 let partition_expandable (c : proof_cat) : (arrow list * arrow list) =
   List.partition
-    (map_dest (and_p context_is_product (is_not_assumption c)))
+    (map_dest (and_p context_is_product (is_not_hypothesis c)))
     (morphisms c)
 
 (*
@@ -193,7 +193,7 @@ let expand_inductive_params (n : int) (c : proof_cat) : proof_cat =
 (* Check if an o is the type of an applied inductive hypothesis in c *)
 let applies_ih (en : env) (p : types) (c : proof_cat) : context_object -> bool =
   and_p
-    (and_p context_is_app (is_assumption c))
+    (and_p context_is_app (is_hypothesis c))
     (fun o ->
       let (f, _) = context_as_app o in
       let offset = shortest_path_length c o in
@@ -226,7 +226,7 @@ let bind_ihs (c : proof_cat) : proof_cat =
 let expand_constr (c : proof_cat) : proof_cat =
   let c_exp = bind_ihs (expand_inductive_conclusions_fully c) in
   let ms = morphisms c_exp in
-  let assums = assumptions ms in
+  let assums = hypotheses ms in
   let concls = conclusions ms in
   let tr = List.hd (all_objects_except_those_in assums concls) in (*arbitrary*)
   make_category (objects c_exp) ms (initial_opt c_exp) (Some tr)
