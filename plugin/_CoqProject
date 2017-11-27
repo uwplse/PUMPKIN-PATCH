@@ -87,6 +87,8 @@ src/core/components/differencing/changedetectors.mli
 src/core/components/differencing/changedetectors.ml
 src/core/components/differencing/proofdifferencers.mli
 src/core/components/differencing/proofdifferencers.ml
+src/core/components/differencing/higherdifferencers.mli
+src/core/components/differencing/higherdifferencers.ml
 src/core/components/differencing/differencing.mli
 src/core/components/differencing/differencing.ml
 

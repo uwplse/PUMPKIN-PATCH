@@ -23,72 +23,7 @@ open Abstraction
 open Utilities
 open Differencers
 open Proofdifferencers
-
-(* --- Recursive differencing --- *)
-
-(*
- * Try to difference with one differencer
- * If that fails, then try the next one
- *)
-let rec try_chain_diffs diffs d =
-  match diffs with
-  | diff_h :: diff_t ->
-     let cs = diff_h d in
-     if non_empty cs then
-       cs
-     else
-       try_chain_diffs diff_t d
-  | _ ->
-     give_up
-
-(*
- * Try to reduce and then diff
- * If reducing does not change the term, then give_up to prevent
- * inifinite recursion
- *)
-let diff_reduced diff d =
-  let (o, n) = proof_terms d in
-  let d_red = reduce_diff reduce_term d in
-  let (o_red, n_red) = proof_terms d_red in
-  if not ((eq_constr o o_red) && (eq_constr n n_red)) then
-    diff d_red
-  else
-    give_up
-
-(*
- * Convert a differencing function that takes a diff into one between two terms
- *
- * In other words, take an old diff d with assumptions that still hold, and:
- * 1. Update the terms and goals of the diff d to use those terms
- * 2. Apply the differencing function to the new diff
- *)
-let diff_terms (diff : proof_differencer) d opts d_t : candidates =
-  diff (update_terms_goals opts (old_proof d_t) (new_proof d_t) d)
-
-(*
- * Using some term differencer, recursively difference the arguments
- * Return a single list of all of the differences flattened, which
- * does not correspond to each argument
- *)
-let diff_args_flat (diff : term_differencer) d_args =
-  let assums = assumptions d_args in
-  let diff_arg a_o a_n = diff (difference a_o a_n assums) in
-  apply_to_arrays (flat_map2 diff_arg) (old_proof d_args) (new_proof d_args)
-
-(*
- * Same, but don't flatten
- *)
-let diff_args (diff : term_differencer) d_args =
-  let assums = assumptions d_args in
-  let diff_arg a_o a_n = diff (difference a_o a_n assums) in
-  apply_to_arrays (List.map2 diff_arg) (old_proof d_args) (new_proof d_args)
-
-(*
- * Apply some differencing function
- * Filter the result using the supplied modifier
- *)
-let filter_diff filter (diff : ('a, 'b) differencer) d : 'b =
-  filter (diff d)
+open Higherdifferencers
 
 (*
  * Given a search function and a difference between terms,
@@ -146,7 +81,7 @@ let diff_app opts diff_f diff_arg (d : goal_proof_diff) : candidates =
            fs
          else
            let d_args_rev = reverse d_args in
-           filter_diff_cut (diff_args_flat (diff_rec diff_arg opts)) d_args_rev
+           filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          let diff_arg o d = if no_diff o d then give_up else diff_arg o d in
          filter_diff
@@ -156,7 +91,7 @@ let diff_app opts diff_f diff_arg (d : goal_proof_diff) : candidates =
                filter_applies_cut env (Option.get cut) args_lambdas
              else
                args)
-           (diff_args_flat (diff_rec diff_arg (set_change opts Conclusion)))
+           (diff_map_flat (diff_rec diff_arg (set_change opts Conclusion)))
 	   d_args
       | Conclusion ->
          if args_convertible env args_o args_n then
@@ -218,7 +153,7 @@ let diff_app_ind opts diff_ind diff_arg (d : goal_proof_diff) : candidates =
            f
            (combine_cartesian_append
              (Array.of_list
-                (diff_args
+                (diff_map
                    (fun d_a ->
                      let arg_n = new_proof d_a in
                      let apply p = specialize p (singleton_array arg_n) in
@@ -507,7 +442,7 @@ let rec get_goal_fix env (d : types proof_diff) : candidates =
          match kinds_of_terms (red_old, red_new) with
          | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
             let d_args = difference args1 args2 no_assumptions in
-            diff_args_flat get_goal_reduced d_args
+            diff_map_flat get_goal_reduced d_args
          | _ when not (eq_constr red_old red_new) ->
             [reduce_unfold env (mkProd (Anonymous, red_old, shift red_new))]
          | _ ->
@@ -526,7 +461,7 @@ let rec diff_fix_case env (d : types proof_diff) : candidates =
   | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
      if same_length bs1 bs2 then
        let env_m = push_rel (Anonymous, None, m1) env in
-       let diff_bs = diff_args_flat (get_goal_fix env_m) in
+       let diff_bs = diff_map_flat (get_goal_fix env_m) in
        List.map
          unshift
          (List.append
@@ -547,7 +482,7 @@ let diff_fix_cases env (d : types proof_diff) : candidates =
     if args_convertible env tso tsn then
       let env_fix = push_rel_context (bindings_for_fix nso tso) env in
       let d_ds = difference dso dsn assums in
-      let ds = diff_args_flat (diff_fix_case env_fix) d_ds in
+      let ds = diff_map_flat (diff_fix_case env_fix) d_ds in
       let lambdas = List.map (reconstruct_lambda env_fix) ds in
       let apps =
         List.map

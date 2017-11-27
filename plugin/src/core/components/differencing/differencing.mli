@@ -22,49 +22,6 @@ open Differencers
  *)
 val diff_fix_cases : env -> term_differencer
 
-(* --- Recursive differencing --- *)
-
-(*
- * Try to difference with one differencer
- * If that fails, then try the next one, and so on
- *)
-val try_chain_diffs :
-  ('a candidate_differencer) list -> 'a proof_diff -> candidates
-
-(*
- * Reduce and then diff
- * If reducing has no effect, then give up to prevent inifinite recursion
- *)
-val diff_reduced : proof_differencer -> proof_differencer
-
-(*
- * Convert a proof differencer to a term differencer
- *
- * In other words, update the goals and terms of the current diff using
- * the supplied options, then apply the supplied differencing function
- * to the difference in terms.
- *)
-val diff_terms :
-  proof_differencer -> goal_proof_diff -> options -> term_differencer
-
-(*
- * Using some term differencer, recursively difference the arguments
- * Return a flattened list of all differences
- *)
-val diff_args_flat : term_differencer -> flat_args_differencer
-
-(*
- * Using some term differencer, recursively difference the arguments
- * Don't flatten the resulting list
- *)
-val diff_args : term_differencer -> args_differencer
-
-(*
- * Apply some differencing function
- * Filter the result using the supplied modifier
- *)
-val filter_diff : ('b -> 'b) -> ('a, 'b) differencer -> ('a, 'b) differencer
-
 (*
  * If the proofs are applications (f args) and (f' args'),
  * then recursively diff the functions and/or arguments.

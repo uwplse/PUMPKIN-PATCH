@@ -11,11 +11,11 @@ type ('a, 'b) differencer = 'a proof_diff -> 'b
 type 'a candidate_differencer = ('a, candidates) differencer
 type proof_differencer = (context_object * proof_cat) candidate_differencer
 type term_differencer = types candidate_differencer
-type flat_args_differencer = (types array) candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
 
+type arr_differencer = (types array) candidate_differencer
 type 'a candidate_list_differencer = ('a, candidates list) differencer
-type args_differencer = (types array) candidate_list_differencer
+type arr_list_differencer = (types array) candidate_list_differencer
 
 type 'a change_detector = ('a, kind_of_change) differencer
 type proof_change_detector = (context_object * proof_cat) change_detector
