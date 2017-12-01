@@ -82,10 +82,10 @@ let invert_patch n env evm patch =
     let _ = infer_type env patch_inv in
     define_term n env evm patch_inv;
     let n_string = Id.to_string n in
-    Printf.printf "Defined %s\n" (Id.to_string n);
     if !opt_printpatches then
-      print_patch env evm n_string patch_inv;
-    ()
+      print_patch env evm n_string patch_inv
+    else
+      Printf.printf "Defined %s\n" (Id.to_string n)
   with _ ->
     failwith "Could not find a well-typed inverted term"
 
@@ -96,9 +96,10 @@ let patch n old_term new_term try_invert a search =
   let patch = reduce env (search env evm a) in
   let prefix = Id.to_string n in
   define_term n env evm patch;
-  Printf.printf "Defined %s\n" prefix;
-  if !opt_printpatches then
-    print_patch env evm prefix patch;
+  (if !opt_printpatches then
+    print_patch env evm prefix patch
+  else
+    Printf.printf "Defined %s\n" prefix);
   if try_invert then
     try
       let inv_n_string = String.concat "_" [prefix; "inv"] in
