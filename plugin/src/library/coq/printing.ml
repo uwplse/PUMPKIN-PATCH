@@ -12,6 +12,9 @@ open Univ
 open Term
 open Environ
 open Coqenvs
+open Printer
+open Utilities
+open Goptions
 
 (* --- Strings --- *)
 
@@ -129,3 +132,18 @@ let debug_terms (env : env) (trms : types list) (descriptor : string) : unit =
 (* Debug an environment *)
 let debug_env (env : env) (descriptor : string) : unit =
   Printf.printf "%s: %s\n\n" descriptor (env_as_string env)
+
+(* Print a patch to stdout in the standard Coq format *)
+let print_patch env evm patch_id patch : unit =
+  let _ = set_bool_option_value ["Printing";"All"] true in
+  Pp.pp_with
+    Format.std_formatter
+    (Pp.pr_sequence
+       id
+       [(Pp.str "\nBEGIN PATCH");
+        (Pp.str patch_id);
+        (Pp.str "\nDefinition");
+        (Pp.str patch_id);
+        (Pp.str ":=");
+        (pr_lconstr_env env evm patch);
+        (Pp.str ".\nEND PATCH\n")])

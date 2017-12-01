@@ -4,6 +4,7 @@ open Format
 open Names
 open Term
 open Environ
+open Evd
 
 (* --- Strings --- *)
 
@@ -36,3 +37,7 @@ val debug_terms : env -> types list -> string -> unit
 
 (* Debug an environment with a descriptor string *)
 val debug_env : env -> string -> unit
+
+(* Print a patch to stdout in the standard Coq format *)
+val print_patch : env -> evar_map -> string -> types -> unit
+

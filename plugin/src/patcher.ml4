@@ -39,6 +39,21 @@ open Changedetectors
  * commands themselves.
  *)
 
+(* --- Options --- *)
+
+(*
+ * Print the definitions of patches PUMPKIN finds
+ *)
+let opt_printpatches = ref (false)
+let _ = Goptions.declare_bool_option {
+  Goptions.optsync = true;
+  Goptions.optdepr = false;
+  Goptions.optname = "Print patches PUMPKIN finds";
+  Goptions.optkey = ["PUMPKIN"; "Printing"];
+  Goptions.optread = (fun () -> !opt_printpatches);
+  Goptions.optwrite = (fun b -> opt_printpatches := b);
+}
+
 (* --- Auxiliary functionality for top-level functions --- *)
 
 (* Intern terms corresponding to two definitions *)
@@ -66,7 +81,11 @@ let invert_patch n env evm patch =
     let patch_inv = List.hd inverted in
     let _ = infer_type env patch_inv in
     define_term n env evm patch_inv;
-    Printf.printf "Defined %s\n" (Id.to_string n)
+    let n_string = Id.to_string n in
+    Printf.printf "Defined %s\n" (Id.to_string n);
+    if !opt_printpatches then
+      print_patch env evm n_string patch_inv;
+    ()
   with _ ->
     failwith "Could not find a well-typed inverted term"
 
@@ -78,6 +97,8 @@ let patch n old_term new_term try_invert a search =
   let prefix = Id.to_string n in
   define_term n env evm patch;
   Printf.printf "Defined %s\n" prefix;
+  if !opt_printpatches then
+    print_patch env evm prefix patch;
   if try_invert then
     try
       let inv_n_string = String.concat "_" [prefix; "inv"] in
@@ -132,7 +153,7 @@ let specialize n trm : unit =
   let reducer = specialize_body specialize_term in
   let specialized = reducer env (intern env evm trm) in
   define_term n env evm specialized
-  
+
 (* Abstract a term by a function or arguments *)
 let abstract n trm goal : unit =
   let (evm, env) = Lemmas.get_current_context() in
