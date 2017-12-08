@@ -137,27 +137,11 @@ You can then port your proof to use ```new1``` with no additional changes:
 apply new1.
 ```
 
-### Removing References to Definitions
+### Git Integration
 
-Sometimes, it is ideal to remove the definition ```old1``` entirely, since ```new1``` is strictly stronger.
-We are in the process of working on an interface that does this automatically.
-
-For now, you can do this manually. Once you have produced a patch term, print the term:
-
-```
-Print patch.
-```
-
-Then, remove the `Patch Proof` command from your file, and copy and paste the output into a definition:
-
-```
-Definition patch := 
-  fun (n m p : nat) (_ : n <= m) (_ : m <= p) (H1 : n <= p) =>
-    le_plus_trans n p 1 H1.
-```
-
-You may then remove `old1` from your file.
-You can still apply `patch` or add it to a hint database, since it does not refer to `old1`.
+The [PUMPKIN-git](http://github.com/uwplse/PUMPKIN-git) interface searches for patches across
+Git revisions. It also automatically removes the reference to the old definition.
+Please see the repository for more details.
 
 ### Cutting Lemmas
 
