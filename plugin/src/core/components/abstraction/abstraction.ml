@@ -19,6 +19,8 @@ open Proofdiff
 open Searchopts
 open Cutlemma
 
+module CRD = Context.Rel.Declaration
+
 (* Internal options for abstraction *)
 type abstraction_options =
   {
@@ -108,7 +110,7 @@ let get_abstraction_args config : closure =
     else
       match kind_of_term g with
       | Lambda (n, t, b) ->
-	 let en' = push_rel (n, None, t) en in
+	 let en' = push_rel CRD.(LocalAssum(n, t)) en in
 	 let (en'', b') = infer_args (i - 1) en' b in
 	 (en'', (mkRel i) :: b')
       | _ ->

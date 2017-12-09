@@ -13,6 +13,8 @@ open Filters
 open Candidates
 open Reducers
 
+module CRD = Context.Rel.Declaration
+
 (* --- Utilities --- *)
 
 (*
@@ -74,7 +76,7 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
 let build_app_candidates (env : env) (old_term : types) (new_term : types) =
   try
     let new_type = infer_type env new_term in
-    let env_shift = push_rel (Anonymous, None, new_type) env in
+    let env_shift = push_rel CRD.(LocalAssum(Anonymous, new_type)) env in
     let old_term_shift = shift old_term in
     let new_term_shift = shift new_term in
     let sub = all_conv_substs_combs env_shift (new_term_shift, (mkRel 1)) in

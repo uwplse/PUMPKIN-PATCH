@@ -14,6 +14,8 @@ open Hofs
 open Filters
 open Factoring
 
+module CRD = Context.Rel.Declaration
+
 type inverter = (env * types) -> (env * types) option
 
 (* --- Inverting type paths --- *)
@@ -32,7 +34,7 @@ let invert_factors (invert : inverter) (fs : factors) : factors =
   match inverted with (* swap final hypothesis *)
   | (env_inv, trm_inv) :: t when List.length t > 0 ->
      let (n, h_inv, _) = destLambda (snd (last t)) in
-     let env_inv = push_rel (n, None, h_inv) (pop_rel_context 1 env_inv) in
+     let env_inv = push_rel CRD.(LocalAssum(n, h_inv)) (pop_rel_context 1 env_inv) in
      (env_inv, trm_inv) :: t
   | _ ->
      inverted
@@ -135,7 +137,7 @@ let invert_factor (env, rp) : (env * types) option =
   let rp = reduce_term env rp in
   match kind_of_term rp with
   | Lambda (n, old_goal_type, body) ->
-     let env_body = push_rel (n, None, old_goal_type) env in
+     let env_body = push_rel CRD.(LocalAssum(n, old_goal_type)) env in
      let new_goal_type = unshift (reduce_term env_body (infer_type env_body body)) in
      let rp_goal = all_conv_substs env (old_goal_type, new_goal_type) rp in
      let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in

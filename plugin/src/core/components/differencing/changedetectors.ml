@@ -12,6 +12,8 @@ open Reducers
 open Assumptions
 open Collections
 
+module CRD = Context.Rel.Declaration
+
 (*
  * If the kind of change is a change in conclusion, then
  * determine whether the first different term is a constructor or
@@ -65,7 +67,7 @@ let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
          else
            Conclusion
        else
-         diff (push_rel (n_o, None, t_o) env) b_o b_n
+         diff (push_rel CRD.(LocalAssum(n_o, t_o)) env) b_o b_n
     | (App (f_o, args_o), App (f_n, args_n)) ->
        if (not (same_length args_o args_n)) then
          Conclusion

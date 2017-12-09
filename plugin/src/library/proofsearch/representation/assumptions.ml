@@ -9,6 +9,8 @@ open Printing
 open Coqterms
 open Hofs
 
+module CRD = Context.Rel.Declaration
+
 (* For now, these are lists of pairs of ints, each int representing
    an index in a different environment; this representation
    is hard to use, so may change this in the future (TODO) *)
@@ -211,9 +213,10 @@ let substitute_env_params (subs : param_substitutions) (env : env) : env =
   let all_rels = List.rev (lookup_all_rels env) in
   snd
     (List.fold_left
-     (fun (s, env) (n, b, t) ->
+     (fun (s, env) decl ->
        let sub = substitute_params s in
-       (shift_substitutions s, push_rel (n, Option.map sub b, sub t) env))
+       let decl = CRD.map_constr sub decl in
+       (shift_substitutions s, push_rel decl env))
      (unshift_substitutions_by num_rels subs, pop_rel_context num_rels env)
      all_rels)
 

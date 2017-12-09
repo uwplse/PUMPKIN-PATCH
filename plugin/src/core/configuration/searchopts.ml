@@ -16,6 +16,8 @@ open Kindofchange
 open Cutlemma
 open Zooming
 
+module CRD = Context.Rel.Declaration
+
 (* --- Auxiliary --- *)
 
 let terms_convertible env_o env_n src_o src_n dst_o dst_n =
@@ -91,8 +93,8 @@ let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
    let (env_o, env_n) = context_envs goals in
    let env_o' = push_rel rel_o env_o in
    let env_n' = push_rel rel_n env_n in
-   let (_, _, t_o) = rel_o in
-   let (_, _, t_n) = rel_n in
+   let (_, _, t_o) = CRD.to_tuple @@ rel_o in
+   let (_, _, t_n) = CRD.to_tuple @@ rel_n in
    let trim = terms_convertible env_o' env_n' t_o t_n in
    match kinds_of_terms (g_o, g_n) with
    | (Prod (_, t_g_o, b_o), Prod (_, t_g_n, b_n)) when trim t_g_o t_g_n ->
@@ -121,8 +123,8 @@ let update_goals_types d_old d =
   let (new_goal, _) = new_proof d_old in
   match kinds_of_terms (proof_terms d_old) with
   | (Lambda (n_o, t_o, _), Lambda (n_n, t_n, _)) ->
-     let rel_o = (n_o, None, t_o) in
-     let rel_n = (n_n, None, t_n) in
+     let rel_o = CRD.LocalAssum(n_o, t_o) in
+     let rel_n = CRD.LocalAssum(n_n, t_n) in
      let (g_o, g_n) = update_goal_terms (old_goal, new_goal) rel_o rel_n in
      let o = (Context (g_o, fid ()), old_proof d) in
      let n = (Context (g_n, fid ()), new_proof d) in

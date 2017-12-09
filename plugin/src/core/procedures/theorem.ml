@@ -9,6 +9,8 @@ open Debruijn
 open Reducers
 open Specialization
 
+module CRD = Context.Rel.Declaration
+
 (*
  * Zoom all the way into a lambda term
  *
@@ -17,7 +19,7 @@ open Specialization
 let rec zoom_lambda_term (env : env) (trm : types) : env * types =
   match kind_of_term trm with
   | Lambda (n, t, b) ->
-     zoom_lambda_term (push_rel (n, None, t) env) b
+     zoom_lambda_term (push_rel CRD.(LocalAssum(n, t)) env) b
   | _ ->
      (env, trm)
 
@@ -27,7 +29,7 @@ let rec zoom_lambda_term (env : env) (trm : types) : env * types =
 let rec zoom_product_type (env : env) (typ : types) : env * types =
   match kind_of_term typ with
   | Prod (n, t, b) ->
-     zoom_product_type (push_rel (n, None, t) env) b
+     zoom_product_type (push_rel CRD.(LocalAssum(n, t)) env) b
   | _ ->
      (env, typ)
 
@@ -41,7 +43,7 @@ let rec args_to (env : env) (f : types) (trm : types) : env * (types array) =
   let nonempty (_, a) = Array.length a > 0 in
   match kind_of_term trm with
   | Lambda (n, t, b) ->
-     args_to (push_rel (n, None, t) env) f b
+     args_to (push_rel CRD.(LocalAssum(n,t)) env) f b
   | App (g, args) ->
      if convertible env g f then
        (env, args)
@@ -52,7 +54,7 @@ let rec args_to (env : env) (f : types) (trm : types) : env * (types array) =
        else
 	 args_to env f g
   | LetIn (n, trm, typ, e) ->
-     args_to (push_rel (n, Some e, typ) env) f e
+     args_to (push_rel CRD.(LocalDef(n, e, typ)) env) f e
   | Case (ci, ct, m, bs) ->
      let bs_args = List.map (args_to env f) (Array.to_list bs) in
      if List.exists nonempty bs_args then

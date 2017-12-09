@@ -10,6 +10,8 @@ open Collections
 open Debruijn
 open Printing
 
+module CRD = Context.Rel.Declaration
+
 type factors = (env * types) list
 
 (* --- Assumptions for path finding --- *)
@@ -36,7 +38,7 @@ let is_assumption (env : env) (trm : types) : bool =
  *)
 let assume (env : env) (n : name) (typ : types) : env =
   let env_pop = pop_rel_context 1 env in
-  push_rel (n, None, typ) env_pop
+  push_rel CRD.(LocalAssum(n, typ)) env_pop
 
 (* --- Path-finding auxiliary functionality --- *)
 
@@ -115,7 +117,7 @@ let factor_term (env : env) (trm : types) : factors =
       if is_assumption env body then
 	(env, body)
       else
-	let (n, _, t) = lookup_rel 1 env in
+	let (n, _, t) = CRD.to_tuple @@ lookup_rel 1 env in
 	(pop_rel_context 1 env, mkLambda (n, t, body)))
     path_body
 

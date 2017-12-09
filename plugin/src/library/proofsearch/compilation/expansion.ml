@@ -13,6 +13,8 @@ open Utilities
 open Debruijn
 open Printing
 
+module CRD = Context.Rel.Declaration
+
 (* --- Type definitions --- *)
 
 type 'a expansion_strategy = 'a -> 'a
@@ -22,7 +24,7 @@ type 'a expansion_strategy = 'a -> 'a
 (* Expand a product type exactly once *)
 let expand_product (env : env) ((n, t, b) : Name.t * types * types) : proof_cat =
   let t' = eval_theorem env t in
-  let env' = push_rel (n, None, t) env in
+  let env' = push_rel CRD.(LocalAssum(n, t)) env in
   let b' = eval_theorem env' b in
   let c = substitute_categories t' b' in
   bind c (initial c, LazyBinding (mkRel 1, env'), terminal t')
@@ -101,7 +103,7 @@ let expand_product_fully (o : context_object) : proof_cat =
     match kind_of_term b with
     | Prod (n', t', b') ->
        let t'' = eval_theorem env t in
-       let env' = push_rel (n, None, t) env in
+       let env' = push_rel CRD.(LocalAssum(n, t)) env in
        let b'' = expand_fully env' (n', t', b') in
        let c = substitute_categories t'' b'' in
        bind c (initial c, LazyBinding (mkRel 1, env'), terminal t'')
@@ -208,7 +210,7 @@ let applies_ih (en : env) (p : types) (c : proof_cat) : context_object -> bool =
  *)
 let bind_ihs (c : proof_cat) : proof_cat =
   let env_with_p = context_env (context_at_index c 1) in
-  let (_, _, p) = lookup_rel 1 env_with_p in
+  let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
   let env = pop_rel_context 1 env_with_p in
   apply_functor
     id

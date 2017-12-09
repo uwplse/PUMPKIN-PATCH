@@ -11,6 +11,8 @@ open Printing
 open Proofdiff
 open Cutlemma
 
+module CRD = Context.Rel.Declaration
+
 (* --- Configuring Abstraction --- *)
 
 (* Caller configuration for abstraction *)
@@ -44,7 +46,7 @@ let default_fun_strategies = reduce_strategies_prop
 let rec configure_goal_body env goal c : abstraction_config =
   match kinds_of_terms (goal, c) with
   | (Prod (_, _, gb), Lambda (n, t, cb)) when isProd gb && isLambda cb ->
-     configure_goal_body (push_rel (n, None, t) env) gb cb
+     configure_goal_body (push_rel CRD.(LocalAssum(n, t)) env) gb cb
   | (Prod (_, gt, gb), Lambda (_, _, _)) when isApp gt && isApp gb ->
      let (_, ctt, ctb) = destProd (infer_type env c) in
      if isApp ctb then
@@ -112,10 +114,10 @@ let rec apply_prop pi goal =
 let rec push_prop env typ : env =
   match kind_of_term typ with
   | Prod (n, t, b) ->
-     push_prop (push_rel (n, None, t) env) b
+     push_prop (push_rel CRD.(LocalAssum(n, t)) env) b
   | App (f, _) ->
      push_rel
-       (Anonymous, None, infer_type env f)
+       CRD.(LocalAssum(Anonymous, infer_type env f))
        (pop_rel_context (nb_rel env) env)
   | _ ->
      failwith "Could not find function to abstract"
@@ -141,7 +143,7 @@ let configure_fixpoint_cases env (diffs : types list) (cs : candidates) =
 let rec configure_args_cut_app env (app : types) cs : abstraction_config =
   match kind_of_term app with
   | Lambda (n, t, b) ->
-     configure_args_cut_app (push_rel (n, None, t) env) b cs
+     configure_args_cut_app (push_rel CRD.(LocalAssum(n, t)) env) b cs
   | App (f, args) ->
      let rec get_lemma_functions typ =
        match kind_of_term typ with
@@ -166,7 +168,7 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
   let cs = filter_consistent_cut env cut cs in
   if List.length cs > 0 then
     let (_, _, b) = destLambda (get_app cut) in
-    let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
+    let env_cut = push_rel CRD.(LocalAssum(Anonymous, get_lemma cut)) env in
     configure_args_cut_app env_cut b cs
   else
     failwith "No candidates are consistent with the cut lemma type"
@@ -182,5 +184,5 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
  *)
 let configure_from_goal env goal c : abstraction_config =
   let (n, t, goal_body) = destProd goal in
-  configure_goal_body (push_rel (n, None, t) env) goal_body c
+  configure_goal_body (push_rel CRD.(LocalAssum(n, t)) env) goal_body c
 

@@ -13,6 +13,8 @@ open Substitution
 open Declarations
 open Printing
 
+module CRD = Context.Rel.Declaration
+
 (*
  * Evaluate typ one step in env
  * Then bind the single anonymous arrow to e
@@ -49,7 +51,7 @@ let rec induction_constrs (nc : int) (env : env) ((n, t, b) : Name.t * types * t
   if nc = 0 then
     []
   else
-    let e = LazyBinding (mkRel 1, push_rel (n, None, t) env) in
+    let e = LazyBinding (mkRel 1, push_rel CRD.(LocalAssum(n, t)) env) in
     let c = eval_theorem_bind e env t in
     match kind_of_term b with
     | Prod (n', t', b') ->

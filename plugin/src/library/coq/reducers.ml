@@ -7,6 +7,8 @@ open Coqterms
 open Utilities
 open Debruijn
 
+module CRD = Context.Rel.Declaration
+
 type reducer = env -> types -> types
 
 (* --- Top-level --- *)
@@ -34,7 +36,7 @@ let rec reduce_body_if p (r : reducer) env trm =
   else
     match kind_of_term trm with
     | Lambda (n, t, b) ->
-       reduce_body_if p r (push_rel (n, None, t) env) b
+       reduce_body_if p r (push_rel CRD.(LocalAssum(n, t)) env) b
     | _ ->
        failwith "Could not specialize"
 
@@ -70,11 +72,11 @@ let reduce_remove_identities : reducer =
 
 (* Reduce and also unfold definitions *)
 let reduce_unfold (env : env) (trm : types) : types =
-  Reductionops.nf_betadeltaiota env Evd.empty trm
+  Reductionops.nf_all env Evd.empty trm
 
 (* Reduce and also unfold definitions, but weak head *)
 let reduce_unfold_whd (env : env) (trm : types) : types =
-  Reductionops.whd_betadeltaiota env Evd.empty trm
+  Reductionops.whd_all env Evd.empty trm
 
 (* Weak-head reduce a term if it is a let-in *)
 let reduce_whd_if_let_in (env : env) (trm : types) : types  =
@@ -99,11 +101,11 @@ let reduce_whd_if_let_in (env : env) (trm : types) : types  =
 let rec remove_unused_hypos (env : env) (trm : types) : types =
   match kind_of_term trm with
   | Lambda (n, t, b) ->
-     let env_b = push_rel (n, None, t) env in
+     let env_b = push_rel CRD.(LocalAssum(n, t)) env in
      let b' = remove_unused_hypos env_b b in
      (try
         let num_rels = nb_rel env in
-        let env_ill = push_rel (n, None, mkRel (num_rels + 1)) env in
+        let env_ill = push_rel CRD.(LocalAssum (n, mkRel (num_rels + 1))) env in
         let _ = infer_type env_ill b' in
         remove_unused_hypos env (unshift b')
       with _ ->

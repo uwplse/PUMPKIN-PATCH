@@ -8,6 +8,8 @@ open Collections
 open Coqterms
 open Coqenvs
 
+module CRD = Context.Rel.Declaration
+
 type merged_closure = env * types list * types list
 
 (* TODO needs cleanup, testing -- and when you test, see if you can change shifting to homogenous *)
@@ -28,11 +30,10 @@ let merge_environments (env1 : env) (env2 : env) (assums : equal_assumptions) : 
            (env, shift_assums substs, l)
          else
            let shift_assums = map_tuple shift_assumptions in
-           let (n, b, t) = lookup_rel i env2 in
+           let decl = lookup_rel i env2 in
            let substitute = substitute_assumptions (fold_tuple union_assumptions substs) in
-           let t' = substitute t in
-           let b' = Option.map substitute b in
-           (push_rel (n, b', t') env, shift_assums substs, (n, b', t') :: l))
+           let decl = CRD.map_constr substitute decl in
+           (push_rel decl env, shift_assums substs, decl :: l))
        (env1, split_assums, [])
        (List.rev (all_rel_indexes env2))
   in env_merged

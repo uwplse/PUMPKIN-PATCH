@@ -9,6 +9,8 @@ open Univ
 open Command
 open Collections
 
+module CRD = Context.Rel.Declaration
+
 (* Auxiliary types *)
 
 type closure = env * (types list)
@@ -151,7 +153,7 @@ let rec unwrap_definition (env : env) (trm : types) : types =
 let rec zoom_lambda_term (env : env) (trm : types) : env * types =
   match kind_of_term trm with
   | Lambda (n, t, b) ->
-     zoom_lambda_term (push_rel (n, None, t) env) b
+     zoom_lambda_term (push_rel CRD.(LocalAssum(n, t)) env) b
   | _ ->
      (env, trm)
 
@@ -162,7 +164,7 @@ let rec reconstruct_lambda (env : env) (b : types) : types =
   if nb_rel env = 0 then
     b
   else
-    let (n, _, t) = lookup_rel 1 env in
+    let (n, _, t) = CRD.to_tuple @@ lookup_rel 1 env in
     let env' = pop_rel_context 1 env in
     reconstruct_lambda env' (mkLambda (n, t, b))
 
@@ -173,7 +175,7 @@ let rec reconstruct_prod (env : env) (b : types) : types =
   if nb_rel env = 0 then
     b
   else
-    let (n, _, t) = lookup_rel 1 env in
+    let (n, _, t) = CRD.to_tuple @@ lookup_rel 1 env in
     let env' = pop_rel_context 1 env in
     reconstruct_prod env' (mkProd (n, t, b))
 
@@ -282,7 +284,7 @@ let rec concls_convertible (env : env) (typ1 : types) (typ2 : types) : bool =
   match (kind_of_term typ1, kind_of_term typ2) with
   | (Prod (n1, t1, b1), Prod (n2, t2, b2)) ->
      if convertible env t1 t2 then
-       concls_convertible (push_rel (n1, None, t1) env) b1 b2
+       concls_convertible (push_rel CRD.(LocalAssum(n1, t1)) env) b1 b2
      else
        false
   | _ ->
@@ -349,7 +351,9 @@ type eterms = evar_map * (types array)
 
 (* Check whether a term is unifiable with a term of a given type *)
 let unifiable (env : env) (typ : types) ((evm, trm) : eterm) : (evar_map option) =
-  let (evm', typ_evar) = Evarutil.new_evar env evm typ in
+  let evm = Sigma.Unsafe.of_evar_map evm in
+  let Sigma.Sigma (typ_evar, evm', _) = Evarutil.new_evar env evm typ in
+  let evm' = Sigma.to_evar_map evm' in
   try
     Some (Evarconv.the_conv_x env trm typ_evar evm')
 with _ -> None

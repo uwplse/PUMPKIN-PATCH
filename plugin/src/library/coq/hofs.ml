@@ -12,6 +12,8 @@ open Names
 open Utilities
 open Printing
 
+module CRD = Context.Rel.Declaration
+
 (* Predicates to determine whether to apply a mapped function *)
 type ('a, 'b) pred = 'a -> 'b -> bool
 type ('a, 'b) pred_with_env = env -> ('a, 'b) pred
@@ -113,16 +115,16 @@ let rec map_term_env (f : 'a f_with_env) (d : 'a updater) (env : env) (a : 'a) (
      mkCast (c', k, t')
   | Prod (n, t, b) ->
      let t' = map_rec env a t in
-     let b' = map_rec (push_rel (n, None, t) env) (d a) b in
+     let b' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
      mkProd (n, t', b')
   | Lambda (n, t, b) ->
      let t' = map_rec env a t in
-     let b' = map_rec (push_rel (n, None, t) env) (d a) b in
+     let b' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
      mkLambda (n, t', b')
   | LetIn (n, trm, typ, e) ->
      let trm' = map_rec env a trm in
      let typ' = map_rec env a typ in
-     let e' = map_rec (push_rel (n, Some e, typ) env) (d a) e in
+     let e' = map_rec (push_rel CRD.(LocalDef(n, e, typ)) env) (d a) e in
      mkLetIn (n, trm', typ', e')
   | App (fu, args) ->
      let fu' = map_rec env a fu in
@@ -170,16 +172,16 @@ let rec map_subterms_env (f : 'a f_cart_with_env) (d : 'a updater) (env : env) (
      combine_cartesian (fun c' t' -> mkCast (c', k, t')) cs' ts'
   | Prod (n, t, b) ->
      let ts' = map_rec env a t in
-     let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+     let bs' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
      combine_cartesian (fun t' b' -> mkProd (n, t', b')) ts' bs'
   | Lambda (n, t, b) ->
      let ts' = map_rec env a t in
-     let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+     let bs' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
      combine_cartesian (fun t' b' -> mkLambda (n, t', b')) ts' bs'
   | LetIn (n, trm, typ, e) ->
      let trms' = map_rec env a trm in
      let typs' = map_rec env a typ in
-     let es' = map_rec (push_rel (n, Some e, typ) env) (d a) e in
+     let es' = map_rec (push_rel CRD.(LocalDef(n, e, typ)) env) (d a) e in
      combine_cartesian (fun trm' (typ', e') -> mkLetIn (n, trm', typ', e')) trms' (cartesian typs' es')
   | App (fu, args) ->
      let fus' = map_rec env a fu in
@@ -232,16 +234,16 @@ let rec map_term_env_if (p : 'a p_with_env) (f : 'a f_with_env) (d : 'a updater)
        mkCast (c', k, t')
     | Prod (n, t, b) ->
        let t' = map_rec env a t in
-       let b' = map_rec (push_rel (n, None, t') env) (d a) b in
+       let b' = map_rec (push_rel CRD.(LocalAssum(n, t')) env) (d a) b in
        mkProd (n, t', b')
     | Lambda (n, t, b) ->
        let t' = map_rec env a t in
-       let b' = map_rec (push_rel (n, None, t') env) (d a) b in
+       let b' = map_rec (push_rel CRD.(LocalAssum(n, t')) env) (d a) b in
        mkLambda (n, t', b')
     | LetIn (n, trm, typ, e) ->
        let trm' = map_rec env a trm in
        let typ' = map_rec env a typ in
-       let e' = map_rec (push_rel (n, Some e, typ') env) (d a) e in
+       let e' = map_rec (push_rel CRD.(LocalDef(n, e, typ')) env) (d a) e in
        mkLetIn (n, trm', typ', e')
     | App (fu, args) ->
        let fu' = map_rec env a fu in
@@ -287,16 +289,16 @@ let rec map_term_env_if_shallow (p : 'a p_with_env) (f : 'a f_with_env) (d : 'a 
        mkCast (c', k, t')
     | Prod (n, t, b) ->
        let t' = map_rec env a t in
-       let b' = map_rec (push_rel (n, None, t') env) (d a) b in
+       let b' = map_rec (push_rel CRD.(LocalAssum(n, t')) env) (d a) b in
        mkProd (n, t', b')
     | Lambda (n, t, b) ->
        let t' = map_rec env a t in
-       let b' = map_rec (push_rel (n, None, t') env) (d a) b in
+       let b' = map_rec (push_rel CRD.(LocalAssum(n, t')) env) (d a) b in
        mkLambda (n, t', b')
     | LetIn (n, trm, typ, e) ->
        let trm' = map_rec env a trm in
        let typ' = map_rec env a typ in
-       let e' = map_rec (push_rel (n, Some e, typ') env) (d a) e in
+       let e' = map_rec (push_rel CRD.(LocalDef(n, e, typ')) env) (d a) e in
        mkLetIn (n, trm', typ', e')
     | App (fu, args) ->
        let fu' = map_rec env a fu in
@@ -355,16 +357,16 @@ let rec map_subterms_env_if (p : 'a p_with_env) (f : 'a f_cart_with_env) (d : 'a
        combine_cartesian (fun c' t' -> mkCast (c', k, t')) cs' ts'
     | Prod (n, t, b) ->
        let ts' = map_rec env a t in
-       let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+       let bs' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
        combine_cartesian (fun t' b' -> mkProd (n, t', b')) ts' bs'
     | Lambda (n, t, b) ->
        let ts' = map_rec env a t in
-       let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+       let bs' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
        combine_cartesian (fun t' b' -> mkLambda (n, t', b')) ts' bs'
     | LetIn (n, trm, typ, e) ->
        let trms' = map_rec env a trm in
        let typs' = map_rec env a typ in
-       let es' = map_rec (push_rel (n, Some e, typ) env) (d a) e in
+       let es' = map_rec (push_rel CRD.(LocalDef(n, e, typ)) env) (d a) e in
        combine_cartesian (fun trm' (typ', e') -> mkLetIn (n, trm', typ', e')) trms' (cartesian typs' es')
     | App (fu, args) ->
        let fus' = map_rec env a fu in
@@ -409,16 +411,16 @@ let rec map_subterms_env_if_combs (p : 'a p_with_env) (f : 'a f_cart_with_env) (
          combine_cartesian (fun c' t' -> mkCast (c', k, t')) cs' ts'
       | Prod (n, t, b) ->
          let ts' = map_rec env a t in
-         let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+         let bs' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
          combine_cartesian (fun t' b' -> mkProd (n, t', b')) ts' bs'
       | Lambda (n, t, b) ->
          let ts' = map_rec env a t in
-         let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+         let bs' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
          combine_cartesian (fun t' b' -> mkLambda (n, t', b')) ts' bs'
       | LetIn (n, trm, typ, e) ->
          let trms' = map_rec env a trm in
          let typs' = map_rec env a typ in
-         let es' = map_rec (push_rel (n, Some e, typ) env) (d a) e in
+         let es' = map_rec (push_rel CRD.(LocalDef(n, e, typ)) env) (d a) e in
          combine_cartesian (fun trm' (typ', e') -> mkLetIn (n, trm', typ', e')) trms' (cartesian typs' es')
       | App (fu, args) ->
          let fus' = map_rec env a fu in
@@ -464,16 +466,16 @@ let rec map_subterms_env_if_lazy (p : 'a p_with_env) (f : 'a f_cart_with_env) (d
        combine_cartesian (fun c' t' -> mkCast (c', k, t')) cs' ts'
     | Prod (n, t, b) ->
        let ts' = map_rec env a t in
-       let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+       let bs' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
        combine_cartesian (fun t' b' -> mkProd (n, t', b')) ts' bs'
     | Lambda (n, t, b) ->
        let ts' = map_rec env a t in
-       let bs' = map_rec (push_rel (n, None, t) env) (d a) b in
+       let bs' = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) b in
        combine_cartesian (fun t' b' -> mkLambda (n, t', b')) ts' bs'
     | LetIn (n, trm, typ, e) ->
        let trms' = map_rec env a trm in
        let typs' = map_rec env a typ in
-       let es' = map_rec (push_rel (n, Some e, typ) env) (d a) e in
+       let es' = map_rec (push_rel CRD.(LocalDef(n, e, typ)) env) (d a) e in
        combine_cartesian (fun trm' (typ', e') -> mkLetIn (n, trm', typ', e')) trms' (cartesian typs' es')
     | App (fu, args) ->
        let fus' = map_rec env a fu in
@@ -527,16 +529,16 @@ let rec map_eterm_env (f : 'a fe_with_env) (d : 'a updater) (env : env) (a : 'a)
      (evm'', mkCast (c', k, t'))
   | Prod (n, t, b) ->
      let (evm', t') = map_rec env a (evm, t) in
-     let (evm'', b') = map_rec (push_rel (n, None, t) env) (d a) (evm', b) in
+     let (evm'', b') = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) (evm', b) in
      (evm'', mkProd (n, t', b'))
   | Lambda (n, t, b) ->
      let (evm', t') = map_rec env a (evm, t) in
-     let (evm'', b') = map_rec (push_rel (n, None, t) env) (d a) (evm', b) in
+     let (evm'', b') = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) (evm', b) in
      (evm'', mkLambda (n, t', b'))
   | LetIn (n, trm, typ, e) ->
      let (evm', trm') = map_rec env a (evm, trm) in
      let (evm'', typ') = map_rec env a (evm', typ) in
-     let (evm''', e') = map_rec (push_rel (n, Some e, typ) env) (d a) (evm'', e) in
+     let (evm''', e') = map_rec (push_rel CRD.(LocalDef(n, e, typ)) env) (d a) (evm'', e) in
      (evm''', mkLetIn (n, trm', typ', e'))
   | App (fu, args) ->
      let (evm', fu') = map_rec env a (evm, fu) in
@@ -587,16 +589,16 @@ let rec map_eterm_env_if_lazy (p : 'a pe_with_env) (f : 'a fe_with_env) (d : 'a 
        (evm'', mkCast (c', k, t'))
     | Prod (n, t, b) ->
        let (evm', t') = map_rec env a (evm, t) in
-       let (evm'', b') = map_rec (push_rel (n, None, t) env) (d a) (evm', b) in
+       let (evm'', b') = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) (evm', b) in
        (evm'', mkProd (n, t', b'))
     | Lambda (n, t, b) ->
        let (evm', t') = map_rec env a (evm, t) in
-       let (evm'', b') = map_rec (push_rel (n, None, t) env) (d a) (evm', b) in
+       let (evm'', b') = map_rec (push_rel CRD.(LocalAssum(n, t)) env) (d a) (evm', b) in
        (evm'', mkLambda (n, t', b'))
     | LetIn (n, trm, typ, e) ->
        let (evm', trm') = map_rec env a (evm, trm) in
        let (evm'', typ') = map_rec env a (evm', typ) in
-       let (evm''', e') = map_rec (push_rel (n, Some e, typ) env) (d a) (evm'', e) in
+       let (evm''', e') = map_rec (push_rel CRD.(LocalDef(n, e, typ)) env) (d a) (evm'', e) in
        (evm''', mkLetIn (n, trm', typ', e'))
     | App (fu, args) ->
        let (evm', fu') = map_rec env a (evm, fu) in

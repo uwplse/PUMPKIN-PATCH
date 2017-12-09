@@ -7,6 +7,8 @@ open Coqterms
 open Debruijn
 open Collections
 
+module CRD = Context.Rel.Declaration
+
 type cut_lemma =
   {
     lemma : types;
@@ -75,10 +77,10 @@ let rec is_cut env lemma typ =
        is_cut_strict env lemma typ
      else
        if convertible env tl tt then
-         is_cut (push_rel (nl, None, tl) env) bl bt
+         is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) bl bt
        else
-         let cut_l = is_cut (push_rel (nl, None, tl) env) bl (shift typ) in
-         let cut_r = is_cut (push_rel (nt, None, tt) env) (shift lemma) bt in
+         let cut_l = is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) bl (shift typ) in
+         let cut_r = is_cut (push_rel CRD.(LocalAssum(nt, tt)) env) (shift lemma) bt in
          cut_l || cut_r
   | _  ->
      false
@@ -95,7 +97,7 @@ let has_cut_type env cut trm =
 let has_cut_type_app env cut trm =
   try
     let typ = shift (reduce_term env (infer_type env trm)) in
-    let env_cut = push_rel (Anonymous, None, get_lemma cut) env in
+    let env_cut = push_rel CRD.(LocalAssum(Anonymous, get_lemma cut)) env in
     let app = get_app cut in
     let app_app = reduce_term env_cut (mkApp (app, singleton_array (mkRel 1))) in
     let app_app_typ = infer_type env_cut app_app in
@@ -108,7 +110,7 @@ let consistent_with_cut env cut trm =
   let rec consistent en c t =
     match kinds_of_terms (c, t) with
     | (Prod (n, t, cb), Lambda (_, _, b)) when isProd cb && isLambda b ->
-       consistent (push_rel (n, None, t) en) cb b
+       consistent (push_rel CRD.(LocalAssum(n, t)) en) cb b
     | (Prod (_, ct, cb), Lambda (_, _, _)) ->
        true
     | _ ->
@@ -131,7 +133,7 @@ let filter_consistent_cut env cut trms =
   let rec make_consistent en c t =
     match kinds_of_terms (c, t) with
     | (Prod (n, t, cb), Lambda (_, _, b)) when isProd cb && isLambda b ->
-       make_consistent (push_rel (n, None, t) en) cb b
+       make_consistent (push_rel CRD.(LocalAssum(n, t)) en) cb b
     | _ ->
        t
   in

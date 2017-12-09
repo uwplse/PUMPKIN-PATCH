@@ -15,6 +15,8 @@ open Coqterms
 open Reducers
 open Collections
 
+module CRD = Context.Rel.Declaration
+
 type specializer = env -> types -> types array -> types
 
 (* --- Top-level --- *)
@@ -38,7 +40,7 @@ let specialize_using (s : specializer) env f args =
 let rec specialize_body (s : specializer) (env : env) (t : types) : types =
   match kind_of_term t with
   | Lambda (n, t, b) ->
-     mkLambda (n, t, specialize_body s (push_rel (n, None, t) env) b)
+     mkLambda (n, t, specialize_body s (push_rel CRD.(LocalAssum(n, t)) env) b)
   | App (f, args) ->
      let f_body = unwrap_definition env f in
      s env f_body args

@@ -7,10 +7,13 @@ plugin/*.cmi
 *.ml.d
 *.mlpack.d
 *.cmo
+*.cmt
+*.cmti
 *.cmx
 *.cmxs
 *.o
 *.cmi
+*~
 plugin/theories/.Patch.aux
 plugin/theories/Patch.glob
 plugin/theories/Patch.v.d

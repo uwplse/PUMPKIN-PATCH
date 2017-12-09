@@ -91,8 +91,8 @@ let unshift_env_by (n : int) (env : env) : env =
   let all_relis = List.rev (from_one_to num_rels) in
   let all_rels = lookup_rels all_relis env in
   List.fold_left
-    (fun env (na, b, t) ->
-      push_rel (na, b, t) env)
+    (fun env decl ->
+      push_rel decl env)
     (pop_rel_context num_rels env)
     all_rels
 

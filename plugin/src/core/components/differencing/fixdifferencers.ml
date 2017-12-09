@@ -13,6 +13,8 @@ open Debruijn
 open Differencers
 open Higherdifferencers
 
+module CRD = Context.Rel.Declaration
+
 (* --- Cases --- *)
 
 (*
@@ -38,7 +40,7 @@ let rec get_goal_fix env (d : types proof_diff) : candidates =
     | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when convertible env t1 t2 ->
        List.map
          (fun c -> mkProd (n1, t1, c))
-         (get_goal_fix (push_rel (n1, None, t1) env) (difference b1 b2 assums))
+         (get_goal_fix (push_rel CRD.(LocalAssum(n1, t1)) env) (difference b1 b2 assums))
     | _ ->
        let reduce_hd = reduce_unfold_whd env in
        let rec get_goal_reduced d =
@@ -62,10 +64,10 @@ let rec diff_fix_case env (d : types proof_diff) : candidates =
   let conv = convertible env in
   match kinds_of_terms (old_term, new_term) with
   | (Lambda (n1, t1, b1), Lambda (_, t2, b2)) when conv t1 t2 ->
-     diff_fix_case (push_rel (n1, None, t1) env) (difference b1 b2 assums)
+     diff_fix_case (push_rel CRD.(LocalAssum(n1, t1)) env) (difference b1 b2 assums)
   | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
      if same_length bs1 bs2 then
-       let env_m = push_rel (Anonymous, None, m1) env in
+       let env_m = push_rel CRD.(LocalAssum(Anonymous, m1)) env in
        let diff_bs = diff_map_flat (get_goal_fix env_m) in
        List.map
          unshift

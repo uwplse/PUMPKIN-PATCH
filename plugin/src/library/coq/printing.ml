@@ -16,6 +16,8 @@ open Printer
 open Utilities
 open Goptions
 
+module CRD = Context.Rel.Declaration
+
 (* --- Strings --- *)
 
 (*
@@ -58,7 +60,7 @@ let rec term_as_string (env : env) (trm : types) =
   match kind_of_term trm with
   | Rel i ->
      (try
-       let (n, _, _) = lookup_rel i env in
+       let (n, _, _) = CRD.to_tuple @@ lookup_rel i env in
        Printf.sprintf "(%s [Rel %d])" (name_as_string n) i
      with
        Not_found -> Printf.sprintf "(Unbound_Rel %d)" i)
@@ -73,11 +75,11 @@ let rec term_as_string (env : env) (trm : types) =
   | Cast (c, k, t) ->
      Printf.sprintf "(%s : %s)" (term_as_string env c) (term_as_string env t)
   | Prod (n, t, b) ->
-     Printf.sprintf "(Π (%s : %s) . %s)" (name_as_string n) (term_as_string env t) (term_as_string (push_rel (n, None, t) env) b)
+     Printf.sprintf "(Π (%s : %s) . %s)" (name_as_string n) (term_as_string env t) (term_as_string (push_rel CRD.(LocalAssum(n, t)) env) b)
   | Lambda (n, t, b) ->
-     Printf.sprintf "(λ (%s : %s) . %s)" (name_as_string n) (term_as_string env t) (term_as_string (push_rel (n, None, t) env) b)
+     Printf.sprintf "(λ (%s : %s) . %s)" (name_as_string n) (term_as_string env t) (term_as_string (push_rel CRD.(LocalAssum(n, t)) env) b)
   | LetIn (n, trm, typ, e) ->
-     Printf.sprintf "(let (%s : %s) := %s in %s)" (name_as_string n) (term_as_string env typ) (term_as_string env typ) (term_as_string (push_rel (n, Some e, typ) env) e)
+     Printf.sprintf "(let (%s : %s) := %s in %s)" (name_as_string n) (term_as_string env typ) (term_as_string env typ) (term_as_string (push_rel CRD.(LocalDef(n, e, typ)) env) e)
   | App (f, xs) ->
      Printf.sprintf "(%s %s)" (term_as_string env f) (String.concat " " (List.map (term_as_string env) (Array.to_list xs)))
   | Const (c, u) ->
@@ -111,7 +113,7 @@ let env_as_string (env : env) : string =
     ",\n"
     (List.map
        (fun i ->
-         let (n, b, t) = lookup_rel i env in
+         let (n, b, t) = CRD.to_tuple @@ lookup_rel i env in
          Printf.sprintf "%s (Rel %d): %s" (name_as_string n) i (term_as_string (pop_rel_context i env) t))
        all_relis)
 

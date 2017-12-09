@@ -12,6 +12,8 @@ open Collections
 open Coqterms
 open Printing
 
+module CRD = Context.Rel.Declaration
+
 (* --- Construction --- *)
 
 (* Get the extension for a trm in env *)
@@ -186,7 +188,7 @@ let curry_lambda (e : extension) : extension =
   assert (ext_is_lambda e);
   let LazyBinding (trm, env) = e in
   let (n, t, b) = destLambda trm in
-  ext_of_term (push_rel (n, None, t) env) b
+  ext_of_term (push_rel CRD.(LocalAssum(n, t)) env) b
 
 (* --- Finding terms and environments --- *)
 

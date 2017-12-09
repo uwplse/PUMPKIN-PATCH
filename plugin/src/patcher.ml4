@@ -9,6 +9,7 @@ open Evaluation
 open Proofdiff
 open Search
 open Constrexpr
+open Constrarg
 open Substitution
 open Printing
 open Inverting
