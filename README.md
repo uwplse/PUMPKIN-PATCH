@@ -251,3 +251,6 @@ You can run tuareg-mode manually on .ml4 files.
 
 This plugin is maintained by Talia Ringer with help from Nate Yazdani.
 John Leo and Dan Grossman have made conceptual contributions.
+
+The following community members have also contributed to the code:
+Emilio Jesús Gallego Arias
