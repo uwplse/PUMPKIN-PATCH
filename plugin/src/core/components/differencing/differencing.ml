@@ -12,6 +12,7 @@ open Proofdifferencers
 open Higherdifferencers
 open Appdifferencers
 open Inddifferencers
+open Proofcatterms
 
 (*
  * Search for a direct patch given a difference in proof_cats within.

@@ -14,6 +14,7 @@ open Assumptions
 open Cutlemma
 open Specialization
 open Zooming
+open Printing
 
 (*
  * Given a search function and a difference between terms,
@@ -117,8 +118,16 @@ let diff_app_ind diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
     match get_change opts with
     | InductiveType (_, _) ->
        f
-    | FixpointCase ((_, _), _) ->
-       f
+    | FixpointCase ((_, _), cut) ->
+       let env = context_env (fst (old_proof d)) in
+       let filter_diff_cut diff = filter_diff (filter_cut env cut) diff in
+       if non_empty f then
+         f
+       else
+	 let diff_rec diff opts = diff_terms (diff opts) d opts in
+	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
+         let d_args_rev = reverse d_args in
+         filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
     | _ ->
        if non_empty args_o then
          let env_o = context_env (fst (old_proof d)) in
