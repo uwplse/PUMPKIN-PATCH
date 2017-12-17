@@ -12,6 +12,7 @@ open Debruijn
 open Filters
 open Candidates
 open Reducers
+open Printing
 
 module CRD = Context.Rel.Declaration
 

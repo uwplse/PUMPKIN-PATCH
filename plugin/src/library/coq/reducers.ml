@@ -44,7 +44,7 @@ let rec reduce_body_if p (r : reducer) env trm =
 
 (* Default reducer *)
 let reduce_term (env : env) (trm : types) : types =
-  Reduction.nf_betaiota env trm
+  Reductionops.nf_betaiotazeta Evd.empty trm
 
 (* --- Custom reducers --- *)
 
