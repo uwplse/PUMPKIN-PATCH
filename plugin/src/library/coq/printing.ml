@@ -148,4 +148,5 @@ let print_patch env evm patch_id patch : unit =
         (Pp.str patch_id);
         (Pp.str ":=");
         (pr_lconstr_env env evm patch);
-        (Pp.str ".\nEND PATCH\n")])
+        (Pp.str ".\nEND PATCH");
+        (Pp.str "\n")])
