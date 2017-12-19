@@ -75,7 +75,7 @@ To instead apply `new1`:
 To do this using PUMPKIN, load the file `Example.v` (feel free to use your favorite IDE here instead of `coqtop`):
 
 ```
-coqtop -load-vernac-source CoqPatch/plugin/coq/Example.v
+coqtop -load-vernac-source plugin/coq/Example.v
 ```
 
 Next, import the plugin:
