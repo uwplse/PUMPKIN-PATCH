@@ -14,11 +14,8 @@ plugin/*.cmi
 *.o
 *.cmi
 *~
-plugin/theories/.Patch.aux
-plugin/theories/Patch.glob
-plugin/theories/Patch.v.d
-plugin/theories/Patch.vo
+*.aux
+*.glob
+*.v.d
+*.vo
 plugin/Makefile.coq
-plugin/coq/*.glob
-plugin/coq/*.aux
-plugin/coq/*.vo
