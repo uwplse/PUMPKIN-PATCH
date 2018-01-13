@@ -18,6 +18,11 @@ open Zooming
 
 module CRD = Context.Rel.Declaration
 
+(*
+ * TODO refactor addition of goals to make it make more sense
+ * before merging into master
+ *)
+
 (* --- Auxiliary --- *)
 
 let terms_convertible env_o env_n src_o src_n dst_o dst_n =
@@ -115,6 +120,39 @@ let set_inductive_goals typ_o typ_n (d : 'a goal_diff) : 'a goal_diff =
   difference (goal_o', proof_o) (goal_n', proof_n) assums
 
 (*
+ * TODO comment and move before merging pull request
+ *)
+let find_hypo_goal (env : env) (d : types proof_diff) : types proof_diff =
+  let o = old_proof d in
+  let n = new_proof d in
+  let rec find_goal en ot nt =
+    match map_tuple kind_of_term (ot, nt) with
+    | (Prod (n_o, t_o, b_o), Prod (n_n, t_n, b_n)) ->
+       if convertible en t_o t_n then
+         let rel_o = CRD.LocalAssum(n_o, t_o) in
+         let (b_o', b_n') = find_goal (push_rel rel_o en) b_o b_n in
+         (mkProd (n_o, t_o, b_o'), mkProd (n_n, t_n, b_n'))
+       else
+         (ot, nt)
+    | _ ->
+       (ot, nt)
+  in let (goal_o, goal_n) = find_goal env o n in
+  difference goal_o goal_n (assumptions d)
+
+(* Search for a difference in hypothesis *)
+let set_hypothesis_goals (d : 'a goal_diff) : 'a goal_diff =
+  let (goal_o, proof_o) = old_proof d in
+  let (goal_n, proof_n) = new_proof d in
+  let assums = assumptions d in
+  let env = context_env goal_o in
+  let (o, n) = map_tuple context_term (goal_o, goal_n) in
+  let d_goal = find_hypo_goal env (difference o n assums) in
+  let (o', n') = (old_proof d_goal, new_proof d_goal) in
+  let goal_o' = Context (Term (o', env), fid ()) in
+  let goal_n' = Context (Term (n', env), fid ()) in
+  difference (goal_o', proof_o) (goal_n', proof_n) assums
+
+(*
  * Update the goals for a change in types
  *)
 let update_goals_types d_old d =
@@ -135,15 +173,18 @@ let update_goals_types d_old d =
 
 (*
  * Given a change, determine how to update goals:
- * 1) If it's a change in types, then update the environments and
-      eliminate variables we encounter.
- * 2) If it's a change in conclusions or definitions,
-      then update the goals to the current conclusions.
+ * 1) If it's a change in a type we induct over,
+ *    then update the environments and
+ *    eliminate variables we encounter.
+ * 2) If it's a change in hypotheses, update to the current hypotheses.
+ * 3) Otherwise, update the goals to the current conclusions.
  *)
 let configure_update_goals change d_old d =
   match change with
-  | InductiveType (typ_o, typ_n) ->
+  | InductiveType (_, _) ->
      update_goals_types d_old d
+  | Hypothesis ->
+     set_hypothesis_goals (add_goals d)
   | _ ->
      add_goals d
 
@@ -167,13 +208,15 @@ let configure_is_app change d =
 (*
  * Given a change, determine the goals for testing whether a proof
  * might apply to another proof:
- * 1) If it's a change in types, then swap the goals
+ * 1) If it's a change in hypotheses or inductive types, then swap the goals
  * 2) If it's a change in conclusions or definitions,
  *    then keep the goals as-is
  *)
 let configure_swap_goals change d =
   match change with
   | InductiveType (_, _) ->
+     swap_goals d
+  | Hypothesis ->
      swap_goals d
   | _ ->
      d
@@ -183,18 +226,21 @@ let configure_swap_goals change d =
  *
  * 1) If it is a change in types, then search for a difference
  *    in the changed constructor.
- * 2) If it is a change in conclusions or definitions, then search for the
- *    the difference in conclusions.
+ * 2) If it is a change in hypotheses, then search for a change in
+ *    hypotheses
+ * 3) Otherwise, search for the difference in conclusions.
  *
  * POST-DEADLINE:
  * This is for different inductive cases. It probably shouldn't
  * be separate from everything else, eventually need to refactor
- * all the goal-resetting functions into some format that makes sense.
+ * all the goal-setting and resetting functions into a format that makes sense.
  *)
 let configure_reset_goals change (d : goal_case_diff) : goal_case_diff =
   match change with
   | InductiveType (typ_o, typ_n) ->
      set_inductive_goals typ_o typ_n d
+  | Hypothesis ->
+     set_hypothesis_goals d
   | _ ->
      d
 
