@@ -65,8 +65,7 @@ type 'a configurable = options -> 'a
  * 1) If we are searching for a difference in types we are inducting over,
  *    then two types we induct over are "the same" if they are either identical
  *    or are the same as the types we changed.
- * 2) If we are searching for a difference in conclusions or definitions, then
- *    two types we induct over are "the same" if they are identical.
+ * 2) Otherwise, two types we induct over are "the same" if they are identical.
  *
  * POST-DEADLINE: No need for goals here, just need environments
  *)

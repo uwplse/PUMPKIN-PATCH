@@ -48,6 +48,8 @@ let find_kind_of_conclusion cut (d : goal_proof_diff) =
  * definitions.
  *
  * Otherwise, search for a change in conclusion.
+ *
+ * TODO clean and document more cases
  *)
 let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
   let d_goals = erase_proofs d in
@@ -60,12 +62,11 @@ let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
     match kinds_of_terms (typ_o, typ_n) with
     | (Prod (n_o, t_o, b_o), Prod (_, t_n, b_n)) ->
        if (not (convertible env t_o t_n)) then
-         let change = InductiveType (t_o, t_n) in
          let d_typs = difference t_o t_n no_assumptions in
          if same_shape env d_typs then
            InductiveType (t_o, t_n)
          else
-           Conclusion
+           Hypothesis
        else
          diff (push_rel CRD.(LocalAssum(n_o, t_o)) env) b_o b_n
     | (App (f_o, args_o), App (f_n, args_n)) ->
