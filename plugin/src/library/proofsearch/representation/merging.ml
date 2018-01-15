@@ -58,12 +58,6 @@ let merge_closures ((env1, trm1s) : closure) ((env2, trm2s) : closure) (assums :
       (List.rev (all_rel_indexes env2))
   in
   let to_substitute = union_assumptions shift_assums shift_non_assums in
-  debug_env env_merged "env_merged";
-  debug_terms env1 trm1s "trm1s";
-  debug_terms env2 trm2s "trm2s";
   let trm1s_adj = List.map (shift_by num_new_rels) trm1s in
-  debug_terms env_merged trm1s_adj "trm1s_adj";
-  debug_terms env_merged trm2s "trm2s";
   let trm2s_subst = List.map (substitute_assumptions to_substitute) trm2s in
-  debug_terms env_merged trm2s_subst "trm2s_subst";
   (env_merged, trm1s_adj, trm2s_subst)

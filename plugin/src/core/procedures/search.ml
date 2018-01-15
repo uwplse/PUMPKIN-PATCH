@@ -66,7 +66,8 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
 let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : types =
   Printf.printf "%s\n\n" "----";
   let change = get_change opts in
-  let d = if is_fixpoint_case change then reverse d else d in (* explain *)
+  let start_backwards = is_fixpoint_case change || is_hypothesis change in
+  let d = if start_backwards then reverse d else d in (* explain *)
   let d = update_search_goals opts d (erase_goals d) in
   let diff = get_differencer opts in
   let patches = diff d in

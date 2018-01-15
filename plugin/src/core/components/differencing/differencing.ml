@@ -86,43 +86,29 @@ let debug_search (d : goal_proof_diff) : unit =
  *)
 let rec diff (opts : options) (d : goal_proof_diff) : candidates =
   let d = reduce_letin (reduce_casts d) in
-  debug_search d;
   if no_diff opts d then
-    let x = 0 in Printf.printf "%s\n\n" "no_diff";
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
-    let x = 0 in Printf.printf "%s\n\n" "same H";
     try_chain_diffs
       [(diff_app_ind (diff_inductive diff) diff opts); (* 2a *)
        (find_difference opts)]                         (* 2b *)
       d
   else if applies_ih opts d then
-    let x = 0 in Printf.printf "%s\n\n" "applies IH";
     (*3*) diff_app diff diff opts (reduce_trim_ihs d)
   else
     match kinds_of_terms (proof_terms d) with
     | (Lambda (n_o, t_o, b_o), Lambda (n_n, t_n, b_n)) ->
-       if no_diff opts (eval_with_terms t_o t_n d) then
+       let change = get_change opts in
+       let hypo_non_ind = is_hypothesis change && not (is_ind opts) in
+       if no_diff opts (eval_with_terms t_o t_n d) || hypo_non_ind then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
+         (* TODO! will cause an error with simplify letin; move to preprocess *)
+       else if is_ind opts || not (is_conclusion change) then
+         (*5*) zoom_unshift (to_search_function diff opts d) d
        else
-         let x = 0 in Printf.printf "%s\n\n" "zooming";
-         let change = get_change opts in
-         if is_hypothesis change then
-           (* TODO *) (* TODO zoom without intro common *)
-           (* TODO move *)
-           zoom_map
-             (fun d' -> List.map (fun c -> mkLambda (n_n, t_n, c)) (to_search_function diff opts d d'))
-             give_up
-             expand_terminal
-             intro
-             (erase_goals d)
-         else if is_ind opts || not (is_conclusion change) then
-           (*5*) zoom_unshift (to_search_function diff opts d) d
-         else
-           give_up
+         give_up
     | _ ->
        if is_app opts d then
-         let x = 0 in Printf.printf "%s\n\n" "is app";
          try_chain_diffs
            [(find_difference opts);     (* 6a *)
             (diff_app diff diff opts);  (* 6b *)

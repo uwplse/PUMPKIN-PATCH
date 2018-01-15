@@ -201,6 +201,8 @@ let configure_is_app change d =
   match (kinds_of_terms (proof_terms d), change) with
   | ((_, App (_, _)), InductiveType (_, _)) ->
      true
+  | ((_, App (_, _)), Hypothesis) ->
+     true
   | ((App (_, _), _), _) ->
      true
   | _ ->
