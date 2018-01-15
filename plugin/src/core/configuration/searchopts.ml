@@ -15,6 +15,7 @@ open Printing
 open Kindofchange
 open Cutlemma
 open Zooming
+open Coqenvs
 
 module CRD = Context.Rel.Declaration
 
@@ -129,17 +130,19 @@ let find_hypo_goal (env : env) (d : types proof_diff) : types proof_diff =
     match map_tuple kind_of_term (ot, nt) with
     | (Prod (n_o, t_o, b_o), Prod (n_n, t_n, b_n)) ->
        if convertible en t_o t_n then
-         let rel_o = CRD.LocalAssum(n_o, t_o) in
+         let rel_o = CRD.LocalAssum (n_o, t_o) in
          let (b_o', b_n') = find_goal (push_rel rel_o en) b_o b_n in
          (mkProd (n_o, t_o, b_o'), mkProd (n_n, t_n, b_n'))
        else
-         (ot, nt)
+         (t_o, t_n) (* TODO only works for one change in hypo for now *)
     | _ ->
        (ot, nt)
   in let (goal_o, goal_n) = find_goal env o n in
   difference goal_o goal_n (assumptions d)
 
 (* Search for a difference in hypothesis *)
+(* TODO redundant work, fix before pushing *)
+(* TODO clean before pushing *)
 let set_hypothesis_goals (d : 'a goal_diff) : 'a goal_diff =
   let (goal_o, proof_o) = old_proof d in
   let (goal_n, proof_n) = new_proof d in
@@ -147,8 +150,14 @@ let set_hypothesis_goals (d : 'a goal_diff) : 'a goal_diff =
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
   let (o, n) = map_tuple context_term (goal_o, goal_n) in
-  let d_goal = find_hypo_goal env_o (difference o n assums) in
-  let (o', n') = (old_proof d_goal, new_proof d_goal) in
+  let (o_l, n_l) = (reconstruct_lambda env_o o, reconstruct_lambda env_n n) in
+  let env = pop_rel_context (nb_rel env_o) env_o in
+  let d_goal = find_hypo_goal env (difference o_l n_l assums) in
+  let (o_l', n_l') = (old_proof d_goal, new_proof d_goal) in
+  let rels_o = List.map (fun i -> mkRel i) (List.rev (all_rel_indexes env_o)) in
+  let rels_n = List.map (fun i -> mkRel i) (List.rev (all_rel_indexes env_n)) in
+  let o' = mkApp (o_l', Array.of_list rels_o) in
+  let n' = mkApp (n_l', Array.of_list rels_n) in
   let goal_o' = Context (Term (o', env_o), fid ()) in
   let goal_n' = Context (Term (n', env_n), fid ()) in
   difference (goal_o', proof_o) (goal_n', proof_n) assums

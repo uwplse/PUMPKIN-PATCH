@@ -129,8 +129,10 @@ let find_difference (opts : options) (d : goal_proof_diff) : candidates =
     else
       build_app_candidates env_merge old_term new_term
   in
-  let reduced = reduce_all reduce_remove_identities env_merge candidates in
   let goal_type = mkProd (Anonymous, new_goal_type, shift old_goal_type) in
+  (* TODO in d_hypo case, somehow need access to old hypothesis, let's just track at type level it's way cleaner *)
+  let reduced = reduce_all reduce_remove_identities env_merge candidates in
+  debug_term env_merge (reduce_term env_merge goal_type) "goal_type";
   let filter = filter_by_type env_merge goal_type in
   List.map
     (unshift_local (num_new_rels - 1) num_new_rels)
