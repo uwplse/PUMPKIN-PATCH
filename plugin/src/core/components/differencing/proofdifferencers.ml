@@ -13,6 +13,7 @@ open Filters
 open Candidates
 open Reducers
 open Printing
+open Kindofchange
 
 module CRD = Context.Rel.Declaration
 
@@ -74,18 +75,27 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
  * 5. Wrap those in a lambda from (H : T_new)
  * 6. Return the list of candidates (don't check that they are patches yet)
  *)
-let build_app_candidates (env : env) (old_term : types) (new_term : types) =
+let build_app_candidates opts (env : env) (old_term : types) (new_term : types) =
   try
-    let new_type = infer_type env new_term in
-    let env_shift = push_rel CRD.(LocalAssum(Anonymous, new_type)) env in
+    let change = get_change opts in
+    let from_type = (* TODO before merging PR, can we move this out? *)
+      if is_hypothesis change then
+        infer_type env old_term
+      else
+        infer_type env new_term
+    in
+    let env_shift = push_rel CRD.(LocalAssum(Anonymous, from_type)) env in
     let old_term_shift = shift old_term in
     let new_term_shift = shift new_term in
+    debug_env env_shift "env_shift";
     let sub = all_conv_substs_combs env_shift (new_term_shift, (mkRel 1)) in
     let bodies = sub old_term_shift in
+    debug_terms env_shift bodies "bodies";
     List.map
-      (fun b -> mkLambda (Anonymous, new_type, b))
+      (fun b -> mkLambda (Anonymous, from_type, b))
       (filter_not_same env_shift old_term_shift bodies)
-  with _ -> give_up
+  with _ ->
+    give_up
 
 (*
  * Given two proof terms that apply functions, old and new,
@@ -121,9 +131,16 @@ let find_difference (opts : options) (d : goal_proof_diff) : candidates =
   let (env_merge, d_merge) = merge_diff_envs is_ind num_new_rels d_dest in
   let (old_goal_type, old_term) = old_proof d_merge in
   let (new_goal_type, new_term) = new_proof d_merge in
-  let candidates = build_app_candidates env_merge old_term new_term in
+  debug_term env_merge old_term "old_term";
+  debug_term env_merge new_term "new_term";
+  debug_env env_merge "env_merge";
+  let candidates = build_app_candidates opts env_merge old_term new_term in
+  debug_terms env_merge candidates "candidates";
   let reduced = reduce_all reduce_remove_identities env_merge candidates in
+  debug_terms env_merge reduced "reduced";
+  debug_terms env_merge (List.map (infer_type env_merge) reduced) "types";
   let goal_type = mkProd (Anonymous, new_goal_type, shift old_goal_type) in
+  debug_term env_merge goal_type "goal type";
   let filter = filter_by_type env_merge goal_type in
   List.map
     (unshift_local (num_new_rels - 1) num_new_rels)

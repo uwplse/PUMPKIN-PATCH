@@ -7,6 +7,7 @@ open Assumptions
 open Collections
 open Coqterms
 open Coqenvs
+open Printing
 
 module CRD = Context.Rel.Declaration
 
@@ -45,7 +46,24 @@ let merge_environments (env1 : env) (env2 : env) (assums : equal_assumptions) : 
 let merge_closures ((env1, trm1s) : closure) ((env2, trm2s) : closure) (assums : equal_assumptions) : merged_closure =
   let env_merged = merge_environments env1 env2 assums in
   let num_new_rels = (nb_rel env_merged) - (nb_rel env1) in
-  let substitute = substitute_assumptions (shift_to_assumptions_by num_new_rels assums) in
+  let shift_assums = shift_to_assumptions_by num_new_rels assums in
+  let shift_non_assums =
+    List.fold_left
+      (fun s i ->
+        if not (has_assumption assums (mkRel i)) then
+          assume_local_equal (shift_assumptions s)
+        else
+          shift_from_assumptions s)
+      no_assumptions
+      (List.rev (all_rel_indexes env2))
+  in
+  let to_substitute = union_assumptions shift_assums shift_non_assums in
+  debug_env env_merged "env_merged";
+  debug_terms env1 trm1s "trm1s";
+  debug_terms env2 trm2s "trm2s";
   let trm1s_adj = List.map (shift_by num_new_rels) trm1s in
-  let trm2s_subst = List.map substitute trm2s in
+  debug_terms env_merged trm1s_adj "trm1s_adj";
+  debug_terms env_merged trm2s "trm2s";
+  let trm2s_subst = List.map (substitute_assumptions to_substitute) trm2s in
+  debug_terms env_merged trm2s_subst "trm2s_subst";
   (env_merged, trm1s_adj, trm2s_subst)

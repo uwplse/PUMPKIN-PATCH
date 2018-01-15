@@ -226,6 +226,8 @@ let abstract_case (opts : options) (d : goal_case_diff) cs : candidates =
   let d_goal = erase_proofs d in
   let env = context_env (old_proof d_goal) in
   match get_change opts with
+  | Hypothesis ->
+     cs
   | InductiveType (_, _) ->
      cs
   | FixpointCase ((_, _), cut) when are_cut env cut cs ->

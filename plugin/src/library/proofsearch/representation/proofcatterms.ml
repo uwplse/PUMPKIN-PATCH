@@ -230,10 +230,10 @@ let base_cases_first (cs : proof_cat list) : proof_cat list =
     (fun c1 c2 ->
       let c1_is_ind = has_ihs c1 in
       let c2_is_ind = has_ihs c2 in
-      if c1_is_ind && not c2_is_ind then
+      if c1_is_ind && (not c2_is_ind) then
         1
-      else if not c2_is_ind && c1_is_ind then
-        -1
+      else if (not c1_is_ind) && c2_is_ind then
+        - 1
       else
         0)
     cs

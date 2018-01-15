@@ -13,6 +13,8 @@ open Kindofchange
 open Searchopts
 open Abstraction
 open Differencers
+open Expansion
+open Printing
 
 (* --- Cases --- *)
 
@@ -126,14 +128,13 @@ let diff_base_or_inductive_case opts diff (d : proof_cat_diff) : candidates =
  * for all cases.
  *)
 let diff_and_unshift_case opts diff (d : proof_cat_diff) : candidates =
-  let d_exp = expand_constrs d in
   List.map
     (fun trm ->
       if is_conclusion (get_change opts) then
-        unshift_by (List.length (morphisms (old_proof d_exp))) trm
+        unshift_by (List.length (morphisms (old_proof d))) trm
       else
         trm)
-    (diff_base_or_inductive_case opts diff d_exp)
+    (diff_base_or_inductive_case opts diff d)
 
 (*
  * Search in a diff that has been broken up into different cases.
@@ -172,7 +173,7 @@ let diff_inductive diff opts (d : (proof_cat * int) proof_diff) : candidates =
   else
     zoom_map
       (fun d ->
-        let d_sorted = map_diffs (fun c -> base_cases_first (split c)) id d in
+        let d_sorted = map_diffs (fun c -> base_cases_first (List.map expand_constr (split c))) id d in
         let ds = dest_cases d_sorted in
         List.map (unshift_by nparams_o) (diff_ind_cases opts diff ds))
       []

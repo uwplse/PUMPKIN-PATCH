@@ -13,6 +13,26 @@ open Higherdifferencers
 open Appdifferencers
 open Inddifferencers
 open Proofcatterms
+open Debruijn
+open Expansion
+open Utilities
+open Term
+
+(* --- Debugging --- *)
+
+(* Debug the search function *)
+let debug_search (d : goal_proof_diff) : unit =
+  let (t_o, t_n) = proof_terms d in
+  let d = dest_goals d in
+  let ((old_goal, env_o), _) = old_proof d in
+  let ((new_goal, env_n), _) = new_proof d in
+  debug_term env_o t_o "old";
+  debug_term env_n t_n "new";
+  debug_term env_o old_goal "old goal";
+  debug_term env_n new_goal "new goal";
+  print_separator ()
+
+(* --- Differencing --- *)
 
 (*
  * Search for a direct patch given a difference in proof_cats within.
@@ -53,9 +73,10 @@ open Proofcatterms
  *    Look for a patch going from the common argument to the zoomed in
  *    term.
  * 5. When both terms are lambdas, there isn't a common argument,
- *    and we're either in the inductive case or dealing with a change,
- *    in types, then zoom in and search there like we would for common
- *    argument, but don't wrap it in a lambda (throw out the last argument).
+ *    and we're either in the inductive case or dealing with a change
+ *    in types or hypotheses, then zoom in and search there like we would for
+ *    common argument, but don't wrap it in a lambda (throw out the last
+ *    argument).
  * 6a. When one proof term may apply the other and
  *    none of the other heuristics fire, then we use find_difference
  *    to try to find a direct patch by looking at the terms themselves.
@@ -65,27 +86,43 @@ open Proofcatterms
  *)
 let rec diff (opts : options) (d : goal_proof_diff) : candidates =
   let d = reduce_letin (reduce_casts d) in
+  debug_search d;
   if no_diff opts d then
+    let x = 0 in Printf.printf "%s\n\n" "no_diff";
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
+    let x = 0 in Printf.printf "%s\n\n" "same H";
     try_chain_diffs
       [(diff_app_ind (diff_inductive diff) diff opts); (* 2a *)
        (find_difference opts)]                         (* 2b *)
       d
   else if applies_ih opts d then
+    let x = 0 in Printf.printf "%s\n\n" "applies IH";
     (*3*) diff_app diff diff opts (reduce_trim_ihs d)
   else
     match kinds_of_terms (proof_terms d) with
-    | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
+    | (Lambda (n_o, t_o, b_o), Lambda (n_n, t_n, b_n)) ->
        if no_diff opts (eval_with_terms t_o t_n d) then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
        else
-         if is_ind opts || not (is_conclusion (get_change opts)) then
+         let x = 0 in Printf.printf "%s\n\n" "zooming";
+         let change = get_change opts in
+         if is_hypothesis change then
+           (* TODO *) (* TODO zoom without intro common *)
+           (* TODO move *)
+           zoom_map
+             (fun d' -> List.map (fun c -> mkLambda (n_n, t_n, c)) (to_search_function diff opts d d'))
+             give_up
+             expand_terminal
+             intro
+             (erase_goals d)
+         else if is_ind opts || not (is_conclusion change) then
            (*5*) zoom_unshift (to_search_function diff opts d) d
          else
            give_up
     | _ ->
        if is_app opts d then
+         let x = 0 in Printf.printf "%s\n\n" "is app";
          try_chain_diffs
            [(find_difference opts);     (* 6a *)
             (diff_app diff diff opts);  (* 6b *)

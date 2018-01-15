@@ -101,7 +101,7 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
  * Basically, use the normal induction differencing function,
  * then specialize to any final arguments.
  *
- * For changes in constructors or fixpoint cases, don't specialize.
+ * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *)
 let diff_app_ind diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
   let d_proofs = erase_goals d in
@@ -117,6 +117,8 @@ let diff_app_ind diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
     let f = diff_ind opts (difference (o, npms_old) (n, npms_new) assums) in
     match get_change opts with
     | InductiveType (_, _) ->
+       f
+    | Hypothesis ->
        f
     | FixpointCase ((_, _), cut) ->
        let env = context_env (fst (old_proof d)) in

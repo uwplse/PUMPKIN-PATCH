@@ -18,20 +18,6 @@ open Differencing
 open Cutlemma
 open Kindofchange
 
-(* --- Debugging --- *)
-
-(* Debug the search function *)
-let debug_search (d : goal_proof_diff) : unit =
-  let (t_o, t_n) = proof_terms d in
-  let d = dest_goals d in
-  let ((old_goal, env_o), _) = old_proof d in
-  let ((new_goal, env_n), _) = new_proof d in
-  debug_term env_o t_o "old";
-  debug_term env_n t_n "new";
-  debug_term env_o old_goal "old goal";
-  debug_term env_n new_goal "new goal";
-  print_separator ()
-
 (* --- Procedure --- *)
 
 (*
@@ -80,7 +66,7 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
 let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : types =
   Printf.printf "%s\n\n" "----";
   let change = get_change opts in
-  let d = if is_fixpoint_case change then reverse d else d in  (* explain *)
+  let d = if is_fixpoint_case change then reverse d else d in (* explain *)
   let d = update_search_goals opts d (erase_goals d) in
   let diff = get_differencer opts in
   let patches = diff d in

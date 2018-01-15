@@ -144,12 +144,13 @@ let set_hypothesis_goals (d : 'a goal_diff) : 'a goal_diff =
   let (goal_o, proof_o) = old_proof d in
   let (goal_n, proof_n) = new_proof d in
   let assums = assumptions d in
-  let env = context_env goal_o in
+  let env_o = context_env goal_o in
+  let env_n = context_env goal_n in
   let (o, n) = map_tuple context_term (goal_o, goal_n) in
-  let d_goal = find_hypo_goal env (difference o n assums) in
+  let d_goal = find_hypo_goal env_o (difference o n assums) in
   let (o', n') = (old_proof d_goal, new_proof d_goal) in
-  let goal_o' = Context (Term (o', env), fid ()) in
-  let goal_n' = Context (Term (n', env), fid ()) in
+  let goal_o' = Context (Term (o', env_o), fid ()) in
+  let goal_n' = Context (Term (n', env_n), fid ()) in
   difference (goal_o', proof_o) (goal_n', proof_n) assums
 
 (*
@@ -208,15 +209,12 @@ let configure_is_app change d =
 (*
  * Given a change, determine the goals for testing whether a proof
  * might apply to another proof:
- * 1) If it's a change in hypotheses or inductive types, then swap the goals
- * 2) If it's a change in conclusions or definitions,
- *    then keep the goals as-is
+ * 1) If it's a change in inductive types, then swap the goals
+ * 2) Otherwise, keep the goals as-is
  *)
 let configure_swap_goals change d =
   match change with
   | InductiveType (_, _) ->
-     swap_goals d
-  | Hypothesis ->
      swap_goals d
   | _ ->
      d
