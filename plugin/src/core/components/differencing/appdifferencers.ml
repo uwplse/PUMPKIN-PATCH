@@ -118,8 +118,8 @@ let diff_app_ind diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
     match get_change opts with
     | InductiveType (_, _) ->
        f
-    | Hypothesis ->
-       f
+    | Hypothesis (_, _) ->
+       f (* TODO before pushing this is broken probably *)
     | FixpointCase ((_, _), cut) ->
        let env = context_env (fst (old_proof d)) in
        let filter_diff_cut diff = filter_diff (filter_cut env cut) diff in

@@ -130,6 +130,7 @@ let find_difference (opts : options) (d : goal_proof_diff) : candidates =
       build_app_candidates env_merge old_term new_term
   in
   let goal_type = mkProd (Anonymous, new_goal_type, shift old_goal_type) in
+  debug_term env_merge goal_type "goal_type, pre-reduction";
   (* TODO in d_hypo case, somehow need access to old hypothesis, let's just track at type level it's way cleaner *)
   let reduced = reduce_all reduce_remove_identities env_merge candidates in
   debug_term env_merge (reduce_term env_merge goal_type) "goal_type";

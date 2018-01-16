@@ -66,7 +66,8 @@ let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
          if same_shape env d_typs then
            InductiveType (t_o, t_n)
          else
-           Hypothesis
+           let (t_o', t_n') = map_tuple (reconstruct_prod env) (t_o, t_n) in
+           Hypothesis (t_o', t_n')
        else
          diff (push_rel CRD.(LocalAssum(n_o, t_o)) env) b_o b_n
     | (App (f_o, args_o), App (f_n, args_n)) ->

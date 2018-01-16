@@ -80,7 +80,7 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : 
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
     let inverted = invert_terms invert_factor env rev_patches in
     match change with
-    | Conclusion | Hypothesis ->
+    | Conclusion | (Hypothesis (_, _)) ->
        if non_empty inverted then
          let patch = List.hd inverted in
          Printf.printf "%s\n" "SUCCESS";

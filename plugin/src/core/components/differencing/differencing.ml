@@ -103,6 +103,7 @@ let rec diff (opts : options) (d : goal_proof_diff) : candidates =
        if no_diff opts (eval_with_terms t_o t_n d) || hypo_non_ind then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
          (* TODO! will cause an error with simplify letin; move to preprocess *)
+         (* TODO! when you zoom, update options too for d_hypo case *)
        else if is_ind opts || not (is_conclusion change) then
          (*5*) zoom_unshift (to_search_function diff opts d) d
        else

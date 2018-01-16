@@ -22,7 +22,7 @@ type kind_of_change =
   | InductiveType of types * types
   | FixpointCase of (types * types) * cut_lemma
   | ConclusionCase of (cut_lemma option)
-  | Hypothesis
+  | Hypothesis of types * types
 
 val is_conclusion : kind_of_change -> bool
 val is_inductive_type : kind_of_change -> bool

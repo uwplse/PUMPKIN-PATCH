@@ -121,51 +121,9 @@ let set_inductive_goals typ_o typ_n (d : 'a goal_diff) : 'a goal_diff =
   difference (goal_o', proof_o) (goal_n', proof_n) assums
 
 (*
- * TODO comment and move before merging pull request
- *)
-let find_hypo_goal (env : env) (d : types proof_diff) : types proof_diff =
-  let o = old_proof d in
-  let n = new_proof d in
-  let rec find_goal en ot nt =
-    match map_tuple kind_of_term (ot, nt) with
-    | (Prod (n_o, t_o, b_o), Prod (n_n, t_n, b_n)) ->
-       if convertible en t_o t_n then
-         let rel_o = CRD.LocalAssum (n_o, t_o) in
-         let (b_o', b_n') = find_goal (push_rel rel_o en) b_o b_n in
-         (mkProd (n_o, t_o, b_o'), mkProd (n_n, t_n, b_n'))
-       else
-         (t_o, t_n) (* TODO only works for one change in hypo for now *)
-    | _ ->
-       (ot, nt)
-  in let (goal_o, goal_n) = find_goal env o n in
-  difference goal_o goal_n (assumptions d)
-
-(* Search for a difference in hypothesis *)
-(* TODO redundant work, fix before pushing *)
-(* TODO clean before pushing *)
-let set_hypothesis_goals (d : 'a goal_diff) : 'a goal_diff =
-  let (goal_o, proof_o) = old_proof d in
-  let (goal_n, proof_n) = new_proof d in
-  let assums = assumptions d in
-  let env_o = context_env goal_o in
-  let env_n = context_env goal_n in
-  let (o, n) = map_tuple context_term (goal_o, goal_n) in
-  let (o_l, n_l) = (reconstruct_lambda env_o o, reconstruct_lambda env_n n) in
-  let env = pop_rel_context (nb_rel env_o) env_o in
-  let d_goal = find_hypo_goal env (difference o_l n_l assums) in
-  let (o_l', n_l') = (old_proof d_goal, new_proof d_goal) in
-  let rels_o = List.map (fun i -> mkRel i) (List.rev (all_rel_indexes env_o)) in
-  let rels_n = List.map (fun i -> mkRel i) (List.rev (all_rel_indexes env_n)) in
-  let o' = mkApp (o_l', Array.of_list rels_o) in
-  let n' = mkApp (n_l', Array.of_list rels_n) in
-  let goal_o' = Context (Term (o', env_o), fid ()) in
-  let goal_n' = Context (Term (n', env_n), fid ()) in
-  difference (goal_o', proof_o) (goal_n', proof_n) assums
-
-(*
  * Update the goals for a change in types
  *)
-let update_goals_types d_old d =
+let update_goals_types d_old (d : proof_cat_diff) =
   let (old_goal, _) = old_proof d_old in
   let (new_goal, _) = new_proof d_old in
   match kinds_of_terms (proof_terms d_old) with
@@ -181,6 +139,28 @@ let update_goals_types d_old d =
      let n = (new_goal, new_proof d) in
      difference o n (assumptions d)
 
+(* Search for a difference in hypothesis *)
+(* TODO redundant work, fix before pushing *)
+(* TODO clean before pushing *)
+let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
+  let (goal_o, proof_o) = old_proof d in
+  let (goal_n, proof_n) = new_proof d in
+  let assums = assumptions d in
+  let env_o = context_env goal_o in
+  let env_n = context_env goal_n in
+  (*let rels_o = List.map (fun i -> mkRel i) (List.rev (all_rel_indexes env_o)) in
+  let rels_n = List.map (fun i -> mkRel i) (List.rev (all_rel_indexes env_n)) in
+  let o = mkApp (t_o, Array.of_list rels_o) in
+  let n = mkApp (t_n, Array.of_list rels_n) in*) (* TODO *)
+  (* TODO problem now is that we need to apply it to things *)
+  debug_env env_o "env_o";
+  debug_env env_n "env_n";
+  let o = t_n in
+  let n = t_o in
+  let goal_o' = Context (Term (o, env_o), fid ()) in
+  let goal_n' = Context (Term (n, env_n), fid ()) in
+  difference (goal_o', proof_o) (goal_n', proof_n) assums
+
 (*
  * Given a change, determine how to update goals:
  * 1) If it's a change in a type we induct over,
@@ -193,8 +173,8 @@ let configure_update_goals change d_old d =
   match change with
   | InductiveType (_, _) ->
      update_goals_types d_old d
-  | Hypothesis ->
-     set_hypothesis_goals (add_goals d)
+  | Hypothesis (t_old, t_new) ->
+     set_hypothesis_goals t_old t_new (add_goals d)
   | _ ->
      add_goals d
 
@@ -210,7 +190,7 @@ let configure_is_app change d =
   match (kinds_of_terms (proof_terms d), change) with
   | ((_, App (_, _)), InductiveType (_, _)) ->
      true
-  | ((_, App (_, _)), Hypothesis) ->
+  | ((_, App (_, _)), Hypothesis (_, _)) ->
      true
   | ((App (_, _), _), _) ->
      true
@@ -248,8 +228,8 @@ let configure_reset_goals change (d : goal_case_diff) : goal_case_diff =
   match change with
   | InductiveType (typ_o, typ_n) ->
      set_inductive_goals typ_o typ_n d
-  | Hypothesis ->
-     set_hypothesis_goals d
+  | Hypothesis (typ_o, typ_n) ->
+     set_hypothesis_goals typ_o typ_n d
   | _ ->
      d
 
