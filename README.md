@@ -192,6 +192,9 @@ PUMPKIN has very limited support for pattern matching, proofs using logic specif
 (such as proofs that use `omega`), changes in hypotheses, and nested induction.
 Supporting all of these features is on our roadmap.
 
+There is currently a branch (hypotheses) for changes in hypothesis, which is not yet ready to merge but
+should be soon. Structural changes are in progress but will take longer to support.
+
 In general, if PUMPKIN fails to find a patch, it's likely due to features that are not yet implemented.
 If you encounter any error or failure, please cut an issue with a reproducable example, since we can
 determine whether the error is a bug or an unimplemented feature, and use it as an eventual test case.
