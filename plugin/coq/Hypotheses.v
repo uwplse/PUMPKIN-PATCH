@@ -33,7 +33,7 @@ Patch Proof old1 new1 as patch1.
 Print patch1.
 
 Definition expectedPatch1 :=
-  fun (n m p : nat) (H : n <= m) (H1 : n < m) =>
+  fun (n m : nat) (H1 : n < m) =>
     PeanoNat.Nat.lt_le_incl n m H1.
 
 Theorem testPatch1 :

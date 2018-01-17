@@ -53,6 +53,15 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
        abstract_with_strategies
          (configure_cut_args env cut patches)
      in List.hd generalized
+  | Hypothesis (_, _) ->
+     (* TODO remove_unused_hypos means we have weaker guarantees about the
+        type of our patch; this is a workaround for not being able to tell search
+        not to add hypotheses it encounters after zooming into the unequal case,
+        and is something we should fix, perhaps by
+        adding a way to remove only the hypotheses that don't occur in
+        the goal type, or by fixing how we recurse in which messes up the order *)
+     let patches = reduce_all remove_unused_hypos env patches in
+     List.hd patches
   | _ ->
      Printf.printf "%s\n" "SUCCESS";
      List.hd patches

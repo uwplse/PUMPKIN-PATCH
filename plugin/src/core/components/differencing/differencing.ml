@@ -99,20 +99,16 @@ let rec diff (opts : options) (d : goal_proof_diff) : candidates =
   else
     match kinds_of_terms (proof_terms d) with
     | (Lambda (n_o, t_o, b_o), Lambda (n_n, t_n, b_n)) ->
+       let change = get_change opts in
+       let ind = is_ind opts in
        if no_diff opts (eval_with_terms t_o t_n d) then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
+       else if ind || not (is_conclusion change) then
+         (* TODO! will cause an error w/ simplify letin; move to preprocess *)
+         (* TODO append explanation to comment *)
+         (*5*) zoom_unshift (to_search_function diff opts d) d
        else
-         let change = get_change opts in
-         let ind = is_ind opts in
-         if is_hypothesis change && not ind then
-           (* TODO explain *)
-           (* TODO check w extra premises *)
-           (* TODO! will cause an error w/ simplify letin; move to preprocess *)
-           zoom_search (to_search_function diff opts d) d
-         else if ind || not (is_conclusion change) then
-           (*5*) zoom_unshift (to_search_function diff opts d) d
-         else
-           give_up
+         give_up
     | _ ->
        if is_app opts d then
          try_chain_diffs

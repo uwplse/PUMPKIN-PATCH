@@ -92,10 +92,12 @@ let diff_sort_ind_case opts sort diff d_old (d : proof_cat_diff) : candidates =
   (* for hypos: need to unshift by the number of hypos that appeared after
      the one we encountered, somehow
      TODO move and merge w/ dup logic *)
+  (* TODO unshift by 1 deals with extra hypothesis, but really want
+     to sub in old hypothesis *)
   let env_o = context_env (fst (old_proof d_goals)) in
   let (old_goal, _) = old_proof d_old in
   let num_new_rels = nb_rel env_o - nb_rel (context_env old_goal) in
-  List.map (unshift_by num_new_rels) (diff_ind_case opts (diff opts) d_goals)
+  List.map (unshift_by (num_new_rels - 1)) (diff_ind_case opts (diff opts) d_goals)
 
 (*
  * Base case: Prefer arrows later in the proof
@@ -180,7 +182,7 @@ let diff_inductive diff d_old opts (d : (proof_cat * int) proof_diff) : candidat
     give_up
   else
     zoom_map
-      (fun d ->
+       (fun d ->
         let d_sorted = map_diffs (fun c -> base_cases_first (List.map expand_constr (split c))) id d in
         let ds = dest_cases d_sorted in
         List.map (unshift_by nparams_o) (diff_ind_cases opts diff d_old ds))

@@ -11,6 +11,7 @@ open Candidates
 open Term
 open Debruijn
 open Expansion
+open Printing
 
 (* --- Zooming --- *)
 
