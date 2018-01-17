@@ -2,6 +2,7 @@
 
 open Differencers
 open Searchopts
+open Proofdiff
 
 (*
  * Difference an inductive proof.
@@ -11,7 +12,11 @@ open Searchopts
  * type-checks in the original environment.
  *
  * Use the options to determine how to abstract and how much to adjust by.
+ *
+ * Use the old goal_proof_diff along with the options to determine how
+ * to update the goals for the next iteration.
  *)
 val diff_inductive :
   proof_differencer configurable ->
+  goal_proof_diff ->
   ind_proof_differencer configurable

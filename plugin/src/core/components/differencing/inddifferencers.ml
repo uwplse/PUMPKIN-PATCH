@@ -73,7 +73,7 @@ let diff_ind_case opts diff (d : goal_case_diff) : candidates =
  * This breaks it up into arrows and then searches those
  * in the order of the sort function.
  *)
-let diff_sort_ind_case opts sort diff (d : proof_cat_diff) : candidates =
+let diff_sort_ind_case opts sort diff d_old (d : proof_cat_diff) : candidates =
   let o = old_proof d in
   let n = new_proof d in
   let ms_o = morphisms o in
@@ -84,6 +84,7 @@ let diff_sort_ind_case opts sort diff (d : proof_cat_diff) : candidates =
     (diff opts)
     (reset_case_goals
        opts
+       d_old
        (map_diffs
           (fun (o, ms) -> (terminal o, ms))
           (always (update_case_assums d_ms))
@@ -92,9 +93,9 @@ let diff_sort_ind_case opts sort diff (d : proof_cat_diff) : candidates =
 (*
  * Base case: Prefer arrows later in the proof
  *)
-let diff_base_case opts diff (d : proof_cat_diff) : candidates =
+let diff_base_case opts diff d_old (d : proof_cat_diff) : candidates =
   let sort _ ms = List.rev ms in
-  diff_sort_ind_case (set_is_ind opts false) sort diff d
+  diff_sort_ind_case (set_is_ind opts false) sort diff d_old d
 
 (*
  * Inductive case: Prefer arrows closest to an IH,
@@ -104,21 +105,21 @@ let diff_base_case opts diff (d : proof_cat_diff) : candidates =
  * arrows are traversed in exactly the same order for each proof.
  * If there is a bug in this, this may be why.
  *)
-let diff_inductive_case opts diff (d : proof_cat_diff) : candidates =
+let diff_inductive_case opts diff d_old (d : proof_cat_diff) : candidates =
   let sort c ms = List.stable_sort (closer_to_ih c (find_ihs c)) ms in
-  diff_sort_ind_case (set_is_ind opts true) sort diff d
+  diff_sort_ind_case (set_is_ind opts true) sort diff d_old d
 
 (*
  * Depending on whether a proof has inductive hypotheses, difference
  * it treating it either like a base case (no inductive hypotheses)
  * or an inductive case (some inductive hypotheses).
  *)
-let diff_base_or_inductive_case opts diff (d : proof_cat_diff) : candidates =
+let diff_base_or_inductive_case opts diff d_old (d : proof_cat_diff) : candidates =
   let o = old_proof d in
   if has_ihs o then
-    diff_inductive_case opts diff d
+    diff_inductive_case opts diff d_old d
   else
-    diff_base_case opts diff d
+    diff_base_case opts diff d_old d
 
 (*
  * Diff a case, then adjust the patch so it type-checks
@@ -127,14 +128,14 @@ let diff_base_or_inductive_case opts diff (d : proof_cat_diff) : candidates =
  * If there is a bug here, then the offset we unshift by may not generalize
  * for all cases.
  *)
-let diff_and_unshift_case opts diff (d : proof_cat_diff) : candidates =
+let diff_and_unshift_case opts diff d_old (d : proof_cat_diff) : candidates =
   List.map
     (fun trm ->
       if is_conclusion (get_change opts) then
         unshift_by (List.length (morphisms (old_proof d))) trm
       else
         trm)
-    (diff_base_or_inductive_case opts diff d)
+    (diff_base_or_inductive_case opts diff d_old d)
 
 (*
  * Search in a diff that has been broken up into different cases.
@@ -143,14 +144,14 @@ let diff_and_unshift_case opts diff (d : proof_cat_diff) : candidates =
  * For now, we only return the first patch we find.
  * We may want to return more later.
  *)
-let rec diff_ind_cases opts diff (ds : proof_cat_diff list) : candidates =
+let rec diff_ind_cases opts diff d_old (ds : proof_cat_diff list) : candidates =
   match ds with
   | d :: tl ->
-     let patches = diff_and_unshift_case opts diff d in
+     let patches = diff_and_unshift_case opts diff d_old d in
      if non_empty patches then
        patches
      else
-       diff_ind_cases opts diff tl
+       diff_ind_cases opts diff d_old tl
   | [] ->
      []
 
@@ -165,7 +166,7 @@ let rec diff_ind_cases opts diff (ds : proof_cat_diff list) : candidates =
  * This does not yet handle the case when the inductive parameters
  * are lists of different lengths, or where there is a change in hypothesis.
  *)
-let diff_inductive diff opts (d : (proof_cat * int) proof_diff) : candidates =
+let diff_inductive diff d_old opts (d : (proof_cat * int) proof_diff) : candidates =
   let (o, nparams_o) = old_proof d in
   let (n, nparams_n) = new_proof d in
   if not (nparams_o = nparams_n) then
@@ -175,7 +176,7 @@ let diff_inductive diff opts (d : (proof_cat * int) proof_diff) : candidates =
       (fun d ->
         let d_sorted = map_diffs (fun c -> base_cases_first (List.map expand_constr (split c))) id d in
         let ds = dest_cases d_sorted in
-        List.map (unshift_by nparams_o) (diff_ind_cases opts diff ds))
+        List.map (unshift_by nparams_o) (diff_ind_cases opts diff d_old ds))
       []
       id
       (intro_params nparams_o)

@@ -58,7 +58,7 @@ type options =
     same_h : types -> types -> bool;
     update_goals : goal_proof_diff -> proof_cat_diff -> goal_proof_diff;
     swap_goals : goal_term_diff -> goal_term_diff;
-    reset_goals : goal_case_diff -> goal_case_diff;
+    reset_goals : goal_proof_diff -> goal_case_diff -> goal_case_diff;
     is_app : goal_proof_diff -> bool;
   }
 
@@ -153,8 +153,6 @@ let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
   let o = mkApp (t_o, Array.of_list rels_o) in
   let n = mkApp (t_n, Array.of_list rels_n) in*) (* TODO *)
   (* TODO problem now is that we need to apply it to things *)
-  debug_env env_o "env_o";
-  debug_env env_n "env_n";
   let o = t_n in
   let n = t_o in
   let goal_o' = Context (Term (o, env_o), fid ()) in
@@ -174,7 +172,15 @@ let configure_update_goals change d_old d =
   | InductiveType (_, _) ->
      update_goals_types d_old d
   | Hypothesis (t_old, t_new) ->
-     set_hypothesis_goals t_old t_new (add_goals d)
+     let d_def = add_goals d in
+     let old_goals = map_tuple fst (old_proof d_old, new_proof d_old) in
+     let default_goals = map_tuple fst (old_proof d_def, new_proof d_def) in
+     let (g_o, g_n) = context_terms old_goals in
+     let (g_o', g_n') = context_terms default_goals in
+     if eq_constr g_o g_o' && eq_constr g_n g_n' then (* set initial goals *)
+       set_hypothesis_goals t_old t_new d_def
+     else (* update goals *)
+       update_goals_types d_old d
   | _ ->
      add_goals d
 
@@ -224,12 +230,16 @@ let configure_swap_goals change d =
  * be separate from everything else, eventually need to refactor
  * all the goal-setting and resetting functions into a format that makes sense.
  *)
-let configure_reset_goals change (d : goal_case_diff) : goal_case_diff =
+let configure_reset_goals change d_old (d : goal_case_diff) : goal_case_diff =
   match change with
   | InductiveType (typ_o, typ_n) ->
      set_inductive_goals typ_o typ_n d
   | Hypothesis (typ_o, typ_n) ->
-     set_hypothesis_goals typ_o typ_n d
+     let (_, cases_o) = old_proof d in
+     let (_, cases_n) = new_proof d in
+     let (old_goal, _) = old_proof d_old in
+     let (new_goal, _) = new_proof d_old in (* TODO must i shift? *)
+     difference (old_goal, cases_o) (new_goal, cases_o) (assumptions d)
   | _ ->
      d
 

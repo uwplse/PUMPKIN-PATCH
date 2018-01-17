@@ -37,7 +37,8 @@ val update_search_goals :
 val swap_search_goals : (goal_term_diff -> goal_term_diff) configurable
 
 (* Reset the goals of search for an inductive case *)
-val reset_case_goals : (goal_case_diff -> goal_case_diff) configurable
+val reset_case_goals :
+  (goal_proof_diff -> goal_case_diff -> goal_case_diff) configurable
 
 (* Determine whether two terms induct over the same hypothesis *)
 val same_h : (types -> types -> bool) configurable

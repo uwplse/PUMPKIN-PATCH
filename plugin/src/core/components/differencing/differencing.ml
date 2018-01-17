@@ -17,6 +17,7 @@ open Debruijn
 open Expansion
 open Utilities
 open Term
+open Collections
 
 (* --- Debugging --- *)
 
@@ -85,13 +86,14 @@ let debug_search (d : goal_proof_diff) : unit =
  *    recursively. (Support for this is preliminary.)
  *)
 let rec diff (opts : options) (d : goal_proof_diff) : candidates =
+  debug_search d;
   let d = reduce_letin (reduce_casts d) in
   if no_diff opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
     try_chain_diffs
-      [(diff_app_ind (diff_inductive diff) diff opts); (* 2a *)
-       (find_difference opts)]                         (* 2b *)
+      [(diff_app_ind (diff_inductive diff d) diff opts); (* 2a *)
+       (find_difference opts)]                           (* 2b *)
       d
   else if applies_ih opts d then
     (*3*) diff_app diff diff opts (reduce_trim_ihs d)
@@ -103,7 +105,6 @@ let rec diff (opts : options) (d : goal_proof_diff) : candidates =
        if no_diff opts (eval_with_terms t_o t_n d) || hypo_non_ind then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
          (* TODO! will cause an error with simplify letin; move to preprocess *)
-         (* TODO! when you zoom, update options too for d_hypo case *)
        else if is_ind opts || not (is_conclusion change) then
          (*5*) zoom_unshift (to_search_function diff opts d) d
        else
