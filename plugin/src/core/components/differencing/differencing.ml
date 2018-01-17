@@ -86,7 +86,6 @@ let debug_search (d : goal_proof_diff) : unit =
  *    recursively. (Support for this is preliminary.)
  *)
 let rec diff (opts : options) (d : goal_proof_diff) : candidates =
-  debug_search d;
   let d = reduce_letin (reduce_casts d) in
   if no_diff opts d then
     (*1*) identity_candidates d

@@ -15,6 +15,7 @@ open Abstraction
 open Differencers
 open Expansion
 open Printing
+open Environ
 
 (* --- Cases --- *)
 
@@ -79,16 +80,22 @@ let diff_sort_ind_case opts sort diff d_old (d : proof_cat_diff) : candidates =
   let ms_o = morphisms o in
   let ms_n = morphisms n in
   let d_ms = difference ms_o ms_n (assumptions d) in
-  diff_ind_case
-    opts
-    (diff opts)
-    (reset_case_goals
-       opts
-       d_old
-       (map_diffs
-          (fun (o, ms) -> (terminal o, ms))
-          (always (update_case_assums d_ms))
-          (add_to_diff d (sort o ms_o) (sort n ms_n))))
+  let d_goals =
+    reset_case_goals
+      opts
+      d_old
+      (map_diffs
+         (fun (o, ms) -> (terminal o, ms))
+         (always (update_case_assums d_ms))
+         (add_to_diff d (sort o ms_o) (sort n ms_n)))
+  in
+  (* for hypos: need to unshift by the number of hypos that appeared after
+     the one we encountered, somehow
+     TODO move and merge w/ dup logic *)
+  let env_o = context_env (fst (old_proof d_goals)) in
+  let (old_goal, _) = old_proof d_old in
+  let num_new_rels = nb_rel env_o - nb_rel (context_env old_goal) in
+  List.map (unshift_by num_new_rels) (diff_ind_case opts (diff opts) d_goals)
 
 (*
  * Base case: Prefer arrows later in the proof

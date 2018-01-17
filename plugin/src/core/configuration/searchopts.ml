@@ -235,11 +235,19 @@ let configure_reset_goals change d_old (d : goal_case_diff) : goal_case_diff =
   | InductiveType (typ_o, typ_n) ->
      set_inductive_goals typ_o typ_n d
   | Hypothesis (typ_o, typ_n) ->
-     let (_, cases_o) = old_proof d in
-     let (_, cases_n) = new_proof d in
+     let (old_cases_goal, cases_o) = old_proof d in
+     let (new_cases_goal, cases_n) = new_proof d in
+     let env_o = context_env old_cases_goal in
+     let env_n = context_env new_cases_goal in
      let (old_goal, _) = old_proof d_old in
-     let (new_goal, _) = new_proof d_old in (* TODO must i shift? *)
-     difference (old_goal, cases_o) (new_goal, cases_o) (assumptions d)
+     let (new_goal, _) = new_proof d_old in
+     let num_new_rels_o = nb_rel env_o - nb_rel (context_env old_goal) in
+     let num_new_rels_n = nb_rel env_n - nb_rel (context_env new_goal) in
+     let o = shift_by num_new_rels_o (context_term old_goal) in
+     let n = shift_by num_new_rels_n (context_term new_goal) in
+     let goal_o = Context (Term (o, env_o), fid ()) in
+     let goal_n = Context (Term (n, env_n), fid ()) in
+     difference (goal_o, cases_o) (goal_n, cases_n) (assumptions d)
   | _ ->
      d
 

@@ -18,6 +18,7 @@ open Coqenvs
 open Proofdiff
 open Searchopts
 open Cutlemma
+open Filters
 
 module CRD = Context.Rel.Declaration
 
@@ -224,10 +225,12 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) : candidates =
  *)
 let abstract_case (opts : options) (d : goal_case_diff) cs : candidates =
   let d_goal = erase_proofs d in
-  let env = context_env (old_proof d_goal) in
+  let old_goal = old_proof d_goal in
+  let env = context_env old_goal in
   match get_change opts with
   | Hypothesis (_, _) ->
-     cs
+     let (g_o, g_n) = map_tuple context_term (old_goal, new_proof d_goal) in
+     filter_by_type env (mkProd (Anonymous, g_n, shift g_o)) cs
   | InductiveType (_, _) ->
      cs
   | FixpointCase ((_, _), cut) when are_cut env cut cs ->

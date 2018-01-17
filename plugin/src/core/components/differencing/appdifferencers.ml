@@ -116,10 +116,8 @@ let diff_app_ind diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
     let (n, npms_new, args_n) = new_proof d_zoom in
     let f = diff_ind opts (difference (o, npms_old) (n, npms_new) assums) in
     match get_change opts with
-    | InductiveType (_, _) ->
+    | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
        f
-    | Hypothesis (_, _) ->
-       f (* TODO before pushing this is broken probably *)
     | FixpointCase ((_, _), cut) ->
        let env = context_env (fst (old_proof d)) in
        let filter_diff_cut diff = filter_diff (filter_cut env cut) diff in

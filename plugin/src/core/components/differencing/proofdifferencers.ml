@@ -75,9 +75,8 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
  * 5. Wrap those in a lambda from (H : T_new)
  * 6. Return the list of candidates (don't check that they are patches yet)
  *)
-let build_app_candidates (env : env) (old_term : types) (new_term : types) =
+let build_app_candidates (env : env) (from_type : types) (old_term : types) (new_term : types) =
   try
-    let from_type = infer_type env new_term in
     let env_shift = push_rel CRD.(LocalAssum(Anonymous, from_type)) env in
     let old_term_shift = shift old_term in
     let new_term_shift = shift new_term in
@@ -125,15 +124,14 @@ let find_difference (opts : options) (d : goal_proof_diff) : candidates =
   let (new_goal_type, new_term) = new_proof d_merge in
   let candidates = (* TODO move *)
     if is_hypothesis (get_change opts) then
-      build_app_candidates env_merge new_term old_term
+      let from_type = new_goal_type in
+      build_app_candidates env_merge from_type new_term old_term
     else
-      build_app_candidates env_merge old_term new_term
+      let from_type = infer_type env_merge new_term in
+      build_app_candidates env_merge from_type old_term new_term
   in
   let goal_type = mkProd (Anonymous, new_goal_type, shift old_goal_type) in
-  debug_term env_merge goal_type "goal_type, pre-reduction";
-  (* TODO in d_hypo case, somehow need access to old hypothesis, let's just track at type level it's way cleaner *)
   let reduced = reduce_all reduce_remove_identities env_merge candidates in
-  debug_term env_merge (reduce_term env_merge goal_type) "goal_type";
   let filter = filter_by_type env_merge goal_type in
   List.map
     (unshift_local (num_new_rels - 1) num_new_rels)
