@@ -30,8 +30,14 @@ Qed.
 
 Patch Proof old1 new1 as patch1.
 
-(*
- * TODO check result
- *)
-
 Print patch1.
+
+Definition expectedPatch1 :=
+  fun (n m p : nat) (H : n <= m) (H1 : n < m) =>
+    PeanoNat.Nat.lt_le_incl n m H1.
+
+Theorem testPatch1 :
+  patch1 = expectedPatch1.
+Proof.
+  reflexivity.
+Qed.
