@@ -244,6 +244,15 @@ You can add new commands there. You can also extend the patch finding procedure 
 There is a useful debugging function in [search.ml](/plugin/src/core/procedures/search.ml);
 if you are modifying the tool, you may want to use it.
 
+When hacking on Pumpkin, we recommend using a Coq installation from OPAM, so that you can easily browse the source and get code completion with Merlin (used by most editors' OCaml plugins). The following steps will reinstall Coq from OPAM while saving the source and symbol/type tables for use by Merlin:
+```shell
+$ export OPAMKEEPBUILDDIR=true
+$ export OCAMLPARAM="_,bin-annot=1"
+$ opam reinstall coq.8.6 # or just "install", if Coq was not previously installed
+$ echo "S $HOME/.opam/$(opam switch show)/build/coq.8.6/****" >>plugin/.merlin
+$ echo "CMT $HOME/.opam/$(opam switch show)/build/coq.8.6/****" >>plugin/.merlin
+```
+
 Minor note: .ml4 files don't appear to work with a lot of emacs OCaml plugins.
 You can run tuareg-mode manually on .ml4 files.
 
