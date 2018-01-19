@@ -202,7 +202,7 @@ let register n tac typs =
   try
     register_tactic tag (Tacinterp.interp tac) pat;
     Printf.printf "Registered patch tactic '%s'\n" tag
-  with Name_collision -> Printf.printf "A patch tactic is already registered as '%s'\n" tag
+  with Register_collision -> Printf.printf "A patch tactic is already registered as '%s'\n" tag
      | _ -> Printf.printf "Failed to register patch tactic '%s'\n" tag
 
 let unregister n =
@@ -213,15 +213,11 @@ let unregister n =
 (* Decide a proposition using the named tactic *)
 let decide n thm n_tac : unit =
   let (evm, env) = Lemmas.get_current_context() in
-  let (ent, pv) = Proofview.init evm [(env, (intern env evm thm))] in
-  let tag = Id.to_string n_tac in
-  let (tac, _) = lookup_tactic tag in
+  let s_tac = Id.to_string n_tac in
   try
-    let ((), pv, (true, [], []), _) = Proofview.apply env tac pv in
-    let [pf] = Proofview.partial_proof ent pv in
-    assert (Proofview.finished pv);
+    let pf = call_tactic s_tac (intern env evm thm) in
     define_term n env evm pf
-  with _ -> Printf.printf "Patch tactic '%s' failed to decide goal\n" tag;;
+  with Tactic_failure -> Printf.printf "Patch tactic '%s' failed to decide goal\n" s_tac;;
 
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF

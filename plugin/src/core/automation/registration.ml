@@ -29,16 +29,17 @@ let applicable pat typ =
   | Proj (pr, trm) -> true
   | _ -> true
 
-exception Name_collision
+exception Register_collision
+exception Tactic_failure
 
 let registered : (string, tactic * pattern) Hashtbl.t = Hashtbl.create 16
 
-(* Register the tactic under the given name, raising Name_collision if the name
- * is already in use.
+(* Register the tactic under the given name, raising Register_collision if the
+ * name is already in use.
  *)
 let register_tactic name tac pat =
   if Hashtbl.mem registered name
-  then raise Name_collision
+  then raise Register_collision
   else Hashtbl.add registered name (tac, pat)
 
 (* Remove the named tactic from the registration table, if present. *)
@@ -56,3 +57,19 @@ let applicable_tactics typ : tactic list =
     if applicable pat typ then tac :: tacs else tacs
   in
   Hashtbl.fold supports registered []
+
+(* Evaluate a tactic to solve the given goal. *)
+let eval_tactic tac typ : constr =
+  let (evm, env) = Lemmas.get_current_context() in
+  let (ent, pv) = Proofview.init evm [(env, typ)] in
+  try
+    let ((), pv, (true, [], []), _) = Proofview.apply env tac pv in
+    let [pf] = Proofview.partial_proof ent pv in
+    assert (Proofview.finished pv);
+    pf
+  with _ -> raise Tactic_failure
+
+(* Call a registered tactic to solve the given goal. *)
+let call_tactic name typ : constr =
+  let (tac, _) = lookup_tactic name in
+  eval_tactic tac typ

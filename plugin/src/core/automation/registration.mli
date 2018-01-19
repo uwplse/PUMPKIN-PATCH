@@ -15,10 +15,11 @@ type pattern = Term.types list
 (* TODO: This is currently dummy code. *)
 val applicable : pattern -> Term.types -> bool
 
-exception Name_collision
+exception Register_collision
+exception Tactic_failure
 
-(* Register the tactic under the given name, raising Name_collision if the name
- * is already in use.
+(* Register the tactic under the given name, raising Register_collision if the
+ * name is already in use.
  *)
 val register_tactic : string -> tactic -> pattern -> unit
 
@@ -32,3 +33,9 @@ val lookup_tactic : string -> tactic * pattern
 
 (* Find all tactics that support the given type. *)
 val applicable_tactics : Term.types -> tactic list
+
+(* Evaluate a tactic to solve the given goal. *)
+val eval_tactic : tactic -> Term.types -> Term.constr
+
+(* Call a registered tactic to solve the given goal. *)
+val call_tactic : string -> Term.types -> Term.constr
