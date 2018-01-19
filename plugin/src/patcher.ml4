@@ -220,7 +220,7 @@ let decide n thm tac : unit =
     let [pf] = Proofview.partial_proof ent pv in
     assert (Proofview.finished pv);
     define_term n env evm pf
-  with _ -> Printf.printf "Tactic failed";;
+  with _ -> Printf.printf "Tactic failed to decide proposition\n";;
 
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
