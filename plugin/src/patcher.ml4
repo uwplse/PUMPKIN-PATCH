@@ -201,13 +201,13 @@ let register n tac typs =
   let tag = Id.to_string n in
   try
     register_tactic tag (Tacinterp.interp tac) pat;
-    Printf.printf "Registered tactic '%s'\n" tag
-  with _ -> Printf.printf "Failed to register tactic '%s'\n" tag
+    Printf.printf "Registered patch tactic '%s'\n" tag
+  with _ -> Printf.printf "Failed to register patch tactic '%s'\n" tag
 
 let unregister n =
   let tag = Id.to_string n in
   unregister_tactic tag;
-  Printf.printf "Unregistered tactic '%s'\n" tag
+  Printf.printf "Unregistered patch tactic '%s'\n" tag
 
 (* Decide a proposition using the named tactic *)
 let decide n thm tac : unit =
@@ -257,13 +257,13 @@ END
 
 (* Register a tactic for patch search *)
 VERNAC COMMAND EXTEND RegisterTactic CLASSIFIED AS SIDEFF
-| [ "Register" "Tactic" tactic(tac) "as" ident(n) "for" constr_list(typs) ] ->
+| [ "Register" "Patch" "Tactic" tactic(tac) "as" ident(n) "for" constr_list(typs) ] ->
   [ register n tac typs ]
 END
 
 (* Unregister a tactic for patch search *)
 VERNAC COMMAND EXTEND UnregisterTactic CLASSIFIED AS SIDEFF
-| [ "Unregister" "Tactic" ident(n) ] ->
+| [ "Unregister" "Patch" "Tactic" ident(n) ] ->
   [ unregister n ]
 END
 
