@@ -194,6 +194,18 @@ let factor n trm : unit =
       fs
   with _ -> failwith "Could not find lemmas"
 
+(* Decide a proposition using the named tactic *)
+let decide n thm tac : unit =
+  let (evm, env) = Lemmas.get_current_context() in
+  let (ent, pv) = Proofview.init evm [(env, (intern env evm thm))] in
+  let pv_tac = Tacinterp.interp tac in
+  try
+    let ((), pv, (true, [], []), _) = Proofview.apply env pv_tac pv in
+    let [pf] = Proofview.partial_proof ent pv in
+    assert (Proofview.finished pv);
+    define_term n env evm pf
+  with _ -> Printf.printf "Tactic failed";;
+
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
 | [ "Patch" "Proof" constr(d_old) constr(d_new) "as" ident(n)] ->
@@ -226,4 +238,10 @@ END
 VERNAC COMMAND EXTEND FactorCandidate CLASSIFIED AS SIDEFF
 | [ "Factor" constr(trm) "using" "prefix" ident(n) ] ->
   [ factor n trm ]
+END
+
+(* Decide the proof of a proposition with a tactic *)
+VERNAC COMMAND EXTEND DecideProof CLASSIFIED AS SIDEFF
+| [ "Decide" constr(thm) "with" tactic(tac) "as" ident(n) ] ->
+  [ decide n thm tac ]
 END
