@@ -27,6 +27,7 @@ open Coqenvs
 open Cutlemma
 open Kindofchange
 open Changedetectors
+open Registration
 
 (*
  * Plugin for patching Coq proofs given a change.
@@ -194,6 +195,15 @@ let factor n trm : unit =
       fs
   with _ -> failwith "Could not find lemmas"
 
+let register n tac typs =
+  let (evm, env) = Lemmas.get_current_context() in
+  let pat = List.map (intern env evm) typs in
+  let tag = Id.to_string n in
+  try
+    register_tactic tag (Tacinterp.interp tac) pat;
+    Printf.printf "Registered tactic '%s'\n" tag
+  with _ -> Printf.printf "Failed to register tactic '%s'\n" tag
+
 (* Decide a proposition using the named tactic *)
 let decide n thm tac : unit =
   let (evm, env) = Lemmas.get_current_context() in
@@ -238,6 +248,12 @@ END
 VERNAC COMMAND EXTEND FactorCandidate CLASSIFIED AS SIDEFF
 | [ "Factor" constr(trm) "using" "prefix" ident(n) ] ->
   [ factor n trm ]
+END
+
+(* Decide the proof of a proposition with a tactic *)
+VERNAC COMMAND EXTEND RegisterTactic CLASSIFIED AS SIDEFF
+| [ "Register" "Tactic" tactic(tac) "as" ident(n) "for" constr_list(typs) ] ->
+  [ register n tac typs ]
 END
 
 (* Decide the proof of a proposition with a tactic *)
