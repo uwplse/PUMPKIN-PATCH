@@ -254,7 +254,7 @@ $ echo "CMT $HOME/.opam/$(opam switch show)/build/coq.8.6/****" >>plugin/.merlin
 ```
 
 Minor note: .ml4 files don't appear to work with a lot of emacs OCaml plugins.
-You can run tuareg-mode manually on .ml4 files.
+In Emacs, you can run tuareg-mode and merlin-mode manually on .ml4 files.
 
 ## Contributors
 
