@@ -187,7 +187,10 @@ val reduce_diff : reducer -> goal_proof_diff -> goal_proof_diff
 (* Given a difference in proofs, trim down any casts and get the terms *)
 val reduce_casts : goal_proof_diff -> goal_proof_diff
 
-(* Given a differrence in proofs, weak head reduce any let-ins *)
+(*
+ * Given a differrence in proofs, weak head reduce any let-ins
+ * If this fails because of a substituted assumption, then fail silently
+ *)
 val reduce_letin : goal_proof_diff -> goal_proof_diff
 
 (* Given a difference in proofs, trim applications of the IH *)

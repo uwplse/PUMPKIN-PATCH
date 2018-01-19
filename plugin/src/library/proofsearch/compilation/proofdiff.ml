@@ -257,17 +257,23 @@ let rec reduce_casts (d : goal_proof_diff) : goal_proof_diff =
   | _ ->
      d
 
-(* Given a difference in proofs, substitute the head let ins *)
+(*
+ * Given a difference in proofs, substitute the head let ins
+ * Fail silently
+ *)
 let reduce_letin (d : goal_proof_diff) : goal_proof_diff =
   let (o, n) = proof_terms d in
-  if isLetIn o || isLetIn n then
-    let d_dest = dest_goals d in
-    let ((_, old_env), _) = old_proof d_dest in
-    let ((_, new_env), _) = new_proof d_dest in
-    let o' = reduce_whd_if_let_in old_env o in
-    let n' = reduce_whd_if_let_in new_env n in
-    eval_with_terms o' n' d
-  else
+  try
+    if isLetIn o || isLetIn n then
+      let d_dest = dest_goals d in
+      let ((_, old_env), _) = old_proof d_dest in
+      let ((_, new_env), _) = new_proof d_dest in
+      let o' = reduce_whd_if_let_in old_env o in
+      let n' = reduce_whd_if_let_in new_env n in
+      eval_with_terms o' n' d
+    else
+      d
+  with _ ->
     d
 
 (* Given a term, trim off the IH, assuming it's an application *)
