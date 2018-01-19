@@ -204,6 +204,11 @@ let register n tac typs =
     Printf.printf "Registered tactic '%s'\n" tag
   with _ -> Printf.printf "Failed to register tactic '%s'\n" tag
 
+let unregister n =
+  let tag = Id.to_string n in
+  unregister_tactic tag;
+  Printf.printf "Unregistered tactic '%s'\n" tag
+
 (* Decide a proposition using the named tactic *)
 let decide n thm tac : unit =
   let (evm, env) = Lemmas.get_current_context() in
@@ -250,10 +255,16 @@ VERNAC COMMAND EXTEND FactorCandidate CLASSIFIED AS SIDEFF
   [ factor n trm ]
 END
 
-(* Decide the proof of a proposition with a tactic *)
+(* Register a tactic for patch search *)
 VERNAC COMMAND EXTEND RegisterTactic CLASSIFIED AS SIDEFF
 | [ "Register" "Tactic" tactic(tac) "as" ident(n) "for" constr_list(typs) ] ->
   [ register n tac typs ]
+END
+
+(* Unregister a tactic for patch search *)
+VERNAC COMMAND EXTEND UnregisterTactic CLASSIFIED AS SIDEFF
+| [ "Unregister" "Tactic" ident(n) ] ->
+  [ unregister n ]
 END
 
 (* Decide the proof of a proposition with a tactic *)
