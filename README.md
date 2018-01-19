@@ -186,6 +186,8 @@ of an inductive type that a proof inducts over, or changes in a case of a fixpoi
 and some other styles of proofs (for example, simple applicative proofs, or
 proofs that apply constructors).
 
+TODO update w changes in hypothesis (and update testing stuff too)
+
 PUMPKIN does not yet support structural changes like adding new hypotheses,
 adding constructors or parameters to an inductive type, or adding cases to a fixpoint.
 PUMPKIN has very limited support for pattern matching, proofs using logic specific to decidable domains 
@@ -244,7 +246,7 @@ and toy with my [starter plugin](http://github.com/uwplse/CoqAST/) first.
 To get an idea of how the code is structured, I highly recommend reading Section 5 of the paper
 and following along in the code. The entry-point to the code is [patcher.ml4](/plugin/src/patcher.ml4). 
 You can add new commands there. You can also extend the patch finding procedure or see what it calls out to and modify that.
-There is a useful debugging function in [search.ml](/plugin/src/core/procedures/search.ml);
+There is a useful debugging function in [differencing.ml](/plugin/src/core/components/differencing/differencing.ml);
 if you are modifying the tool, you may want to use it.
 
 Minor note: .ml4 files don't appear to work with a lot of emacs OCaml plugins.

@@ -42,14 +42,16 @@ let find_kind_of_conclusion cut (d : goal_proof_diff) =
  * that takes a non-convertible premise, and that premise is a different
  * inductive type with the same shape.
  *
+ * Otherwise, if a single hypothesis has changed to a different hypothesis,
+ * but it's not a type we are inducting over, then search for a change
+ * in hypothesis.
+ *
  * Otherwise, if the new conclusion contains some constant function that has
  * changed from a constant function in the same place in the old conclusion,
  * but all of its arguments are the same, then search for a difference in
  * definitions.
  *
  * Otherwise, search for a change in conclusion.
- *
- * TODO clean and document more cases
  *)
 let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
   let d_goals = erase_proofs d in
