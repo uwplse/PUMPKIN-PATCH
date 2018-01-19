@@ -22,6 +22,9 @@ exception Name_collision
  *)
 val register_tactic : string -> tactic -> pattern -> unit
 
+(* Remove the named tactic from the registration table, if present. *)
+val unregister_tactic : string -> unit
+
 (* Find the tactic registered under the given name, raising Not_found if no
  * tactic is registered under that name.
  *)

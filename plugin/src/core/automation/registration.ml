@@ -41,6 +41,9 @@ let register_tactic name tac pat =
   then raise Name_collision
   else Hashtbl.add registered name (tac, pat)
 
+(* Remove the named tactic from the registration table, if present. *)
+let unregister_tactic = Hashtbl.remove registered
+
 (* Find the tactic registered under the given name, raising Not_found if no
  * tactic is registered under that name.
  *)
