@@ -1,5 +1,3 @@
-(* --- Type definitions for tactic-based automation --- *)
-
 open Term
 
 type tactic = unit Proofview.tactic
