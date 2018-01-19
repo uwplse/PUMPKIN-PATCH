@@ -4,8 +4,9 @@ Open Scope Z_scope.
 
 Require Import Patcher.Patch.
 
-(* Super simple test of the Decide command: *)
-Decide (forall x : Z, x - 1 < x) with (intros; omega) as proof.
+Register Patch Tactic (intros; omega) as omega for Z Z.lt Z.gt Z.le Z.ge (@eq Z).
+
+Decide (forall x : Z, x - 1 < x) with omega as proof.
 
 (* Some observations:
  *   1. Some tactics, like Omega, need all hypotheses to be introduced before

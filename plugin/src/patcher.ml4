@@ -211,16 +211,17 @@ let unregister n =
   Printf.printf "Unregistered patch tactic '%s'\n" tag
 
 (* Decide a proposition using the named tactic *)
-let decide n thm tac : unit =
+let decide n thm n_tac : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let (ent, pv) = Proofview.init evm [(env, (intern env evm thm))] in
-  let pv_tac = Tacinterp.interp tac in
+  let tag = Id.to_string n_tac in
+  let (tac, _) = lookup_tactic tag in
   try
-    let ((), pv, (true, [], []), _) = Proofview.apply env pv_tac pv in
+    let ((), pv, (true, [], []), _) = Proofview.apply env tac pv in
     let [pf] = Proofview.partial_proof ent pv in
     assert (Proofview.finished pv);
     define_term n env evm pf
-  with _ -> Printf.printf "Tactic failed to decide proposition\n";;
+  with _ -> Printf.printf "Patch tactic '%s' failed to decide goal\n" tag;;
 
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
@@ -270,6 +271,6 @@ END
 
 (* Decide the proof of a proposition with a tactic *)
 VERNAC COMMAND EXTEND DecideProof CLASSIFIED AS SIDEFF
-| [ "Decide" constr(thm) "with" tactic(tac) "as" ident(n) ] ->
-  [ decide n thm tac ]
+| [ "Decide" constr(thm) "with" ident(n_tac) "as" ident(n) ] ->
+  [ decide n thm n_tac ]
 END
