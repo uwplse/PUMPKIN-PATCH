@@ -13,3 +13,5 @@ Decide (forall x : Z, x - 1 < x) with (intros; omega) as proof.
  *   2. The robustness of the internal representation of a tactic script is.
  *      unclear. In particular, does it close over the tactic environment?
  *)
+
+Register Tactic (intros; omega) as omega for Z Z.lt Z.gt Z.le Z.ge (@eq Z).
