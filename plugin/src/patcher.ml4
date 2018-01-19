@@ -202,7 +202,8 @@ let register n tac typs =
   try
     register_tactic tag (Tacinterp.interp tac) pat;
     Printf.printf "Registered patch tactic '%s'\n" tag
-  with _ -> Printf.printf "Failed to register patch tactic '%s'\n" tag
+  with Name_collision -> Printf.printf "A patch tactic is already registered as '%s'\n" tag
+     | _ -> Printf.printf "Failed to register patch tactic '%s'\n" tag
 
 let unregister n =
   let tag = Id.to_string n in
