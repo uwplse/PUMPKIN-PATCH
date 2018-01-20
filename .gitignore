@@ -18,4 +18,5 @@ plugin/*.cmi
 *.glob
 *.v.d
 *.vo
+plugin/.merlin
 plugin/Makefile.coq
