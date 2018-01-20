@@ -9,6 +9,7 @@ type tactic = unit Proofview.tactic
  *)
 type pattern = types list
 
+(* NOTE: This still isn't a robust approach, really. *)
 let rec applicable env typ pat =
   match kind_of_term typ with
   | Cast (trm, knd, typ) -> applicable env typ pat
