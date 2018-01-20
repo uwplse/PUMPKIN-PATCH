@@ -204,14 +204,14 @@ let configure_is_app change d =
      false
 
 (*
- * Given a change, determine the goals for testing whether a proof
+ * Given a change, determine the goals and proofs for testing whether a proof
  * might apply to another proof:
- * 1) If it's a change in inductive types, then swap the goals
+ * 1) If it's a change in inductive types or hypotheses, then swap the goals
  * 2) Otherwise, keep the goals as-is
  *)
 let configure_swap_goals change d =
   match change with
-  | InductiveType (_, _) ->
+  | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
      swap_goals d
   | _ ->
      d

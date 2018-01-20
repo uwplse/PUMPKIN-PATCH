@@ -122,14 +122,13 @@ let find_difference (opts : options) (d : goal_proof_diff) : candidates =
   let (env_merge, d_merge) = merge_diff_envs is_ind num_new_rels d_dest in
   let (old_goal_type, old_term) = old_proof d_merge in
   let (new_goal_type, new_term) = new_proof d_merge in
-  let candidates = (* TODO move *)
+  let from_type =
     if is_hypothesis (get_change opts) then
-      let from_type = new_goal_type in
-      build_app_candidates env_merge from_type new_term old_term
+      new_goal_type
     else
-      let from_type = infer_type env_merge new_term in
-      build_app_candidates env_merge from_type old_term new_term
+      infer_type env_merge new_term
   in
+  let candidates = build_app_candidates env_merge from_type old_term new_term in
   let goal_type = mkProd (Anonymous, new_goal_type, shift old_goal_type) in
   let reduced = reduce_all reduce_remove_identities env_merge candidates in
   let filter = filter_by_type env_merge goal_type in
