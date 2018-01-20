@@ -89,15 +89,17 @@ let diff_sort_ind_case opts sort diff d_old (d : proof_cat_diff) : candidates =
          (always (update_case_assums d_ms))
          (add_to_diff d (sort o ms_o) (sort n ms_n)))
   in
-  (* for hypos: need to unshift by the number of hypos that appeared after
-     the one we encountered, somehow
-     TODO move and merge w/ dup logic *)
-  (* TODO unshift by 1 deals with extra hypothesis, but really want
-     to sub in old hypothesis *)
-  let env_o = context_env (fst (old_proof d_goals)) in
-  let (old_goal, _) = old_proof d_old in
-  let num_new_rels = nb_rel env_o - nb_rel (context_env old_goal) in
-  List.map (unshift_by (num_new_rels - 1)) (diff_ind_case opts (diff opts) d_goals)
+  if is_hypothesis (get_change opts) then (* TODO move *)
+    (* deal with the extra hypothesis *)
+    let env_o_o = context_env (fst (old_proof d_goals)) in
+    let env_o_n = context_env (fst (old_proof d_old)) in
+    let num_new_rels = nb_rel env_o_o - nb_rel env_o_n in
+    List.map
+      (unshift_by (num_new_rels - 1))
+      (diff_ind_case opts (diff opts) d_goals)
+  else
+    diff_ind_case opts (diff opts) d_goals
+
 
 (*
  * Base case: Prefer arrows later in the proof
