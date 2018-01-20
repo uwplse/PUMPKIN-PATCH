@@ -89,7 +89,7 @@ let diff_sort_ind_case opts sort diff d_old (d : proof_cat_diff) : candidates =
          (always (update_case_assums d_ms))
          (add_to_diff d (sort o ms_o) (sort n ms_n)))
   in
-  if is_hypothesis (get_change opts) then (* TODO move *)
+  if is_hypothesis (get_change opts) then
     (* deal with the extra hypothesis *)
     let env_o_o = context_env (fst (old_proof d_goals)) in
     let env_o_n = context_env (fst (old_proof d_old)) in
@@ -184,8 +184,9 @@ let diff_inductive diff d_old opts (d : (proof_cat * int) proof_diff) : candidat
     give_up
   else
     zoom_map
-       (fun d ->
-        let d_sorted = map_diffs (fun c -> base_cases_first (List.map expand_constr (split c))) id d in
+      (fun d ->
+        let sort c = base_cases_first (List.map expand_constr (split c)) in
+        let d_sorted = map_diffs sort id d in
         let ds = dest_cases d_sorted in
         List.map (unshift_by nparams_o) (diff_ind_cases opts diff d_old ds))
       []
