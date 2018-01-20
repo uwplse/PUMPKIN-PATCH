@@ -210,14 +210,21 @@ let unregister n =
   unregister_tactic tag;
   Printf.printf "Unregistered patch tactic '%s'\n" tag
 
-(* Decide a proposition using the named tactic *)
-let decide n thm n_tac : unit =
+(* Decide a proposition with the named tactic *)
+let decide_with n typ n_tac : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let s_tac = Id.to_string n_tac in
   try
-    let pf = call_tactic s_tac (intern env evm thm) in
+    let pf = call_tactic env evm (intern env evm typ) s_tac in
     define_term n env evm pf
-  with Tactic_failure -> Printf.printf "Patch tactic '%s' failed to decide goal\n" s_tac;;
+  with Tactic_failure -> Printf.printf "Patch tactic '%s' could not decide goal\n" s_tac;;
+
+(* Decide a proposition with any applicable tactic *)
+let decide n typ : unit =
+  let (evm, env) = Lemmas.get_current_context() in
+  match try_tactics env evm (intern env evm typ) with
+  | Some pf -> define_term n env evm pf
+  | None -> Printf.printf "Patch tactics could not decide goal\n";;
 
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
@@ -265,8 +272,10 @@ VERNAC COMMAND EXTEND UnregisterTactic CLASSIFIED AS SIDEFF
   [ unregister n ]
 END
 
-(* Decide the proof of a proposition with a tactic *)
+(* Decide the proof of a proposition with tactics *)
 VERNAC COMMAND EXTEND DecideProof CLASSIFIED AS SIDEFF
-| [ "Decide" constr(thm) "with" ident(n_tac) "as" ident(n) ] ->
-  [ decide n thm n_tac ]
+| [ "Decide" constr(typ) "with" ident(n_tac) "as" ident(n) ] ->
+  [ decide_with n typ n_tac ]
+| [ "Decide" constr(typ) "as" ident(n) ] ->
+  [ decide n typ ]
 END
