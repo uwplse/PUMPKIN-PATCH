@@ -97,7 +97,6 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
          if non_empty fs then
            fs
          else
-           (* let d_args_rev = reverse d_args in *)
            filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args
       | Conclusion ->
          if args_convertible env args_o args_n then

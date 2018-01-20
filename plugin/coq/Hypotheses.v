@@ -78,8 +78,6 @@ Definition new3 := new1.
 
 Patch Proof old3 new3 as patch3.
 
-Print patch3.
-
 Theorem testPatch3:
   forall n m,
     n < m + 1 ->
