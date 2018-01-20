@@ -15,6 +15,8 @@ open Cutlemma
 open Specialization
 open Zooming
 open Printing
+open Debruijn
+open Filters
 
 (*
  * Given a search function and a difference between terms,
@@ -84,6 +86,19 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
                args)
            (diff_map_flat (diff_rec diff_arg (set_change opts Conclusion)))
 	   d_args
+      | Hypothesis (_, _) ->
+         let old_goal = fst (old_proof d) in
+         let new_goal = fst (new_proof d) in
+         let (g_o, g_n) = map_tuple context_term (old_goal, new_goal) in
+         let goal_type = mkProd (Anonymous, g_n, shift g_o) in
+         let filter_goal = filter_by_type env goal_type in
+         let filter_diff_h diff = filter_diff filter_goal diff in
+         let fs = filter_diff_h (diff_rec diff_f opts) d_f in
+         if non_empty fs then
+           fs
+         else
+           (* let d_args_rev = reverse d_args in *)
+           filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args
       | Conclusion ->
          if args_convertible env args_o args_n then
            let specialize = specialize_using specialize_no_reduce env in

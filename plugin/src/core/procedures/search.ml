@@ -88,18 +88,13 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) : 
     Printf.printf "%s\n" "searched backwards";
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
     let inverted = invert_terms invert_factor env rev_patches in
-    match change with
-    | Conclusion | (Hypothesis (_, _)) ->
-       if non_empty inverted then
-         let patch = List.hd inverted in
-         Printf.printf "%s\n" "SUCCESS";
-         patch
-       else
+    if non_empty inverted then
+      return_patch opts env inverted
+    else
+      match change with
+      | Conclusion | (Hypothesis (_, _)) ->
          let patch = default in
          Printf.printf "%s\n" "FAILURE";
          patch
-    | _ ->
-       if non_empty inverted then
-         return_patch opts env inverted
-       else
+      | _ ->
          failwith "Could not find patch"

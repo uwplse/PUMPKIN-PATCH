@@ -121,8 +121,8 @@ let patch n old_term new_term try_invert a search =
 let patch_proof n d_old d_new cut =
   let (old_term, new_term) = intern_defs d_old d_new in
   let (d, opts) = configure old_term new_term cut in
-  let kind_of_change = get_change opts in
-  let try_invert = not (is_conclusion kind_of_change) in
+  let change = get_change opts in
+  let try_invert = not (is_conclusion change || is_hypothesis change) in
   patch n old_term new_term try_invert ()
     (fun env evm _ ->
       search_for_patch old_term opts d)
