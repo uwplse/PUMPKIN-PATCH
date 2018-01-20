@@ -46,8 +46,7 @@ let applicable_tactics env typ : tactic list =
   Hashtbl.fold supports registered []
 
 (* Evaluate a tactic to solve the given goal. *)
-let eval_tactic tac typ : constr =
-  let (evm, env) = Lemmas.get_current_context() in
+let eval_tactic env evm typ tac : constr =
   let (ent, pv) = Proofview.init evm [(env, typ)] in
   try
     let ((), pv, (true, [], []), _) = Proofview.apply env tac pv in
@@ -57,6 +56,18 @@ let eval_tactic tac typ : constr =
   with _ -> raise Tactic_failure
 
 (* Call a registered tactic to solve the given goal. *)
-let call_tactic name typ : constr =
+let call_tactic env evm typ name : constr =
   let (tac, _) = lookup_tactic name in
-  eval_tactic tac typ
+  eval_tactic env evm typ tac
+
+(* Try all applicable tactics to solve the goal *)
+let try_tactics env evm typ : constr option =
+  let next res tac =
+    match res with
+    | Some _ -> res
+    | None ->
+      try
+        Some (eval_tactic env evm typ tac)
+      with Tactic_failure -> None
+  in
+  List.fold_left next None (applicable_tactics env typ)

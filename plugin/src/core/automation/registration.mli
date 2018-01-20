@@ -35,7 +35,10 @@ val lookup_tactic : string -> tactic * pattern
 val applicable_tactics : Environ.env -> Term.types -> tactic list
 
 (* Evaluate a tactic to solve the given goal. *)
-val eval_tactic : tactic -> Term.types -> Term.constr
+val eval_tactic : Environ.env -> Evd.evar_map -> Term.types -> tactic -> Term.constr
 
 (* Call a registered tactic to solve the given goal. *)
-val call_tactic : string -> Term.types -> Term.constr
+val call_tactic : Environ.env -> Evd.evar_map -> Term.types -> string -> Term.constr
+
+(* Try all applicable tactics to solve the goal *)
+val try_tactics : Environ.env -> Evd.evar_map -> Term.types -> Term.constr option
