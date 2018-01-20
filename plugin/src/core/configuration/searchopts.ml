@@ -15,14 +15,8 @@ open Printing
 open Kindofchange
 open Cutlemma
 open Zooming
-open Coqenvs
 
 module CRD = Context.Rel.Declaration
-
-(*
- * TODO refactor addition of goals to make it make more sense
- * before merging into master
- *)
 
 (* --- Auxiliary --- *)
 
@@ -139,25 +133,15 @@ let update_goals_types d_old (d : proof_cat_diff) =
      let n = (new_goal, new_proof d) in
      difference o n (assumptions d)
 
-(* Search for a difference in hypothesis *)
-(* TODO redundant work, fix before pushing *)
-(* TODO clean before pushing *)
+(* Set goals for search for a difference in hypothesis *)
 let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
   let (goal_o, proof_o) = old_proof d in
   let (goal_n, proof_n) = new_proof d in
-  let assums = assumptions d in
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
-  (*let rels_o = List.map (fun i -> mkRel i) (List.rev (all_rel_indexes env_o)) in
-  let rels_n = List.map (fun i -> mkRel i) (List.rev (all_rel_indexes env_n)) in
-  let o = mkApp (t_o, Array.of_list rels_o) in
-  let n = mkApp (t_n, Array.of_list rels_n) in*) (* TODO *)
-  (* TODO problem now is that we need to apply it to things *)
-  let o = t_n in
-  let n = t_o in
-  let goal_o' = Context (Term (o, env_o), fid ()) in
-  let goal_n' = Context (Term (n, env_n), fid ()) in
-  difference (goal_o', proof_o) (goal_n', proof_n) assums
+  let goal_o' = Context (Term (t_o, env_o), fid ()) in
+  let goal_n' = Context (Term (t_n, env_n), fid ()) in
+  difference (goal_o', proof_o) (goal_n', proof_n) (assumptions d)
 
 (*
  * Given a change, determine how to update goals:
