@@ -139,8 +139,8 @@ let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
   let (goal_n, proof_n) = new_proof d in
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
-  let goal_o' = Context (Term (t_o, env_o), fid ()) in
-  let goal_n' = Context (Term (t_n, env_n), fid ()) in
+  let goal_o' = Context (Term (t_n, env_o), fid ()) in
+  let goal_n' = Context (Term (t_o, env_n), fid ()) in
   difference (goal_o', proof_o) (goal_n', proof_n) (assumptions d)
 
 (*
