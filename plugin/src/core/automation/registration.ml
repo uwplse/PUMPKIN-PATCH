@@ -2,13 +2,12 @@ open Term
 
 type tactic = unit Proofview.tactic
 
-(* The domain of a tactic is described by a list of types, such that a matching
- * goal type must be constructed only with types given in this list.
- *
- * TODO: We should probably distinguish between tactics that tolerate/require
- *       introduction of all hypotheses and those that are sensitive to it.
- * TODO: We really need a more sophisticated pattern language that can express
- *       restrictions such as a list of an arbitrary type.
+(* The domain of a tactic is described by a list of types, such that the
+ * conclusion (innermost codomain) of matching goal type must be constructed
+ * only with types given in this list. This implies that a patch tactic must
+ * be insensitive to the specific hypotheses left unintroduced by the goal type.
+ * If this condition is not satisfied, then a cached patch --- which associates
+ * with a fixed goal type --- is likely more appropriate.
  *)
 type pattern = types list
 
