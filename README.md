@@ -14,7 +14,8 @@ in this user guide does not work or is unclear.
 
 Reading the [paper](http://tlringer.github.io/pdf/pumpkinpaper.pdf) may help if you are interested
 in understanding the internals of the tool. The paper links to a release that captures
-the code as it was when we wrote the paper.
+the code as it was when we wrote the paper. The [talk video](http://www.youtube.com/watch?v=p-V9oerg5DU)
+may also be helpful.
 
 ## Building PUMPKIN
 
@@ -181,24 +182,21 @@ around limitations.
 
 Speaking of limitations: PUMPKIN is a research prototype, and so it is currently limited in the 
 kinds of proofs and changes it supports. PUMPKIN is best equipped to handle changes in conclusions of inductive proofs.
+It has introductory support for changes in hypotheses.
 It also supports certain changes in definitions (for example, changes in a constructors
 of an inductive type that a proof inducts over, or changes in a case of a fixpoint that a theorem applies),
 and some other styles of proofs (for example, simple applicative proofs, or
 proofs that apply constructors).
 
-TODO update w changes in hypothesis (and update testing stuff too)
 
 PUMPKIN does not yet support structural changes like adding new hypotheses,
 adding constructors or parameters to an inductive type, or adding cases to a fixpoint.
-PUMPKIN has very limited support for pattern matching, proofs using logic specific to decidable domains 
-(such as proofs that use `omega`), changes in hypotheses, and nested induction.
+PUMPKIN has very limited support for pattern matching, proofs using logic specific to decidable domains
+(such as proofs that use `omega`), and nested induction.
 Supporting all of these features is on our roadmap.
 
-There is currently a branch (hypotheses) for changes in hypothesis, which is not yet ready to merge but
-should be soon. Structural changes are in progress but will take longer to support.
-
-In general, if PUMPKIN fails to find a patch, it's likely due to features that are not yet implemented.
-If you encounter any error or failure, please cut an issue with a reproducable example, since we can
+For now, if PUMPKIN fails to find a patch, it's likely due to features that are not yet implemented.
+In any case, if you encounter any error or failure, please cut an issue with a reproducable example, since we can
 determine whether the error is a bug or an unimplemented feature, and use it as an eventual test case.
 With that in mind, we are a small research team, so it may take time to implement all of these features.
 If you would like to contribute directly to the plugin, feel free to cut a pull request.
@@ -237,6 +235,7 @@ The relevant examples are as follows:
 7. [Variants.v](/plugin/coq/Variants.v): Patch Generation Suite from Section 6 of the paper
 8. [Abstract.v](/plugin/coq/Abstract.v): Example of using the abstraction command
 9. [Theorem.v](/plugin/coq/Theorem.v): Example fo the experimental theorem patching command
+10. [Hypotheses.v](/plugin/coq/Hypotheses.v): Very simple changes in hypotheses.
 
 ## Extending PUMPKIN
 
@@ -258,4 +257,5 @@ This plugin is maintained by Talia Ringer with help from Nate Yazdani.
 John Leo and Dan Grossman have made conceptual contributions.
 
 The following community members have also contributed to the code:
-Emilio Jesús Gallego Arias
+1. Emilio Jesús Gallego Arias
+2. Your name here!
