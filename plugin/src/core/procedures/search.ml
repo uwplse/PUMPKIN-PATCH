@@ -29,6 +29,16 @@ open Kindofchange
  * but it's messy because I had to workaround DeBruijn
  * inconsistencies and deal with user-cut lemmas
  * in the prototype. I'll fix this one day.
+ *
+ * The biggest limitation is that in some cases, we use a function
+ * that removes unused hypotheses rather than ensuring we get exactly
+ * the type we initially asked for. We can always reconstruct such a function
+ * into something with that type, but that isn't yet implemented. This is to
+ * get around annoying unused hypotheses that are useful to assume during the
+ * search process, but it's accidentally eliminating unused hypotheses
+ * that are also in the goal. Again, because we get something strictly strongly,
+ * not a huge deal, but this gives us a weaker idea of when to apply these
+ * patches, which will matter eventually.
  *)
 let return_patch (opts : options) (env : env) (patches : types list) : types =
   match get_change opts with
@@ -54,12 +64,6 @@ let return_patch (opts : options) (env : env) (patches : types list) : types =
          (configure_cut_args env cut patches)
      in List.hd generalized
   | Hypothesis (_, _) ->
-     (* TODO remove_unused_hypos means we have weaker guarantees about the
-        type of our patch; this is a workaround for not being able to tell search
-        not to add hypotheses it encounters after zooming into the unequal case,
-        and is something we should fix, perhaps by
-        adding a way to remove only the hypotheses that don't occur in
-        the goal type, or by fixing how we recurse in which messes up the order *)
      let patches = reduce_all remove_unused_hypos env patches in
      List.hd patches
   | _ ->

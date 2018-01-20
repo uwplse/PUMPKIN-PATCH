@@ -89,14 +89,6 @@ let reduce_whd_if_let_in (env : env) (trm : types) : types  =
  * This function removes any terms from the hypothesis of a lambda
  * that are not referenced in the body, so that the term
  * has only hypotheses that are referenced.
- *
- * This is a workaround for the way that the procedure for
- * changes in constructor arguments works.
- * Basically, it should return earlier once it finds the
- * goal patch. But right now, the implementation isn't great,
- * so instead we treat it like any other goal patch and add
- * more hypotheses to our patch, and then later we remove them.
- * We should fix this eventually.
  *)
 let rec remove_unused_hypos (env : env) (trm : types) : types =
   match kind_of_term trm with
@@ -112,3 +104,5 @@ let rec remove_unused_hypos (env : env) (trm : types) : types =
         mkLambda (n, t, b'))
   | _ ->
      trm
+
+
