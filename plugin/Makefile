@@ -6,6 +6,9 @@ plugin: Makefile.coq
 Makefile.coq:
 	coq_makefile -f _CoqProject -o Makefile.coq
 
+merlin:
+	./merlin.sh
+
 clean:
 	$(MAKE) -f Makefile.coq clean
 	rm -f Makefile.coq
