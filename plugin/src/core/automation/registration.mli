@@ -13,7 +13,7 @@ type tactic = unit Proofview.tactic
 type pattern = Term.types list
 
 (* TODO: This is currently dummy code. *)
-val applicable : pattern -> Term.types -> bool
+val applicable : Environ.env -> Term.types -> pattern -> bool
 
 exception Register_collision
 exception Tactic_failure
@@ -32,7 +32,7 @@ val unregister_tactic : string -> unit
 val lookup_tactic : string -> tactic * pattern
 
 (* Find all tactics that support the given type. *)
-val applicable_tactics : Term.types -> tactic list
+val applicable_tactics : Environ.env -> Term.types -> tactic list
 
 (* Evaluate a tactic to solve the given goal. *)
 val eval_tactic : tactic -> Term.types -> Term.constr

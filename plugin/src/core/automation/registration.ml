@@ -1,32 +1,20 @@
 open Term
+open Coqterms
 
 type tactic = unit Proofview.tactic
 
-(* The domain of a tactic is described by a list of types, such that the
- * conclusion (innermost codomain) of matching goal type must be constructed
- * only with types given in this list. This implies that a patch tactic must
- * be insensitive to the specific hypotheses left unintroduced by the goal type.
- * If this condition is not satisfied, then a cached patch --- which associates
- * with a fixed goal type --- is likely more appropriate.
+(* The domain of a tactic is described by a list of type families, such that the
+ * conclusion (innermost codomain) of a matching goal type must be an instance of
+ * one of the given type families.
  *)
 type pattern = types list
 
-(* TODO: This is currently dummy code. *)
-let applicable pat typ =
+let rec applicable env typ pat =
   match kind_of_term typ with
-  | Cast (trm, knd, typ) -> true
-  | Prod (var, dom, cod) -> true
-  | Lambda (var, typ, trm) -> true
-  | LetIn (var, trm, typ, body) -> true
-  | App (func, arg) -> true
-  | Const con -> true
-  | Ind ind -> true
-  | Construct con -> true
-  | Case (info, dis, ret, brs) -> true
-  | Fix (trm, typ) -> true
-  | CoFix (trm, typ) -> true
-  | Proj (pr, trm) -> true
-  | _ -> true
+  | Cast (trm, knd, typ) -> applicable env typ pat
+  | Prod (var, dom, cod) -> applicable env cod pat
+  | App (head, tail) -> applicable env head pat
+  | _ -> List.exists (convertible env typ) pat
 
 exception Register_collision
 exception Tactic_failure
@@ -51,9 +39,9 @@ let lookup_tactic name : tactic * pattern =
   Hashtbl.find registered name
 
 (* Find all tactics that support the given type. *)
-let applicable_tactics typ : tactic list =
+let applicable_tactics env typ : tactic list =
   let supports _ (tac, pat) tacs =
-    if applicable pat typ then tac :: tacs else tacs
+    if applicable env typ pat then tac :: tacs else tacs
   in
   Hashtbl.fold supports registered []
 
