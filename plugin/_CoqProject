@@ -99,8 +99,10 @@ src/core/components/differencing/fixdifferencers.ml
 src/core/components/differencing/differencing.mli
 src/core/components/differencing/differencing.ml
 
-src/core/extension/registration.ml
-src/core/extension/registration.mli
+src/core/extension/registry.ml
+src/core/extension/registry.mli
+src/core/extension/usertactics.ml
+src/core/extension/usertactics.mli
 
 src/core/procedures/search.mli
 src/core/procedures/search.ml

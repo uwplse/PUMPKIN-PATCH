@@ -27,7 +27,6 @@ open Coqenvs
 open Cutlemma
 open Kindofchange
 open Changedetectors
-open Registration
 
 (*
  * Plugin for patching Coq proofs given a change.
@@ -200,14 +199,16 @@ let register n tac typs =
   let pat = List.map (intern env evm) typs in
   let tag = Id.to_string n in
   try
-    register_tactic tag (Tacinterp.interp tac) pat;
+    Usertactics.register_tactic tag (Tacinterp.interp tac) pat;
     Printf.printf "Registered patch tactic '%s'\n" tag
-  with Register_collision -> Printf.printf "A patch tactic is already registered as '%s'\n" tag
-     | _ -> Printf.printf "Failed to register patch tactic '%s'\n" tag
+  with Registry.Registry_collision ->
+       Printf.printf "A patch tactic is already registered as '%s'\n" tag
+     | _ ->
+       Printf.printf "Failed to register patch tactic '%s'\n" tag
 
 let unregister n =
   let tag = Id.to_string n in
-  unregister_tactic tag;
+  Usertactics.unregister_tactic tag;
   Printf.printf "Unregistered patch tactic '%s'\n" tag
 
 (* Decide a proposition with the named tactic *)
@@ -215,14 +216,15 @@ let decide_with n typ n_tac : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let s_tac = Id.to_string n_tac in
   try
-    let pf = call_tactic env evm (intern env evm typ) s_tac in
+    let pf = Usertactics.call_tactic env evm (intern env evm typ) s_tac in
     define_term n env evm pf
-  with Tactic_failure -> Printf.printf "Patch tactic '%s' could not decide goal\n" s_tac;;
+  with Usertactics.Tactic_failure ->
+       Printf.printf "Patch tactic '%s' could not decide goal\n" s_tac;;
 
 (* Decide a proposition with any applicable tactic *)
 let decide n typ : unit =
   let (evm, env) = Lemmas.get_current_context() in
-  match try_tactics env evm (intern env evm typ) with
+  match Usertactics.try_tactics env evm (intern env evm typ) with
   | Some pf -> define_term n env evm pf
   | None -> Printf.printf "Patch tactics could not decide goal\n";;
 
