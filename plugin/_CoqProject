@@ -103,6 +103,8 @@ src/core/extension/registry.ml
 src/core/extension/registry.mli
 src/core/extension/usertactics.ml
 src/core/extension/usertactics.mli
+src/core/extension/userlemmas.ml
+src/core/extension/userlemmas.mli
 
 src/core/procedures/search.mli
 src/core/procedures/search.ml
