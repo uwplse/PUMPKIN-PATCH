@@ -1,4 +1,4 @@
-(* --- Type definitions for tactic registration --- *)
+(* --- Type definitions for tactic registry --- *)
 
 type tactic = unit Proofview.tactic
 
