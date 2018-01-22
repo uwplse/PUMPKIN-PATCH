@@ -11,17 +11,16 @@ type tactic_entry = tactic * types list
 
 exception Tactic_failure
 
-(* NOTE: This still isn't a robust approach, really.
- * TODO: Check conclusion term from the inside out, to support
- * partially applied forms like [(@eq Z)] in a tactic entry's
- * support conclusions.
+(* In this environment, is type [typ] an instance of the (partially applied)
+ * type family [typ_fam]?
+ * TODO: Should probably use Coq's generic unifier.
  *)
-let rec matches env typ typ0 =
-  match kind_of_term typ with
-  | Cast (trm, knd, typ) -> matches env typ typ0
-  | Prod (var, dom, cod) -> matches env cod typ0
-  | App (head, tail) -> matches env head typ0
-  | _ -> convertible env typ typ0
+let rec is_instance env typ typ_fam =
+  match kind_of_term typ_fam with
+  | Cast (_, _, typ) -> is_instance env typ typ_fam
+  | Prod (_, _, typ) -> is_instance env typ typ_fam
+  | App (typ', _) -> is_instance env typ' typ_fam || convertible env typ typ_fam
+  | _ -> convertible env typ typ_fam
 
 let registry : tactic_entry Registry.registry = Registry.create ()
 
@@ -34,7 +33,7 @@ let lookup_tactic = Registry.lookup registry
 
 (* Find all tactics that support the given type. *)
 let find_tactics env typ : tactic list =
-  let pred (_, typs) = List.exists (matches env typ) typs in
+  let pred (_, typs) = List.exists (is_instance env typ) typs in
   List.map (fun (tac, _) -> tac) (Registry.filter registry pred)
 
 (* Evaluate a tactic to solve the given goal. *)
