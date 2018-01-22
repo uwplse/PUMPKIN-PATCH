@@ -9,7 +9,7 @@
 -I src/core/components/inversion
 -I src/core/components/factoring
 -I src/core/components/differencing
--I src/core/automation
+-I src/core/extension
 -I src/core/procedures
 -I src
 -Q theories Patcher
@@ -99,8 +99,8 @@ src/core/components/differencing/fixdifferencers.ml
 src/core/components/differencing/differencing.mli
 src/core/components/differencing/differencing.ml
 
-src/core/automation/registration.ml
-src/core/automation/registration.mli
+src/core/extension/registration.ml
+src/core/extension/registration.mli
 
 src/core/procedures/search.mli
 src/core/procedures/search.ml
