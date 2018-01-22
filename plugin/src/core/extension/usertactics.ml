@@ -16,7 +16,7 @@ exception Tactic_failure
  * TODO: Should probably use Coq's generic unifier.
  *)
 let rec is_instance env typ typ_fam =
-  match kind_of_term typ_fam with
+  match kind_of_term typ with
   | Cast (_, _, typ) -> is_instance env typ typ_fam
   | Prod (_, _, typ) -> is_instance env typ typ_fam
   | App (typ', _) -> is_instance env typ' typ_fam || convertible env typ typ_fam
