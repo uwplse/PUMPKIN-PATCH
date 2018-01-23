@@ -215,27 +215,26 @@ let register_lemma trm =
   let (evm, env) = Lemmas.get_current_context() in
   let lem = intern env evm trm in
   try
-    let Some tag = ident_of_term lem in
-    try
-      Userlemmas.register_lemma tag lem;
-      Printf.printf "Registered patch lemma '%s'\n" tag
-    with
+    let Some qualid = ident_of_term lem in
+    Userlemmas.register_lemma qualid lem;
+    Printf.printf "Registered patch lemma '%s'\n" qualid
+  with
     | Registry.Registry_collision ->
-      Printf.printf "A patch lemma is already registered as '%s'\n" tag
+      Printf.printf "Already registered as a patch lemma\n"
+    | Match_failure (_, _, _) ->
+      Printf.printf "Patch lemmas must be global constants\n"
     | _ ->
-      Printf.printf "Failed to register patch lemma '%s'\n" tag
-  with Match_failure (_, _, _) ->
-    Printf.printf "A patch lemma must be a global constant\n"
+      Printf.printf "Failed to register patch lemma\n"
 
 let unregister_lemma trm =
   let (evm, env) = Lemmas.get_current_context() in
   let lem = intern env evm trm in
   try
-    let Some tag = ident_of_term lem in
-    Userlemmas.unregister_lemma tag;
-    Printf.printf "Unregistered patch lemma '%s'\n" tag
+    let Some qualid = ident_of_term lem in
+    Userlemmas.unregister_lemma qualid;
+    Printf.printf "Unregistered patch lemma '%s'\n" qualid
   with Match_failure (_, _, _) ->
-    Printf.printf "A patch lemma must be a global constant\n"
+    Printf.printf "Patch lemmas must be global constants\n"
 
 (* Decide a proposition with the named tactic *)
 let decide_with n typ n_tac : unit =
