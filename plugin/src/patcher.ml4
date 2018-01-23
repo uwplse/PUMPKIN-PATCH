@@ -194,7 +194,7 @@ let factor n trm : unit =
       fs
   with _ -> failwith "Could not find lemmas"
 
-let register n tac typs =
+let register_tactic n tac typs =
   let (evm, env) = Lemmas.get_current_context() in
   let pat = List.map (intern env evm) typs in
   let tag = Id.to_string n in
@@ -206,10 +206,27 @@ let register n tac typs =
      | _ ->
        Printf.printf "Failed to register patch tactic '%s'\n" tag
 
-let unregister n =
+let unregister_tactic n =
   let tag = Id.to_string n in
   Usertactics.unregister_tactic tag;
   Printf.printf "Unregistered patch tactic '%s'\n" tag
+
+
+let register_lemma n trm =
+  let (evm, env) = Lemmas.get_current_context() in
+  let tag = Id.to_string n in
+  try
+    Userlemmas.register_lemma tag (intern env evm trm);
+    Printf.printf "Registered patch lemma '%s'\n" tag
+  with Registry.Registry_collision ->
+       Printf.printf "A patch lemma is already registered as '%s'\n" tag
+     | _ ->
+       Printf.printf "Failed to register patch lemma '%s'\n" tag
+
+let unregister_lemma n =
+  let tag = Id.to_string n in
+  Userlemmas.unregister_lemma tag;
+  Printf.printf "Unregistered patch lemma '%s'\n" tag
 
 (* Decide a proposition with the named tactic *)
 let decide_with n typ n_tac : unit =
@@ -262,16 +279,20 @@ VERNAC COMMAND EXTEND FactorCandidate CLASSIFIED AS SIDEFF
   [ factor n trm ]
 END
 
-(* Register a tactic for patch search *)
+(* Register a patch tactic or lemma *)
 VERNAC COMMAND EXTEND RegisterTactic CLASSIFIED AS SIDEFF
 | [ "Register" "Patch" "Tactic" tactic(tac) "as" ident(n) "for" constr_list(typs) ] ->
-  [ register n tac typs ]
+  [ register_tactic n tac typs ]
+| [ "Register" "Patch" "Lemma" constr(trm) "as" ident(n) ] ->
+  [ register_lemma n trm ]
 END
 
-(* Unregister a tactic for patch search *)
+(* Unregister a patch tactic or lemma *)
 VERNAC COMMAND EXTEND UnregisterTactic CLASSIFIED AS SIDEFF
 | [ "Unregister" "Patch" "Tactic" ident(n) ] ->
-  [ unregister n ]
+  [ unregister_tactic n ]
+| [ "Unregister" "Patch" "Lemma" ident(n) ] ->
+  [ unregister_lemma n ]
 END
 
 (* Decide the proof of a proposition with tactics *)
