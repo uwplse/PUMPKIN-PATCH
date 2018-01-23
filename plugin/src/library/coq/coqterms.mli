@@ -62,6 +62,9 @@ val lookup_definition : env -> types -> types
  *)
 val unwrap_definition : env -> types -> types
 
+(* Extract the canonical identifier within a term _if_ it's a constant *)
+val ident_of_term : constr -> string option
+
 (* Zoom all the way into a lambda term *)
 val zoom_lambda_term : env -> types -> env * types
 

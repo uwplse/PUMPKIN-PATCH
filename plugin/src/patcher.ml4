@@ -211,22 +211,31 @@ let unregister_tactic n =
   Usertactics.unregister_tactic tag;
   Printf.printf "Unregistered patch tactic '%s'\n" tag
 
-
-let register_lemma n trm =
+let register_lemma trm =
   let (evm, env) = Lemmas.get_current_context() in
-  let tag = Id.to_string n in
+  let lem = intern env evm trm in
   try
-    Userlemmas.register_lemma tag (intern env evm trm);
-    Printf.printf "Registered patch lemma '%s'\n" tag
-  with Registry.Registry_collision ->
-       Printf.printf "A patch lemma is already registered as '%s'\n" tag
-     | _ ->
-       Printf.printf "Failed to register patch lemma '%s'\n" tag
+    let Some tag = ident_of_term lem in
+    try
+      Userlemmas.register_lemma tag lem;
+      Printf.printf "Registered patch lemma '%s'\n" tag
+    with
+    | Registry.Registry_collision ->
+      Printf.printf "A patch lemma is already registered as '%s'\n" tag
+    | _ ->
+      Printf.printf "Failed to register patch lemma '%s'\n" tag
+  with Match_failure (_, _, _) ->
+    Printf.printf "A patch lemma must be a global constant\n"
 
-let unregister_lemma n =
-  let tag = Id.to_string n in
-  Userlemmas.unregister_lemma tag;
-  Printf.printf "Unregistered patch lemma '%s'\n" tag
+let unregister_lemma trm =
+  let (evm, env) = Lemmas.get_current_context() in
+  let lem = intern env evm trm in
+  try
+    let Some tag = ident_of_term lem in
+    Userlemmas.unregister_lemma tag;
+    Printf.printf "Unregistered patch lemma '%s'\n" tag
+  with Match_failure (_, _, _) ->
+    Printf.printf "A patch lemma must be a global constant\n"
 
 (* Decide a proposition with the named tactic *)
 let decide_with n typ n_tac : unit =
@@ -283,16 +292,16 @@ END
 VERNAC COMMAND EXTEND RegisterTactic CLASSIFIED AS SIDEFF
 | [ "Register" "Patch" "Tactic" tactic(tac) "as" ident(n) "for" constr_list(typs) ] ->
   [ register_tactic n tac typs ]
-| [ "Register" "Patch" "Lemma" constr(trm) "as" ident(n) ] ->
-  [ register_lemma n trm ]
+| [ "Register" "Patch" "Lemma" constr(lem) ] ->
+  [ register_lemma lem ]
 END
 
 (* Unregister a patch tactic or lemma *)
 VERNAC COMMAND EXTEND UnregisterTactic CLASSIFIED AS SIDEFF
 | [ "Unregister" "Patch" "Tactic" ident(n) ] ->
   [ unregister_tactic n ]
-| [ "Unregister" "Patch" "Lemma" ident(n) ] ->
-  [ unregister_lemma n ]
+| [ "Unregister" "Patch" "Lemma" constr(lem) ] ->
+  [ unregister_lemma lem ]
 END
 
 (* Decide the proof of a proposition with tactics *)

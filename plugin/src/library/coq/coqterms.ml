@@ -149,6 +149,12 @@ let rec unwrap_definition (env : env) (trm : types) : types =
   with _ ->
     trm
 
+(* Extract the canonical identifier within a term _if_ it's a constant *)
+let ident_of_term (trm : constr) : string option =
+  match kind_of_term trm with
+  | Const (kp, _) -> Some (KerName.to_string (Constant.canonical kp))
+  | _ -> None
+
 (* Zoom all the way into a lambda term *)
 let rec zoom_lambda_term (env : env) (trm : types) : env * types =
   match kind_of_term trm with
