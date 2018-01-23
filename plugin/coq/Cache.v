@@ -10,6 +10,8 @@ Lemma le_lt : forall n m, S n <= m -> n < m .
   intros n m H. assumption.
 Qed.
 
-Register Patch Lemma addn1 as addn1.
+Register Patch Lemma addn1.
+Register Patch Lemma le_lt.
 
-Register Patch Lemma le_lt as le_lt.
+Unregister Patch Lemma addn1.
+Unregister Patch Lemma le_lt.
