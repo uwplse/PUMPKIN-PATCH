@@ -137,7 +137,13 @@ let debug_env (env : env) (descriptor : string) : unit =
 
 (* Print a patch to stdout in the standard Coq format *)
 let print_patch env evm patch_id patch : unit =
-  let _ = set_bool_option_value ["Printing";"All"] true in
+  let opts = get_tables () in
+  let print_all =
+    match (OptionMap.find ["Printing"; "All"] opts).opt_value with
+    | BoolValue b -> b
+    | _ -> true
+  in
+  let _ = set_bool_option_value ["Printing"; "All"] true in
   Pp.pp_with
     Format.std_formatter
     (Pp.pr_sequence
@@ -149,4 +155,5 @@ let print_patch env evm patch_id patch : unit =
         (Pp.str ":=");
         (pr_lconstr_env env evm patch);
         (Pp.str ".\nEND PATCH");
-        (Pp.str "\n")])
+        (Pp.str "\n")]);
+  set_bool_option_value ["Printing"; "All"] print_all
