@@ -116,11 +116,31 @@ let invert_patch n env evm patch =
   with _ ->
     failwith "Could not find a well-typed inverted term"
 
+(* If enabled, try using registered lemmas to solve the patch goal *)
+let try_lemmas env goal =
+  if !opt_userlemmas
+  then Userlemmas.find_lemma env goal
+  else None
+
+(* If enabled, try using registered tactics to solve the patch goal *)
+let try_tactics env evm goal =
+  if !opt_userlemmas
+  then Usertactics.try_tactics env evm goal
+  else None
+
 (* Common patch command functionality *)
 let patch n old_term new_term try_invert a search =
   let (evm, env) = Lemmas.get_current_context() in
   let reduce = try_reduce reduce_remove_identities in
-  let patch = reduce env (search env evm a) in
+  let goal = Proofdiff.patch_goal env old_term new_term in
+  let patch =
+    match try_lemmas env goal with
+    | Some prf -> prf
+    | None ->
+      match try_tactics env evm goal with
+      | Some prf -> prf
+      | None -> reduce env (search env evm a)
+  in
   let prefix = Id.to_string n in
   define_term n env evm patch;
   (if !opt_printpatches then
