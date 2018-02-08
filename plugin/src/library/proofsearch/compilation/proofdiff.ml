@@ -422,7 +422,7 @@ let rec focus_types env typ_l typ_r : env * types * types =
 
 (* Give the focused type of a subsumption proof for the given types *)
 let subsume_type (env : env) (typ_l : types) (typ_r : types) : types =
-  let (env, typ_l, typ_r) = focus_types env typ_l typ_r in
+  let (env, typ_l, typ_r) = focus_types env (reduce_term env typ_l) (reduce_term env typ_r) in
   it_mkProd_or_LetIn (arrow_type typ_r typ_l) (rel_context env)
 
 (* Give the type for a patch, assuming a change in conclusions *)
