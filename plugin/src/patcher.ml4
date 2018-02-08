@@ -55,6 +55,32 @@ let _ = Goptions.declare_bool_option {
   Goptions.optwrite = (fun b -> opt_printpatches := b);
 }
 
+(*
+ * Enable or disable the tactic registry
+ *)
+let opt_usertactics = ref true
+let _ = Goptions.declare_bool_option {
+  Goptions.optsync = true;
+  Goptions.optdepr = false;
+  Goptions.optname = "Use registered tactics in patch search";
+  Goptions.optkey = ["PUMPKIN"; "Tactics"];
+  Goptions.optread = (fun () -> !opt_usertactics);
+  Goptions.optwrite = (fun b -> opt_usertactics := b);
+}
+
+(*
+ * Enable or disable the lemma registry
+ *)
+let opt_userlemmas = ref true
+let _ = Goptions.declare_bool_option {
+  Goptions.optsync = true;
+  Goptions.optdepr = false;
+  Goptions.optname = "Use registered lemmas in patch search";
+  Goptions.optkey = ["PUMPKIN"; "Lemmas"];
+  Goptions.optread = (fun () -> !opt_userlemmas);
+  Goptions.optwrite = (fun b -> opt_userlemmas := b);
+}
+
 (* --- Auxiliary functionality for top-level functions --- *)
 
 (* Intern terms corresponding to two definitions *)
