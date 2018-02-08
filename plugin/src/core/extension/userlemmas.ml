@@ -6,6 +6,7 @@ open Coqterms
  *       environment management?
  *)
 
+(* TODO: Should save inferred type... *)
 let registry : constr Registry.registry = Registry.create ()
 
 let register_lemma key pf =
@@ -17,6 +18,7 @@ let lookup_lemma = Registry.lookup registry
 
 (* Find a lemma for a patch type, if one is registered. *)
 let find_lemma env typ : constr option =
+  let typ = Reducers.reduce_term env typ in
   match Registry.filter registry (has_type env typ) with
   | pf :: _ -> Some pf
   | [] -> None
