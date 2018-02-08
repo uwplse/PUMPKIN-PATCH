@@ -46,6 +46,9 @@ val unshift : types -> types
 (* Shift everything and pray; workaround for bug *)
 val shift_by_unconditional : int -> types -> types
 
+(* Form the arrow (non-dependent function) type of two independent types *)
+val arrow_type : types -> types -> types
+
 (* --- Environments --- *)
 
 (* Unshifts indexes for terms in an environment by an amount *)

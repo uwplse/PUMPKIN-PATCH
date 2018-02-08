@@ -83,6 +83,10 @@ let shift_by_unconditional (n : int) (trm : types) : types =
     ()
     trm
 
+(* Form the arrow (non-dependent function) type of two independent types *)
+let arrow_type (ante : types) (cons : types) =
+  mkProd (Names.Anonymous, ante, shift_by 1 cons)
+
 (* --- Environments --- *)
 
 (* Unshifts indexes for terms in env by n *)
