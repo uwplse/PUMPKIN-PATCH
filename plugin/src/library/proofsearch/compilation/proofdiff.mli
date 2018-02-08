@@ -236,3 +236,12 @@ val induct_over_same_h : (types -> types -> bool) -> goal_proof_diff -> bool
  * get the number of bindings that are not common to both proofs.
  *)
 val num_new_bindings : ('a -> env) -> 'a proof_diff -> int
+
+(* Focus two types (w.r.t. products) relationally *)
+val focus_types : env -> types -> types -> env * types * types
+
+(* Give the focused type of a subsumption proof for the given types *)
+val subsume_type : env -> types -> types -> types
+
+(* Give the type for a patch, assuming a change in conclusions *)
+val patch_goal : env -> constr -> constr -> types

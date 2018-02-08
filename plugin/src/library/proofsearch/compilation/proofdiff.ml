@@ -5,7 +5,9 @@ open Environ
 open Proofcat
 open Assumptions
 open Expansion
+open Coqenvs
 open Coqterms
+open Debruijn
 open Evaluation
 open Utilities
 open Proofcatterms
@@ -404,3 +406,47 @@ let induct_over_same_h eq (d : goal_proof_diff) : bool =
 let num_new_bindings (f : 'a -> env) (d : 'a proof_diff) =
   let assums = assumptions d in
   num_assumptions (complement_assumptions assums (f (old_proof d)))
+
+(* Focus two types (w.r.t. products) relationally *)
+let rec focus_types env typ_l typ_r : env * types * types =
+  match kind_of_term typ_l, kind_of_term typ_r with
+  | Prod (name_l, ante_l, cons_l), Prod (name_r, ante_r, cons_r) ->
+    if convertible env ante_l ante_r
+    then
+      let name = join_names name_l name_r in
+      focus_types (assume_rel env name ante_l) cons_l cons_r
+    else
+      (env, typ_l, typ_r)
+  | _, _ ->
+     (env, typ_l, typ_r)
+
+(* Give the focused type of a subsumption proof for the given types *)
+let subsume_type (env : env) (typ_l : types) (typ_r : types) : types =
+  let (env, typ_l, typ_r) = focus_types env typ_l typ_r in
+  it_mkProd_or_LetIn (arrow_type typ_r typ_l) (rel_context env)
+
+(* Give the type for a patch, assuming a change in conclusions *)
+let patch_goal (env : env) (trm_o : constr) (trm_n : constr) =
+  subsume_type env (infer_type env trm_o) (infer_type env trm_n)
+
+(* Pumpkin's existing infrastructure revolves around term manipulation and
+ * can't determine the goal type for a patch outside of the search process.
+ * That's why we don't use any of the *_diff types. In the future, we
+ * really want the normal infrastructure to make this type information
+ * more easily accessible, so that user extensions can work for changes
+ * besides the basic changes-in-conclusions.
+ *)
+(* (\* What is the type of a patch *\)
+ * let patch_goal (d : goal_proof_diff) : constr =
+ *   let (Context (old_ctx, _), _) = old_proof d in
+ *   let (Context (new_ctx, _), _) = new_proof d in
+ *   match old_ctx, new_ctx with
+ *   | Term (old_typ, old_env), Term (new_typ, new_env) ->
+ *     let (old_env, old_typ) = zoom_product old_env old_typ in
+ *     let (new_env, new_typ) = zoom_product new_env new_typ in
+ *     let hyp = Debruijn.shift_by 1 old_typ in
+ *     let typ = mkProd (Names.Anonymous, new_typ, hyp) in
+ *     let goal = Term.it_mkProd_or_LetIn typ (rel_context new_env) in
+ *     Printf.printf "%s\n" (Pp.string_of_ppcmds (Printer.pr_constr goal));
+ *     goal
+ *   | _, _ -> failwith "Not implemented" *)
