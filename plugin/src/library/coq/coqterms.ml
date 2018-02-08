@@ -165,6 +165,7 @@ let rec zoom_lambda_term (env : env) (trm : types) : env * types =
 
 (*
  * Reconstruct a lambda from an environment
+ * FIXME: Redundant with Term.it_mkLambda_or_LetIn
  *)
 let rec reconstruct_lambda (env : env) (b : types) : types =
   if nb_rel env = 0 then
@@ -176,6 +177,7 @@ let rec reconstruct_lambda (env : env) (b : types) : types =
 
 (*
  * Reconstruct a product from an environment
+ * FIXME: Redundant with Term.it_mkProd_or_LetIn
  *)
 let rec reconstruct_prod (env : env) (b : types) : types =
   if nb_rel env = 0 then
