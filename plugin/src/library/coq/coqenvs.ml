@@ -23,6 +23,10 @@ let all_rel_indexes (env : env) : int list =
 let lookup_all_rels (env : env) : CRD.t list =
   lookup_rels (all_rel_indexes env) env
 
+(* Push a new local assumption onto the environment *)
+let assume_rel (env : env) (name : name) (typ : types) : env =
+  push_rel (CRD.LocalAssum (name, typ)) env
+
 (*
  * Push something to the highest position in an environment.
  *
@@ -58,3 +62,11 @@ let bindings_for_fix (names : name array) (typs : types array) : CRD.t list =
     (CArray.map2_i
       (fun i name typ -> CRD.LocalAssum (name, Vars.lift i typ))
       names typs)
+
+(* --- Helper functions for names --- *)
+
+(* Join two binding names in a sensible way *)
+let join_names (name_l : name) (name_r : name) : name =
+  if Name.equal name_l name_r
+  then name_l
+  else Name.Anonymous
