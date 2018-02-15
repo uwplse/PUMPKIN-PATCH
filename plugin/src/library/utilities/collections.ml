@@ -121,6 +121,14 @@ let flat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
 let flat_map2 (f : 'a -> 'b -> 'c list) (la : 'a list) (lb : 'b list) : 'c list =
   List.flatten (List.map2 f la lb)
 
+(* Map3 *)
+let rec map3 (f : 'a -> 'b -> 'c -> 'd) l1 l2 l3 : 'd list =
+  match (l1, l2, l3) with
+  | ([], [], []) ->
+     []
+  | (h1 :: t1, h2 :: t2, h3 :: t3) ->
+     let r = f h1 h2 h3 in r :: map3 f t1 t2 t3
+
 (*
  * Get the head of a transformation on a list,
  * defaulting to default if the original list is empty, or if the

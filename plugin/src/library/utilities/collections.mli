@@ -84,6 +84,11 @@ val flat_map : ('a -> 'b list) -> 'a list -> 'b list
 val flat_map2 : ('a -> 'b -> 'c list) -> 'a list -> 'b list -> 'c list
 
 (*
+ * Map3
+ *)
+val map3 : ('a -> 'b -> 'c -> 'd) -> 'a list -> 'b list -> 'c list -> 'd list
+
+(*
  * Get the head of a transformation on a list,
  * defaulting to default if the list is empty
  *)

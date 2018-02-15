@@ -15,6 +15,7 @@ open Coqenvs
 open Printer
 open Utilities
 open Goptions
+open Collections
 
 module CRD = Context.Rel.Declaration
 
@@ -95,10 +96,38 @@ let rec term_as_string (env : env) (trm : types) =
      let ind_bodies = mutind_body.mind_packets in
      let name_id = (ind_bodies.(i_index)).mind_typename in
      string_of_id name_id
-  | Case (ci, ct, m, bs) -> (* TODO *)
-     Printf.sprintf "(%s)" (print_to_string print_constr trm)
-  | Fix ((is, i), (ns, ts, ds)) -> (* TODO *)
-     Printf.sprintf "(%s)" (print_to_string print_constr trm)
+  | Case (ci, ct, m, bs) ->
+     let (i, i_index) = ci.ci_ind in
+     let mutind_body = lookup_mind i env in
+     let ind_body = mutind_body.mind_packets.(i_index) in
+     Printf.sprintf
+       "(match %s : %s with %s)"
+       (term_as_string env m)
+       (term_as_string env ct)
+       (String.concat
+          " "
+          (Array.to_list
+             (Array.mapi
+                (fun c_i b ->
+                  Printf.sprintf
+                    "(case %s => %s)"
+                    (string_of_id (ind_body.mind_consnames.(c_i)))
+                    (term_as_string env b))
+                bs)))
+  | Fix ((is, i), (ns, ts, ds)) ->
+     let env_fix = push_rel_context (bindings_for_fix ns ds) env in
+     String.concat
+       " with "
+       (map3
+          (fun n t d ->
+            Printf.sprintf
+             "(Fix %s : %s := %s)"
+             (name_as_string n)
+             (term_as_string env t)
+             (term_as_string env_fix d))
+          (Array.to_list ns)
+          (Array.to_list ts)
+          (Array.to_list ds))
   | CoFix (i, (ns, ts, ds)) ->
      Printf.sprintf "TODO" (* TODO *)
   | Proj (p, c) ->
