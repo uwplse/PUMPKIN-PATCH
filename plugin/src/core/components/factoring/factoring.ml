@@ -90,7 +90,7 @@ let rec find_path (env : env) (trm : types) : factors =
          let assume_arg i a = apply_assumption (Array.get paths i) a in
          let args_assumed = Array.mapi assume_arg args in
 	 try
-           let t = unshift (infer_type env_arg arg) in
+           let t = unshift (reduce_term env_arg (infer_type env_arg arg)) in
 	   (assume env Anonymous t, mkApp (f, args_assumed)) :: path
 	 with _ ->
 	   []
