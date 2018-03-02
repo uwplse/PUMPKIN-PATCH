@@ -40,18 +40,18 @@ Inductive step_star : expr -> expr -> Prop :=
 | Step e1 e2 e3 : step_star e1 e2 -> step e2 e3 -> step_star e1 e3.
 Notation "e1 -->* e2" := (step_star e1 e2) (at level 40).
 
-Lemma progress : forall e t, typing nil e t -> (exists e', step e e') \/ value e.
+Theorem progress : forall e t, typing nil e t -> (exists e', step e e') \/ value e.
 Proof.
   intros e t H. dependent induction H.
   - right. constructor.
-  - left. specialize (IHtyping1 eq_refl). inversion IHtyping1; clear IHtyping1.
-    + destruct H1 as [e1' substep]. exists (App e1' e2). constructor. assumption.
-    + inversion H1 as [t e0 He0]. exists (e0 <- e2). constructor.
+  - left. destruct (IHtyping1 eq_refl) as [[e1' Hstep1]|Hvalue1]; clear IHtyping1.
+    + exists (App e1' e2). constructor. assumption.
+    + inversion Hvalue1 as [t0 e0 He1]. subst e1. exists (e0 <- e2). constructor.
 Qed.
 
 Lemma preservation : forall e e' t, typing nil e t -> step e e' -> typing nil e' t.
 Proof.
-  intros e e' t H. generalize dependent e'. dependent induction H; intros e' Hstep.
+  intros e e' t H. revert e'. dependent induction H; intros e' Hstep.
   - inversion Hstep.
   - inversion Hstep; subst. apply (subst_typing e0 t1 nil nil e2 t2); auto.
     inversion H; subst. assumption.
@@ -72,7 +72,7 @@ Proof.
   - right. assumption.
 Qed.
 
-Register Lemma progress_patch.
+Register Patch Lemma progress_patch.
 
 Inductive cont : Set :=
 | KRet : cont
@@ -113,7 +113,7 @@ Inductive step : expr -> expr -> Prop :=
     step (App (Fun t e1) e2) (e1 <- e2)
 | Left e1 e1' e2 :
     step e1 e1' ->
-    step (App e1 e2) (App e1' e2).
+    step (App e1 e2) (App e1' e2)
 | Right e1 e2 e2' :
     value e1 -> step e2 e2' ->
     step (App e1 e2) (App e1 e2').
@@ -129,18 +129,20 @@ Theorem progress : forall e t, typing nil e t -> (exists e', step e e') \/ value
 Proof.
   intros e t H. dependent induction H.
   - right. constructor.
-  - left. specialize (IHtyping1 eq_refl). inversion IHtyping1; clear IHtyping1.
-    + destruct H1 as [e1' substep]. exists (App e1' e2). constructor. assumption.
-    + inversion H1 as [t e0 He0]. exists (e0 <- e2). constructor.
+  - left. destruct (IHtyping1 eq_refl) as [[e1' Hstep1]|Hvalue1]; clear IHtyping1.
+    + exists (App e1' e2). constructor. assumption.
+    + destruct (IHtyping2 eq_refl) as [[e2' Hstep2]|Hvalue2]; clear IHtyping2.
+      * exists (App e1 e2'). constructor; assumption.
+      * inversion Hvalue1 as [t0 e0 He1]. subst e1.
+        exists (e0 <- e2). constructor; assumption.
 Qed.
 
 Theorem preservation : forall e e' t, typing nil e t -> step e e' -> typing nil e' t.
 Proof.
-  intros e e' t H. generalize dependent e'. dependent induction H; intros e' Hstep.
+  intros e e' t H. revert e'. dependent induction H; intros e' Hstep.
   - inversion Hstep.
-  - inversion Hstep; subst. apply (subst_typing e0 t1 nil nil e2 t2); auto.
-    inversion H; subst. assumption.
-    apply TApp with (t2 := t2); try assumption. apply IHtyping1 with (e' := e1'); auto.
+  - inversion Hstep; subst; try (apply TApp with (t2 := t2); auto).
+    inversion H; subst. apply (subst_typing e0 t1 nil nil e2 t2); auto.
 Qed.
 
 Inductive cont : Set :=
