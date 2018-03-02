@@ -3,8 +3,10 @@ Require Import Coq.Init.Nat.
 Require Import PeanoNat.
 
 (*******************************************************************************)
-(* This module defines the syntax and (equational) semantics of a simply typed *)
-(* lambda calculus, along with several utility functions and lemmas.           *)
+(*******************************************************************************)
+(* This modules defines an explicitly typed syntax and type system for the     *)
+(* simply typed lambda calculus along with utilities for variable management.  *)
+(*******************************************************************************)
 (*******************************************************************************)
 
 Module Calculus.
@@ -54,12 +56,6 @@ Notation "e1 [ i <<- e2 ]" := (subst e1 i e2) (at level 30, no associativity).
 
 End Calculus.
 
-(*******************************************************************************)
-(* This module defines the type system for the simply typed lambda calculus,   *)
-(* which we'll want for well-typedness assumptions (to avoid reasoning about   *)
-(* nontermination).                                                            *)
-(*******************************************************************************)
-
 Module Typing.
 
 Import Calculus.
@@ -81,13 +77,13 @@ Proof. induction xs; try reflexivity. assumption. Qed.
 Lemma onth_app2 {A : Type} (xs ys : list A) (i : nat) :
   i < length xs -> onth (xs ++ ys) i = onth xs i.
 Proof.
-  generalize dependent i. induction xs; simpl; intros i H.
+  revert i. induction xs; simpl; intros i H.
   - inversion H.
-  - destruct i; try reflexivity. simpl. rewrite IHxs; try reflexivity.
+  - destruct i; try reflexivity. rewrite IHxs; try reflexivity.
     apply Lt.lt_S_n. assumption.
 Qed.
 
-(* Type system *)
+(* Typing rules *)
 Inductive typing : list type -> expr -> type -> Prop :=
 | TVar G i t :
     onth G i = Some t ->
@@ -110,9 +106,12 @@ Fixpoint type_eq (t1 t2 : type) : bool :=
 (* Correctness of type equality *)
 Lemma type_eq_ok (t1 t2 : type) : type_eq t1 t2 = true <-> t1 = t2.
 Proof.
-  generalize dependent t2. induction t1; destruct t2; simpl; try (split; discriminate).
+  revert t2. induction t1 as [|t11 IHt11 t12 IHt12]; destruct t2 as [|t21 t22].
   - split; reflexivity.
-  - rewrite Bool.andb_true_iff, IHt1_1, IHt1_2. split; inversion 1; subst; auto.
+  - split; discriminate.
+  - split; discriminate.
+  - simpl. rewrite Bool.andb_true_iff, IHt11, IHt12.
+    split; inversion 1; subst; auto.
 Qed.
 
 Theorem type_eq_refl (t : type) : type_eq t t = true.
@@ -138,21 +137,19 @@ Fixpoint type_of (G : list type) (e : expr) : option type :=
 Lemma type_of_ok (G : list type) (e : expr) (t : type) :
   type_of G e = Some t <-> typing G e t.
 Proof.
-  generalize dependent G. generalize dependent t. induction e.
-  - intros t G. simpl. split.
-    + constructor. assumption.
-    + inversion 1. subst. assumption.
-  - intros t' G. simpl. split.
-    + destruct (type_of (t :: G) e) eqn:H; try discriminate.
-      simpl. inversion 1. subst. clear H0. rewrite IHe in H. constructor. assumption.
-    + inversion 1. subst. rewrite <- IHe in H4. rewrite H4. reflexivity.
-  - intros t G. split.
-    + simpl. destruct (type_of G e1) eqn:He1; try discriminate. rewrite IHe1 in He1.
-      destruct t0; try discriminate. destruct (type_of G e2) eqn:He2; try discriminate.
-      rewrite IHe2 in He2. destruct (type_eq t0_1 t0) eqn: Ht0; try discriminate.
-      rewrite type_eq_ok in Ht0. inversion 1. subst. apply TApp with (t2 := t0); assumption.
-    + inversion 1. subst. rewrite <- IHe1 in H3. rewrite <- IHe2 in H5. simpl.
-      rewrite H3, H5. rewrite type_eq_refl. reflexivity.
+  revert t G. induction e as [i|t0|]; intros t G; split; simpl.
+  - constructor. assumption.
+  - inversion 1. subst. assumption.
+  - destruct (type_of (t0 :: G) e) eqn:H; try discriminate.
+    inversion 1. subst. rewrite IHe in H. constructor. assumption.
+  - inversion 1. subst. rewrite <- IHe in H4. simpl. rewrite H4. reflexivity.
+  - destruct (type_of G e1) eqn:He1; try discriminate.
+    destruct t0 eqn:Ht0; try discriminate. rewrite IHe1 in He1.
+    destruct (type_of G e2) eqn:He2; try discriminate. rewrite IHe2 in He2.
+    destruct (type_eq t1_1 t1) eqn: Ht1; try discriminate.
+    rewrite type_eq_ok in Ht1. inversion 1. subst. apply TApp with (t2 := t1); assumption.
+  - inversion 1. subst. rewrite <- IHe1 in H3. rewrite <- IHe2 in H5. rewrite H3, H5.
+    rewrite type_eq_refl. reflexivity.
 Qed.
 
 (* Type preservation of "index shielding" *)
@@ -160,11 +157,11 @@ Lemma shield_typing e t : forall G1 G2 G3,
     typing (G1 ++ G3) e t ->
     typing (G1 ++ G2 ++ G3) (shield e (length G2) (length G1)) t.
 Proof.
-  generalize dependent t. induction e; try (rename t into t0); intros t G1 G2 G3 H; simpl.
-  - constructor. inversion H; subst. destruct (n <? length G1) eqn:Hn.
-    + rewrite PeanoNat.Nat.ltb_lt in Hn. rewrite onth_app2; rewrite onth_app2 in H2; assumption.
-    + rewrite PeanoNat.Nat.ltb_ge in Hn. apply Minus.le_plus_minus in Hn. rewrite Hn in *.
-      rewrite onth_app1 in H2. rewrite PeanoNat.Nat.add_shuffle3, !onth_app1. assumption.
+  revert t. induction e as [i|t0 e IHe|]; intros t G1 G2 G3 H; simpl.
+  - constructor. inversion H; subst. destruct (i <? length G1) eqn:Hi.
+    + rewrite Nat.ltb_lt in Hi. rewrite onth_app2; rewrite onth_app2 in H2; assumption.
+    + rewrite Nat.ltb_ge in Hi. apply Minus.le_plus_minus in Hi. rewrite Hi in *.
+      rewrite onth_app1 in H2. rewrite Nat.add_shuffle3, !onth_app1. assumption.
   - inversion H; subst. apply TFun. exact (IHe t2 (t0 :: G1) G2 G3 H4).
   - inversion H; subst. apply TApp with (t2 := t2).
     + apply IHe1. assumption.
@@ -177,17 +174,17 @@ Theorem subst_typing e t : forall G1 G2 e' t',
     typing (G1 ++ t' :: G2) e t ->
     typing (G1 ++ G2) (subst e (length G1) e') t.
 Proof.
-  generalize dependent t. induction e; try (rename t into t0); intros t G1 G2 e' t' He' He; simpl.
-  - destruct (length G1 =? n) eqn:Hn.
-    + rewrite Nat.eqb_eq in Hn. rewrite <- Hn in He. clear Hn.
+  revert t. induction e as [i|t0|]; intros t G1 G2 e' t' He' He; simpl.
+  - destruct (length G1 =? i) eqn:Hi.
+    + rewrite Nat.eqb_eq in Hi. rewrite <- Hi in He. clear Hi i.
       apply shield_typing with (G1 := nil). inversion He; subst.
       rewrite (plus_n_O (length G1)), onth_app1 in H1. simpl in H1. inversion H1. subst.
       assumption.
-    + destruct (n <? length G1) eqn:Hn'.
-      * rewrite Nat.ltb_lt in Hn'. constructor. inversion He; subst.
+    + destruct (i <? length G1) eqn:Hi'.
+      * rewrite Nat.ltb_lt in Hi'. constructor. inversion He; subst.
         rewrite onth_app2; try rewrite onth_app2 in H1; assumption.
-      * rewrite Nat.ltb_antisym, Bool.negb_false_iff, Nat.leb_le, Nat.le_lteq in Hn'.
-        rewrite Nat.eqb_neq in Hn. inversion Hn'; try contradiction. clear Hn Hn'.
+      * rewrite Nat.ltb_antisym, Bool.negb_false_iff, Nat.leb_le, Nat.le_lteq in Hi'.
+        rewrite Nat.eqb_neq in Hi. inversion Hi'; try contradiction. clear Hi Hi'.
         constructor. inversion He; subst. rewrite (Minus.le_plus_minus _ _ H) in *.
         simpl in *. rewrite plus_n_Sm in H2. rewrite onth_app1. rewrite onth_app1 in H2.
         simpl in *. assumption.
