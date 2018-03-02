@@ -3,10 +3,8 @@ Require Import Coq.Init.Nat.
 Require Import PeanoNat.
 
 (*******************************************************************************)
-(* This module defines the syntax of the simply typed lambda calculus          *)
-(* represented using de Bruijn indices. Utilities for variable management are  *)
-(* also defined (index shifting, substitution), along with a few lemmas        *)
-(* characterizing their behavior.                                              *)
+(* This module defines the syntax and (equational) semantics of a simply typed *)
+(* lambda calculus, along with several utility functions and lemmas.           *)
 (*******************************************************************************)
 
 Module Calculus.
@@ -18,25 +16,17 @@ Inductive type : Set :=
 (* Lambda-expressions with de Bruijn indices. *)
 Inductive expr : Set :=
 | Var : nat -> expr
-| Abs : type -> expr -> expr
+| Fun : type -> expr -> expr
 | App : expr -> expr -> expr.
 
-(* Exclusive upper bound on free indices (variables) *)
-Fixpoint bound (e : expr) :=
-  match e with
-  | Var i => succ i
-  | Abs t e => pred (bound e)
-  | App e1 e2 => max (bound e1) (bound e2)
-  end.
-
-(* A closed expression has no free indices *)
-Definition closed (e : expr) : Prop := bound e = 0.
+Inductive value : expr -> Prop :=
+| VFun t e : value (Fun t e).
 
 (* Shield indices from i (external) bindings outside j (internal) bindings *)
 Fixpoint shield (e : expr) (i j : nat) : expr :=
   match e with
   | Var k => Var (if k <? j then k else i + k)
-  | Abs t e => Abs t (shield e i (succ j))
+  | Fun t e => Fun t (shield e i (succ j))
   | App e1 e2 => App (shield e1 i j) (shield e2 i j)
   end.
 Notation "e >> i" := (shield e i 0) (at level 20, no associativity).
@@ -56,29 +46,11 @@ Fixpoint subst (e : expr) (i : nat) (e' : expr) : expr :=
     if i =? j
     then e' >> i (* Substitute after shielding variables from capture *)
     else Var (if j <? i then j else pred j) (* Delete the substituted index *)
-  | Abs t e => Abs t (subst e (succ i) e') (* Track newly "free" variable *)
+  | Fun t e => Fun t (subst e (succ i) e') (* Track newly "free" variable *)
   | App e1 e2 => App (subst e1 i e') (subst e2 i e')
   end.
 Notation "e1 <- e2" := (subst e1 0 e2) (at level 30, no associativity).
 Notation "e1 [ i <<- e2 ]" := (subst e1 i e2) (at level 30, no associativity).
-
-(* Algebraic reduction contexts *)
-Inductive context : Set :=
-| Hole : context
-| Body : type -> context -> context
-| Left : context -> expr -> context
-| Right : expr -> context -> context.
-Notation "'[]'" := (Hole).
-
-(* Plugging an expression into such a reduction context *)
-Fixpoint plug (C : context) (e : expr) : expr :=
-  match C with
-  | Hole => e
-  | Body t C => Abs t (plug C e)
-  | Left C e2 => App (plug C e) e2
-  | Right e1 C => App e1 (plug C e)
-  end.
-Notation "C [ e ]" := (plug C e) (at level 25, no associativity).
 
 End Calculus.
 
@@ -120,9 +92,9 @@ Inductive typing : list type -> expr -> type -> Prop :=
 | TVar G i t :
     onth G i = Some t ->
     typing G (Var i) t
-| TAbs G e t1 t2 :
+| TFun G e t1 t2 :
     typing (t1 :: G) e t2 ->
-    typing G (Abs t1 e) (Arrow t1 t2)
+    typing G (Fun t1 e) (Arrow t1 t2)
 | TApp G e1 e2 t2 t1 :
     typing G e1 (Arrow t2 t1) -> typing G e2 t2 ->
     typing G (App e1 e2) t1.
@@ -150,7 +122,7 @@ Proof. rewrite type_eq_ok. reflexivity. Qed.
 Fixpoint type_of (G : list type) (e : expr) : option type :=
   match e with
   | Var i => onth G i
-  | Abs t e =>
+  | Fun t e =>
     match type_of (t :: G) e with
     | Some t' => Some (Arrow t t')
     | None => None
@@ -193,7 +165,7 @@ Proof.
     + rewrite PeanoNat.Nat.ltb_lt in Hn. rewrite onth_app2; rewrite onth_app2 in H2; assumption.
     + rewrite PeanoNat.Nat.ltb_ge in Hn. apply Minus.le_plus_minus in Hn. rewrite Hn in *.
       rewrite onth_app1 in H2. rewrite PeanoNat.Nat.add_shuffle3, !onth_app1. assumption.
-  - inversion H; subst. apply TAbs. exact (IHe t2 (t0 :: G1) G2 G3 H4).
+  - inversion H; subst. apply TFun. exact (IHe t2 (t0 :: G1) G2 G3 H4).
   - inversion H; subst. apply TApp with (t2 := t2).
     + apply IHe1. assumption.
     + apply IHe2. assumption.

@@ -1,5 +1,5 @@
 Require Import Coq.Lists.List.
-Require Import Coq.Init.Nat.
+Require Import Coq.Program.Equality.
 Require Import Patcher.Patch.
 
 (*******************************************************************************)
@@ -28,13 +28,10 @@ Require Import Lambda.
 
 Module CallByName.
 
-(* Ground reduction rules (untyped beta) *)
-Inductive rule : expr -> expr -> Prop :=
-| Beta e1 t e2 : rule (App (Abs t e1) e2) (e1 <- e2).
-
-(* Reduction steps (contextual lifting of rules) *)
+(* Operational semantics *)
 Inductive step : expr -> expr -> Prop :=
-| Context C e1 e2 : rule e1 e2 -> step (C[e1]) (C[e2]).
+| Beta e1 t e2 : step (App (Fun t e1) e2) (e1 <- e2)
+| Left e1 e1' e2 : step e1 e1' -> step (App e1 e2) (App e1' e2).
 Notation "e1 --> e2" := (step e1 e2) (at level 40).
 
 (* Reduction sequences *)
@@ -43,33 +40,125 @@ Inductive step_star : expr -> expr -> Prop :=
 | Step e1 e2 e3 : step_star e1 e2 -> step e2 e3 -> step_star e1 e3.
 Notation "e1 -->* e2" := (step_star e1 e2) (at level 40).
 
-(* Continuation arising during recursive evaluation *)
-Inductive cont : Set :=
-| KRet : cont (* expression in top-level position *)
-| KApp : expr -> cont -> cont. (* expression in application position *)
+Lemma progress : forall e t, typing nil e t -> (exists e', step e e') \/ value e.
+Proof.
+  intros e t H. dependent induction H.
+  - right. constructor.
+  - left. specialize (IHtyping1 eq_refl). inversion IHtyping1; clear IHtyping1.
+    + destruct H1 as [e1' substep]. exists (App e1' e2). constructor. assumption.
+    + inversion H1 as [t e0 He0]. exists (e0 <- e2). constructor.
+Qed.
 
-(* Reconstruct residual term from continuation *)
-Fixpoint ret (e1 : expr) (k : cont) {struct k} : expr :=
+Lemma preservation : forall e e' t, typing nil e t -> step e e' -> typing nil e' t.
+Proof.
+  intros e e' t H. generalize dependent e'. dependent induction H; intros e' Hstep.
+  - inversion Hstep.
+  - inversion Hstep; subst. apply (subst_typing e0 t1 nil nil e2 t2); auto.
+    inversion H; subst. assumption.
+    apply TApp with (t2 := t2); try assumption. apply IHtyping1 with (e' := e1'); auto.
+Qed.
+
+Lemma progress' : forall e t, typing nil e t -> exists e', step e e' \/ value e.
+Proof.
+  intros e t Htyping. destruct (progress e t Htyping).
+  - destruct H as [e'' step]. exists e''. left. assumption.
+  - exists e. right. assumption.
+Qed.
+
+Lemma progress_patch : forall e, (exists e', step e e' \/ value e) -> (exists e', step e e') \/ value e.
+Proof.
+  intros e. destruct 1 as [e' H]. destruct H.
+  - left. exists e'. assumption.
+  - right. assumption.
+Qed.
+
+Register Lemma progress_patch.
+
+Inductive cont : Set :=
+| KRet : cont
+| KApp : expr -> cont -> cont.
+
+Fixpoint rebuild (e1 : expr) (k : cont) : expr :=
   match k with
-  | KApp e2 k0 => ret (App e1 e2) k0
+  | KApp e2 k => rebuild (App e1 e2) k
   | KRet => e1
   end.
 
-(* Top-level evaluation *)
-Fixpoint eval (i : nat) (e : expr) (k : cont) {struct i} : expr :=
+Fixpoint eval (i : nat) (e : expr) (k : cont) {struct i} : expr * cont :=
   match i with
   | S i =>
-    match e with
-    | Var _ => ret e k (* free variable, so done *)
-    | App e1 e2 => eval i e1 (KApp e2 k)
-    | Abs e1 =>
-      match k with
-      | KApp e2 k0 => eval i (e1 <- e2) k0
-      | KRet => ret e k (* lambda vlue, so done *)
-      end
+    match e, k with
+    | App e1 e2, _ => eval i e1 (KApp e2 k)
+    | Fun _ e1, KApp e2 k => eval i (e1 <- e2) k
+    | _, _ => (e, k)
     end
-  | O => ret e k (* out of fuel, so done *)
+  | O => (e, k)
   end.
 
 End CallByName.
+
+(*******************************************************************************)
+(* This module is our (desired) ending point. It implements a call-by-value    *)
+(* reduction semantics and proves progress and preservation w.r.t. the type    *)
+(* system. In the next step, we'll show how to generate the update lemmas      *)
+(* from the previous module by patching.                                       *)
+(*******************************************************************************)
+
+Module CallByValue.
+
+(* Operational semantics *)
+Inductive step : expr -> expr -> Prop :=
+| Beta e1 t e2 :
+    value e2 ->
+    step (App (Fun t e1) e2) (e1 <- e2)
+| Left e1 e1' e2 :
+    step e1 e1' ->
+    step (App e1 e2) (App e1' e2).
+| Right e1 e2 e2' :
+    value e1 -> step e2 e2' ->
+    step (App e1 e2) (App e1 e2').
+Notation "e1 --> e2" := (step e1 e2) (at level 40).
+
+(* Reduction sequences *)
+Inductive step_star : expr -> expr -> Prop :=
+| Refl e : step_star e e
+| Step e1 e2 e3 : step_star e1 e2 -> step e2 e3 -> step_star e1 e3.
+Notation "e1 -->* e2" := (step_star e1 e2) (at level 40).
+
+Theorem progress : forall e t, typing nil e t -> (exists e', step e e') \/ value e.
+Proof.
+  intros e t H. dependent induction H.
+  - right. constructor.
+  - left. specialize (IHtyping1 eq_refl). inversion IHtyping1; clear IHtyping1.
+    + destruct H1 as [e1' substep]. exists (App e1' e2). constructor. assumption.
+    + inversion H1 as [t e0 He0]. exists (e0 <- e2). constructor.
+Qed.
+
+Theorem preservation : forall e e' t, typing nil e t -> step e e' -> typing nil e' t.
+Proof.
+  intros e e' t H. generalize dependent e'. dependent induction H; intros e' Hstep.
+  - inversion Hstep.
+  - inversion Hstep; subst. apply (subst_typing e0 t1 nil nil e2 t2); auto.
+    inversion H; subst. assumption.
+    apply TApp with (t2 := t2); try assumption. apply IHtyping1 with (e' := e1'); auto.
+Qed.
+
+Inductive cont : Set :=
+| KRet : cont
+| KApp : expr -> cont -> cont
+| KArg : expr -> cont -> cont.
+
+Fixpoint eval (i : nat) (e : expr) (k : cont) {struct i} : expr * cont :=
+  match i with
+  | S i =>
+    match e, k with
+    | App e1 e2, _ => eval i e2 (KArg e1 k)
+    | Fun _ e1, KApp e2 k => eval i (e1 <- e2) k
+    | e2, KArg e1 k => eval i e1 (KApp e2 k)
+    | _, _ => (e, k)
+    end
+  | O => (e, k)
+  end.
+
+End CallByValue.
 
