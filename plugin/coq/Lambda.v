@@ -4,8 +4,8 @@ Require Import PeanoNat.
 
 (*******************************************************************************)
 (*******************************************************************************)
-(* This modules defines an explicitly typed syntax and type system for the     *)
-(* simply typed lambda calculus along with utilities for variable management.  *)
+(* This modules defines explicitly typed syntax and static semantics for the   *)
+(* simply typed lambda calculus, along with associated utilities.              *)
 (*******************************************************************************)
 (*******************************************************************************)
 
@@ -68,13 +68,11 @@ Fixpoint onth {A : Type} (xs : list A) (i : nat) : option A :=
   | _, _ => None
   end.
 
-(* Lemma about indexing and concatentaion *)
-Lemma onth_app1 {A : Type} (xs ys : list A) (i : nat) :
+Lemma onth_app_r {A : Type} (xs ys : list A) (i : nat) :
   onth (xs ++ ys) (length xs + i) = onth ys i.
 Proof. induction xs; try reflexivity. assumption. Qed.
 
-(* Anothr lemma about indexing and concatentaion *)
-Lemma onth_app2 {A : Type} (xs ys : list A) (i : nat) :
+Lemma onth_app_l {A : Type} (xs ys : list A) (i : nat) :
   i < length xs -> onth (xs ++ ys) i = onth xs i.
 Proof.
   revert i. induction xs; simpl; intros i H.
@@ -159,9 +157,9 @@ Lemma shield_typing e t : forall G1 G2 G3,
 Proof.
   revert t. induction e as [i|t0 e IHe|]; intros t G1 G2 G3 H; simpl.
   - constructor. inversion H; subst. destruct (i <? length G1) eqn:Hi.
-    + rewrite Nat.ltb_lt in Hi. rewrite onth_app2; rewrite onth_app2 in H2; assumption.
+    + rewrite Nat.ltb_lt in Hi. rewrite onth_app_l; rewrite onth_app_l in H2; assumption.
     + rewrite Nat.ltb_ge in Hi. apply Minus.le_plus_minus in Hi. rewrite Hi in *.
-      rewrite onth_app1 in H2. rewrite Nat.add_shuffle3, !onth_app1. assumption.
+      rewrite onth_app_r in H2. rewrite Nat.add_shuffle3, !onth_app_r. assumption.
   - inversion H; subst. apply TFun. exact (IHe t2 (t0 :: G1) G2 G3 H4).
   - inversion H; subst. apply TApp with (t2 := t2).
     + apply IHe1. assumption.
@@ -178,15 +176,15 @@ Proof.
   - destruct (length G1 =? i) eqn:Hi.
     + rewrite Nat.eqb_eq in Hi. rewrite <- Hi in He. clear Hi i.
       apply shield_typing with (G1 := nil). inversion He; subst.
-      rewrite (plus_n_O (length G1)), onth_app1 in H1. simpl in H1. inversion H1. subst.
+      rewrite (plus_n_O (length G1)), onth_app_r in H1. simpl in H1. inversion H1. subst.
       assumption.
     + destruct (i <? length G1) eqn:Hi'.
       * rewrite Nat.ltb_lt in Hi'. constructor. inversion He; subst.
-        rewrite onth_app2; try rewrite onth_app2 in H1; assumption.
+        rewrite onth_app_l; try rewrite onth_app_l in H1; assumption.
       * rewrite Nat.ltb_antisym, Bool.negb_false_iff, Nat.leb_le, Nat.le_lteq in Hi'.
         rewrite Nat.eqb_neq in Hi. inversion Hi'; try contradiction. clear Hi Hi'.
         constructor. inversion He; subst. rewrite (Minus.le_plus_minus _ _ H) in *.
-        simpl in *. rewrite plus_n_Sm in H2. rewrite onth_app1. rewrite onth_app1 in H2.
+        simpl in *. rewrite plus_n_Sm in H2. rewrite onth_app_r. rewrite onth_app_r in H2.
         simpl in *. assumption.
   - inversion He; subst. constructor. apply IHe with (G1 := t0 :: G1) (t' := t'); assumption.
   - inversion He; subst. apply TApp with (t2 := t2).
