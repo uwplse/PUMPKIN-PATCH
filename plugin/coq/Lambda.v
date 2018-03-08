@@ -24,10 +24,9 @@ Inductive expr : Set :=
 | Fun : type -> expr -> expr
 | App : expr -> expr -> expr.
 
-(* Value predicate on lambda-expressions *)
+(* Value predicate on lambda-expressions (for closed evaluation) *)
 Inductive value : expr -> Prop :=
-| VarVal i : value (Var i)
-| FunVal t e : value (Fun t e).
+| FunV t e : value (Fun t e).
 
 (* Shield an open expression from i bindings after j bindings *)
 Fixpoint shield (e : expr) (i j : nat) : expr :=
@@ -39,17 +38,17 @@ Fixpoint shield (e : expr) (i j : nat) : expr :=
 Notation "e >> i" := (shield e i 0) (at level 20, no associativity).
 
 (* Capture-avoiding substitution of open expression e' for index i *)
-Fixpoint open_subst (e : expr) (i : nat) (e' : expr) : expr :=
+Fixpoint subst (e : expr) (i : nat) (e' : expr) : expr :=
   match e with
   | Var j =>
     if i =? j
     then e' >> i (* Substitute after shielding variables from capture *)
     else Var (if j <? i then j else pred j) (* Delete the substituted index *)
-  | Fun t e => Fun t (open_subst e (succ i) e') (* Track newly "free" variable *)
-  | App e1 e2 => App (open_subst e1 i e') (open_subst e2 i e')
+  | Fun t e => Fun t (subst e (succ i) e') (* Track newly "free" variable *)
+  | App e1 e2 => App (subst e1 i e') (subst e2 i e')
   end.
-Notation "e1 [ i \ e2 ]" := (open_subst e1 i e2) (at level 30, no associativity).
-Notation "e1 <- e2" := (open_subst e1 0 e2) (at level 28, no associativity).
+Notation "e1 [ i \ e2 ]" := (subst e1 i e2) (at level 30, no associativity).
+Notation "e1 <- e2" := (subst e1 0 e2) (at level 28, no associativity).
 
 End Syntax.
 
@@ -162,11 +161,11 @@ Proof.
     + apply IHe2. assumption.
 Qed.
 
-(* Well-typed substitution preserves typing *)
-Theorem subst_typing e t : forall G1 G2 e' t',
+(* Well-typed substitution with an open expression preserves typing *)
+Lemma subst_typing e t : forall G1 G2 e' t',
     typing G2 e' t' ->
     typing (G1 ++ t' :: G2) e t ->
-    typing (G1 ++ G2) (e [ (length G1) \ e' ]) t.
+    typing (G1 ++ G2) (e [ length G1 \ e' ]) t.
 Proof.
   revert t. induction e as [i|t0|]; intros t G1 G2 e' t' He' He; simpl.
   - destruct (length G1 =? i) eqn:Hi.
@@ -186,6 +185,19 @@ Proof.
   - inversion He; subst. apply AppTy with (t2 := t2).
     + apply IHe1 with (t' := t'); assumption.
     + apply IHe2 with (t' := t'); assumption.
+Qed.
+
+(* Well-typed substitution with a closed expression preserves typing *)
+Lemma subst_typing' e t : forall G e' t',
+    typing nil e' t' ->
+    typing (G ++ t' :: nil) e t ->
+    typing G (e [ length G \ e']) t.
+Proof.
+  (* In this example, we're actually reusing the same implementation of
+   * substitution, so we'll just apply the more general lemma.
+   *)
+  intros G e' t'. assert (H := subst_typing e t G nil e' t').
+  rewrite app_nil_r in H. exact H.
 Qed.
 
 End Typing.
