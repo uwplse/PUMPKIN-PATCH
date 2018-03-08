@@ -1,30 +1,35 @@
-Require Import Coq.Lists.List.
-Require Import Coq.Init.Nat.
+Require Import List.
+Require Import Nat.
 Require Import PeanoNat.
 
-(*******************************************************************************)
-(*******************************************************************************)
-(* This modules defines explicitly typed syntax and static semantics for the   *)
-(* simply typed lambda calculus, along with associated utilities.              *)
-(*******************************************************************************)
-(*******************************************************************************)
+(******************************************************************************)
+(******************************************************************************)
+(* This modules defines explicitly typed syntax and static semantics for the  *)
+(* simply typed lambda calculus, along with associated utilities. The lower-  *)
+(* level details of the module --- relating to deBruijn indices, for instance *)
+(* --- are not critical for understanding the main tutorial.                  *)
+(******************************************************************************)
+(******************************************************************************)
 
-Module Calculus.
+Module Syntax.
 
+(* Simple types for the lambda-calculus: one base type and arrow types *)
 Inductive type : Set :=
-| Base : type (* just one base type, to keep things simple *)
+| Base : type
 | Arrow : type -> type -> type.
 
-(* Lambda-expressions with de Bruijn indices. *)
+(* Explicitly typed lambda-expressions using deBruijn indices *)
 Inductive expr : Set :=
 | Var : nat -> expr
 | Fun : type -> expr -> expr
 | App : expr -> expr -> expr.
 
+(* Value predicate on lambda-expressions *)
 Inductive value : expr -> Prop :=
-| VFun t e : value (Fun t e).
+| VarVal i : value (Var i)
+| FunVal t e : value (Fun t e).
 
-(* Shield indices from i (external) bindings outside j (internal) bindings *)
+(* Shield an open expression from i bindings after j bindings *)
 Fixpoint shield (e : expr) (i j : nat) : expr :=
   match e with
   | Var k => Var (if k <? j then k else i + k)
@@ -33,32 +38,24 @@ Fixpoint shield (e : expr) (i j : nat) : expr :=
   end.
 Notation "e >> i" := (shield e i 0) (at level 20, no associativity).
 
-Theorem shield_zero e : forall i, shield e 0 i = e.
-Proof.
-  induction e; intros i; simpl.
-  - destruct (n <? i); reflexivity.
-  - rewrite IHe. reflexivity.
-  - rewrite IHe1, IHe2. reflexivity.
-Qed.
-
-(* Capture-avoiding substitution of index i for external term e' *)
-Fixpoint subst (e : expr) (i : nat) (e' : expr) : expr :=
+(* Capture-avoiding substitution of open expression e' for index i *)
+Fixpoint open_subst (e : expr) (i : nat) (e' : expr) : expr :=
   match e with
   | Var j =>
     if i =? j
     then e' >> i (* Substitute after shielding variables from capture *)
     else Var (if j <? i then j else pred j) (* Delete the substituted index *)
-  | Fun t e => Fun t (subst e (succ i) e') (* Track newly "free" variable *)
-  | App e1 e2 => App (subst e1 i e') (subst e2 i e')
+  | Fun t e => Fun t (open_subst e (succ i) e') (* Track newly "free" variable *)
+  | App e1 e2 => App (open_subst e1 i e') (open_subst e2 i e')
   end.
-Notation "e1 <- e2" := (subst e1 0 e2) (at level 30, no associativity).
-Notation "e1 [ i <<- e2 ]" := (subst e1 i e2) (at level 30, no associativity).
+Notation "e1 [ i \ e2 ]" := (open_subst e1 i e2) (at level 30, no associativity).
+Notation "e1 <- e2" := (open_subst e1 0 e2) (at level 28, no associativity).
 
-End Calculus.
+End Syntax.
 
 Module Typing.
 
-Import Calculus.
+Import Syntax.
 
 (* Helper function *)
 Fixpoint onth {A : Type} (xs : list A) (i : nat) : option A :=
@@ -77,19 +74,18 @@ Lemma onth_app_l {A : Type} (xs ys : list A) (i : nat) :
 Proof.
   revert i. induction xs; simpl; intros i H.
   - inversion H.
-  - destruct i; try reflexivity. rewrite IHxs; try reflexivity.
-    apply Lt.lt_S_n. assumption.
+  - destruct i; try reflexivity. apply IHxs, Lt.lt_S_n. assumption.
 Qed.
 
 (* Typing rules *)
 Inductive typing : list type -> expr -> type -> Prop :=
-| TVar G i t :
+| VarTy G i t :
     onth G i = Some t ->
     typing G (Var i) t
-| TFun G e t1 t2 :
+| FunTy G e t1 t2 :
     typing (t1 :: G) e t2 ->
     typing G (Fun t1 e) (Arrow t1 t2)
-| TApp G e1 e2 t2 t1 :
+| AppTy G e1 e2 t2 t1 :
     typing G e1 (Arrow t2 t1) -> typing G e2 t2 ->
     typing G (App e1 e2) t1.
 
@@ -145,12 +141,12 @@ Proof.
     destruct t0 eqn:Ht0; try discriminate. rewrite IHe1 in He1.
     destruct (type_of G e2) eqn:He2; try discriminate. rewrite IHe2 in He2.
     destruct (type_eq t1_1 t1) eqn: Ht1; try discriminate.
-    rewrite type_eq_ok in Ht1. inversion 1. subst. apply TApp with (t2 := t1); assumption.
+    rewrite type_eq_ok in Ht1. inversion 1. subst. apply AppTy with (t2 := t1); assumption.
   - inversion 1. subst. rewrite <- IHe1 in H3. rewrite <- IHe2 in H5. rewrite H3, H5.
     rewrite type_eq_refl. reflexivity.
 Qed.
 
-(* Type preservation of "index shielding" *)
+(* Shielding preserves typing of open expressions *)
 Lemma shield_typing e t : forall G1 G2 G3,
     typing (G1 ++ G3) e t ->
     typing (G1 ++ G2 ++ G3) (shield e (length G2) (length G1)) t.
@@ -160,17 +156,17 @@ Proof.
     + rewrite Nat.ltb_lt in Hi. rewrite onth_app_l; rewrite onth_app_l in H2; assumption.
     + rewrite Nat.ltb_ge in Hi. apply Minus.le_plus_minus in Hi. rewrite Hi in *.
       rewrite onth_app_r in H2. rewrite Nat.add_shuffle3, !onth_app_r. assumption.
-  - inversion H; subst. apply TFun. exact (IHe t2 (t0 :: G1) G2 G3 H4).
-  - inversion H; subst. apply TApp with (t2 := t2).
+  - inversion H; subst. apply FunTy. exact (IHe t2 (t0 :: G1) G2 G3 H4).
+  - inversion H; subst. apply AppTy with (t2 := t2).
     + apply IHe1. assumption.
     + apply IHe2. assumption.
 Qed.
 
-(* Type preservation of substitution *)
+(* Well-typed substitution preserves typing *)
 Theorem subst_typing e t : forall G1 G2 e' t',
     typing G2 e' t' ->
     typing (G1 ++ t' :: G2) e t ->
-    typing (G1 ++ G2) (subst e (length G1) e') t.
+    typing (G1 ++ G2) (e [ (length G1) \ e' ]) t.
 Proof.
   revert t. induction e as [i|t0|]; intros t G1 G2 e' t' He' He; simpl.
   - destruct (length G1 =? i) eqn:Hi.
@@ -187,12 +183,12 @@ Proof.
         simpl in *. rewrite plus_n_Sm in H2. rewrite onth_app_r. rewrite onth_app_r in H2.
         simpl in *. assumption.
   - inversion He; subst. constructor. apply IHe with (G1 := t0 :: G1) (t' := t'); assumption.
-  - inversion He; subst. apply TApp with (t2 := t2).
+  - inversion He; subst. apply AppTy with (t2 := t2).
     + apply IHe1 with (t' := t'); assumption.
     + apply IHe2 with (t' := t'); assumption.
 Qed.
 
 End Typing.
 
-Export Calculus.
+Export Syntax.
 Export Typing.
