@@ -22,6 +22,10 @@ Require Import Patcher.Patch.
 
 Require Import Lambda.
 
+(*******************************************************************************)
+(* Call-by-value semantics of the simply typed lambda calculus                 *)
+(*******************************************************************************)
+
 (* Operational semantics *)
 Inductive step : expr -> expr -> Prop :=
 | BetaAx e1 t e2 :
@@ -65,6 +69,10 @@ Proof.
   eapply Step; (try apply IHHreduces2); assumption.
 Qed.
 
+(*******************************************************************************)
+(* Type soundness of the simply typed lambda calculus                          *)
+(*******************************************************************************)
+
 Lemma progress : forall e t, typing nil e t -> (exists e', e --> e') \/ value e.
 Proof.
   intros e t H. dependent induction H.
@@ -82,9 +90,27 @@ Proof.
   intros e e' t H. revert e'. dependent induction H; intros e' Hstep.
   - inversion Hstep.
   - inversion Hstep; subst; try (apply AppTy with (t2 := t2); auto).
-    inversion H; subst. apply (subst_typing e0 t1 nil nil e2 t2); auto.
+    inversion H; subst. apply (subst_typing' e0 t1 nil e2 t2); auto.
 Qed.
 
+(* At this point, what if we wanted to swap out our _closed_ substitution lemma
+ * for an open one? The companion library has proofs for both (for expository
+ * purposes), and Pumpkin can help us port our proofs done with the weaker lemma
+ * to the stronger one:
+ *)
+
+(* This lemma essentially reconstructs the interface offered by the *)
+Lemma subst_open e t : forall G e' t',
+    typing nil e' t' -> typing (G ++ t' :: nil) e t -> typing G (e [ length G \ e']) t.
+Proof.
+  apply subst_typing'. (* Huh... *)
+Qed.
+
+(*******************************************************************************)
+(* Verification of an evaluator implementation                                 *)
+(*******************************************************************************)
+
+(* The so-claimed call-by-value evaluator for STLC *)
 Fixpoint eval (n : nat) (e : expr) {struct n} : expr :=
   match n, e with
   | S n, App e1 e2 =>
