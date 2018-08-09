@@ -2,11 +2,12 @@
 
 open Environ
 open Evd
-open Term
+open Constr
+open Constrexpr
 open Declarations
+open Decl_kinds
 open Names
 open Univ
-open Command
 open Collections
 
 module CRD = Context.Rel.Declaration
@@ -19,24 +20,55 @@ type closure = env * (types list)
 
 let intern (env : env) (evm : evar_map) (t : Constrexpr.constr_expr) : types =
   let (trm, _) = Constrintern.interp_constr env evm t in
-  trm
+  EConstr.to_constr evm trm
 
 let extern (env : env) (evm : evar_map) (trm : types) : Constrexpr.constr_expr =
-  Constrextern.extern_constr true env evm trm
+  Constrextern.extern_constr true env evm (EConstr.of_constr trm)
 
 (* --- Terms --- *)
 
+(* https://github.com/ybertot/plugin_tutorials/blob/master/tuto1/src/simple_declare.ml *)
+let edeclare ident (_, poly, _ as k) ~opaque sigma udecl body tyopt imps hook refresh =
+  let open EConstr in
+  (* XXX: "Standard" term construction combinators such as `mkApp`
+     don't add any universe constraints that may be needed later for
+     the kernel to check that the term is correct.
+     We could manually call `Evd.add_universe_constraints`
+     [high-level] or `Evd.add_constraints` [low-level]; however, that
+     turns out to be a bit heavyweight.
+     Instead, we call type inference on the manually-built term which
+     will happily infer the constraint for us, even if that's way more
+     costly in term of CPU cycles.
+     Beware that `type_of` will perform full type inference including
+     canonical structure resolution and what not.
+   *)
+  let env = Global.env () in
+  let sigma =
+    if refresh then
+      fst (Typing.type_of ~refresh:false env sigma body)
+    else
+      sigma
+  in
+  let sigma = Evd.minimize_universes sigma in
+  let body = to_constr sigma body in
+  let tyopt = Option.map (to_constr sigma) tyopt in
+  let uvars_fold uvars c =
+    Univ.LSet.union uvars (Univops.universes_of_constr env c) in
+  let uvars = List.fold_left uvars_fold Univ.LSet.empty
+    (Option.List.cons tyopt [body]) in
+  let sigma = Evd.restrict_universe_context sigma uvars in
+  let univs = Evd.check_univ_decl ~poly sigma udecl in
+  let ubinders = Evd.universe_binders sigma in
+  let ce = Declare.definition_entry ?types:tyopt ~univs body in
+  DeclareDef.declare_definition ident k ce ubinders imps hook
+
 (* Define a new Coq term *)
-let define_term (n : Id.t) (env : env) (evm : evar_map) (trm : types) : unit =
-  do_definition
-    n
-    (Global, false, Definition)
-    None
-    []
-    None
-    (extern env evm trm)
-    None
-    (Lemmas.mk_hook (fun _ _ -> ()))
+let define_term (n : Id.t) (evm : evar_map) (trm : types) (refresh : bool) =
+  let k = (Global, Flags.is_universe_polymorphism(), Definition) in
+  let udecl = Univdecls.default_univ_decl in
+  let nohook = Lemmas.mk_hook (fun _ x -> x) in
+  let etrm = EConstr.of_constr trm in
+  edeclare n k ~opaque:false evm udecl etrm None [] nohook refresh
 
 (* The identity proposition *)
 let id_prop : types =
@@ -63,9 +95,9 @@ let identity_term (env : env) (typ : types) : types =
 
 (* Determine if a term applies an identity term *)
 let applies_identity (trm : types) : bool =
-  match kind_of_term trm with
+  match kind trm with
   | App (f, _) ->
-     eq_constr f id_prop || eq_constr f id_typ
+     equal f id_prop || equal f id_typ
   | _ ->
      false
 
@@ -113,9 +145,9 @@ let eq_sym : types =
  * Check if a term is prop
  *)
 let is_prop (trm : types) : bool =
-  match kind_of_term trm with
+  match kind trm with
   | Sort s ->
-     s = prop_sort
+     s = Term.prop_sort
   | _ ->
      false
 
@@ -125,14 +157,14 @@ let is_prop (trm : types) : bool =
  * Don't consider convertible terms for now
  *)
 let is_rewrite (trm : types) : bool =
-  eq_constr trm eq_ind_r ||
-  eq_constr trm eq_ind ||
-  eq_constr trm eq_rec_r ||
-  eq_constr trm eq_rec
+  equal trm eq_ind_r ||
+  equal trm eq_ind ||
+  equal trm eq_rec_r ||
+  equal trm eq_rec
 
 (* Lookup a def in env *)
 let lookup_definition (env : env) (def : types) : types =
-  match kind_of_term def with
+  match kind def with
   | Const (c, u) ->
      let c_body = (lookup_constant c env).const_body in
      (match c_body with
@@ -151,7 +183,7 @@ let rec unwrap_definition (env : env) (trm : types) : types =
 
 (* Zoom all the way into a lambda term *)
 let rec zoom_lambda_term (env : env) (trm : types) : env * types =
-  match kind_of_term trm with
+  match kind trm with
   | Lambda (n, t, b) ->
      zoom_lambda_term (push_rel CRD.(LocalAssum(n, t)) env) b
   | _ ->
@@ -187,8 +219,8 @@ let lookup_mutind_body (i : mutual_inductive) (env : env) : mutual_inductive_bod
 
 (* Get the type of a mutually inductive type *)
 let type_of_inductive (env : env) (mutind_body : mutual_inductive_body) (ind_body : one_inductive_body) : types =
-  let univ_context = mutind_body.mind_universes in
-  let univ_instance = UContext.instance univ_context in
+  let univs = Declareops.inductive_polymorphic_context mutind_body in
+  let univ_instance = Univ.make_abstract_instance univs in
   let mutind_spec = (mutind_body, ind_body) in
   Inductive.type_of_inductive env (mutind_spec, univ_instance)
 
@@ -260,11 +292,13 @@ let num_constrs (mutind_body : mutual_inductive_body) : int =
  * This is a workaround we should eventually fix
  * Though it doesn't seem to matter for patch-finding
  *)
-let conv_ignoring_univ_inconsistency (env : env) (evm : evar_map) (trm1 : types) (trm2 : types) : bool =
+let conv_ignoring_univ_inconsistency env evm (trm1 : types) (trm2 : types) : bool =
+  let etrm1 = EConstr.of_constr trm1 in
+  let etrm2 = EConstr.of_constr trm2 in
   try
-    Reductionops.is_conv env evm trm1 trm2
+    Reductionops.is_conv env evm etrm1 etrm2
   with _ ->
-    match (kind_of_term trm1, kind_of_term trm2) with
+    match map_tuple kind (trm1, trm2) with
     | (Sort (Type u1), Sort (Type u2)) -> true
     | _ -> false
 
@@ -281,7 +315,7 @@ let convertible_e (env : env) (evm : evar_map) (trm1 : types) (trm2 : types) : b
  * in the same order
  *)
 let rec concls_convertible (env : env) (typ1 : types) (typ2 : types) : bool =
-  match (kind_of_term typ1, kind_of_term typ2) with
+  match (kind typ1, kind typ2) with
   | (Prod (n1, t1, b1), Prod (n2, t2, b2)) ->
      if convertible env t1 t2 then
        concls_convertible (push_rel CRD.(LocalAssum(n1, t1)) env) b1 b2
@@ -347,19 +381,7 @@ let types_convertible (env : env) (trm1 : types) (trm2 : types) : bool =
 type eterm = evar_map * types
 type eterms = evar_map * (types array)
 
-(* --- Unification --- *)
-
-(* Check whether a term is unifiable with a term of a given type *)
-let unifiable (env : env) (typ : types) ((evm, trm) : eterm) : (evar_map option) =
-  let evm = Sigma.Unsafe.of_evar_map evm in
-  let Sigma.Sigma (typ_evar, evm', _) = Evarutil.new_evar env evm typ in
-  let evm' = Sigma.to_evar_map evm' in
-  try
-    Some (Evarconv.the_conv_x env trm typ_evar evm')
-with _ -> None
-
 (* --- Auxiliary functions for dealing with two terms at once --- *)
 
-type kind = (types, types) kind_of_term
-let kinds_of_terms = map_tuple kind_of_term
+let kinds_of_terms = map_tuple kind
 

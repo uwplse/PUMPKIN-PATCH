@@ -21,13 +21,6 @@ let find_by_type (env : env) (typ : types) (trms : types list) : types list =
   with
   | _ -> []
 
-(* Filter etrms to those that are unifiable with a term of type typ *)
-let filter_unifiable (env : env) (typ : types) (etrms : eterm list) : eterm list =
-  let unified = List.map (fun (evm, trm) -> (unifiable env typ (evm, trm), trm)) etrms in
-  List.map
-    (fun (evmo, trm) -> (Option.get evmo, trm))
-    (List.filter (fun (evmo, trm) -> Option.has_some evmo) unified)
-
 (* Filter a list of terms to those not exactly the same as the supplied term *)
 let filter_not_same (_ : env) (trm : types) (trms : types list) : types list =
   let same = eq_constr trm in (* exact equality for constructors *)

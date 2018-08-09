@@ -44,7 +44,9 @@ let rec reduce_body_if p (r : reducer) env trm =
 
 (* Default reducer *)
 let reduce_term (env : env) (trm : types) : types =
-  Reductionops.nf_betaiotazeta Evd.empty trm
+  EConstr.to_constr
+    Evd.empty
+    (Reductionops.nf_betaiotazeta env Evd.empty (EConstr.of_constr trm))
 
 (* --- Custom reducers --- *)
 
@@ -72,16 +74,22 @@ let reduce_remove_identities : reducer =
 
 (* Reduce and also unfold definitions *)
 let reduce_unfold (env : env) (trm : types) : types =
-  Reductionops.nf_all env Evd.empty trm
+  EConstr.to_constr
+    Evd.empty
+    (Reductionops.nf_all env Evd.empty (EConstr.of_constr trm))
 
 (* Reduce and also unfold definitions, but weak head *)
 let reduce_unfold_whd (env : env) (trm : types) : types =
-  Reductionops.whd_all env Evd.empty trm
+  EConstr.to_constr
+    Evd.empty
+    (Reductionops.whd_all env Evd.empty (EConstr.of_constr trm))
 
 (* Weak-head reduce a term if it is a let-in *)
 let reduce_whd_if_let_in (env : env) (trm : types) : types  =
   if isLetIn trm then
-    Reduction.whd_betaiotazeta env trm
+    EConstr.to_constr
+      Evd.empty
+      (Reductionops.whd_betaiotazeta Evd.empty (EConstr.of_constr trm))
   else
     trm
 

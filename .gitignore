@@ -18,4 +18,6 @@ plugin/*.cmi
 *.glob
 *.v.d
 *.vo
+*.a
+*.cmxa
 plugin/Makefile.coq

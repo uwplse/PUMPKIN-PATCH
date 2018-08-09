@@ -205,7 +205,7 @@ let closest_ih c (ihs : arrow list) (m : arrow) : context_object * int =
   let (s, _, _) = m in
   let ih_proxes =
     List.sort
-      (fun (_, i1) (_, i2) -> compare i1 i2)
+      (fun (_, i1) (_, i2) -> Pervasives.compare i1 i2)
       (List.map
          (map_dest (fun d -> (d, List.length (arrows_between c d s))))
          ihs)
@@ -218,9 +218,9 @@ let closer_to_ih c (ihs : arrow list) (m1 : arrow) (m2 : arrow) : int =
   let ih_1_index = shortest_path_length c m1_ih_dst in
   let ih_2_index = shortest_path_length c m2_ih_dst in
   if m1_ih_prox = m2_ih_prox then
-    compare ih_1_index ih_2_index (* start lower *)
+    Pervasives.compare ih_1_index ih_2_index (* start lower *)
   else
-    compare m1_ih_prox m2_ih_prox (* start closer to IH *)
+    Pervasives.compare m1_ih_prox m2_ih_prox (* start closer to IH *)
 
 (*
  * Sort cs so that the base cases are first in the list

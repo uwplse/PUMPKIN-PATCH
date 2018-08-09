@@ -12,9 +12,6 @@ val filter_by_type : types filter_strategy
 (* Find the singleton list with the first term that has the goal type *)
 val find_by_type : types filter_strategy
 
-(* Filter a list of eterms to those unifiable with a term of the goal type *)
-val filter_unifiable : eterm filter_strategy
-
 (* Filter a list of terms to those not exactly the same as the supplied term *)
 val filter_not_same : types filter_strategy
 

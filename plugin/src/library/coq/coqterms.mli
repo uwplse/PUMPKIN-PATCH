@@ -20,8 +20,12 @@ val extern : env -> evar_map -> types -> Constrexpr.constr_expr
 
 (* --- Terms --- *)
 
-(* Define a new Coq term *)
-val define_term : Id.t -> env -> evar_map -> types -> unit
+(*
+ * Define a new Coq term
+ * Refresh universes if the bool is true, otherwise don't
+ * (Refreshing universes is REALLY costly)
+ *)
+val define_term : Id.t -> evar_map -> types -> bool -> global_reference
 
 (* Get the Coq identity term for a type *)
 val identity_term : env -> types -> types
@@ -166,15 +170,10 @@ val types_convertible : env -> types -> types -> bool
 type eterm = evar_map * types
 type eterms = evar_map * (types array)
 
-(* --- Unification --- *)
-
-(* Check whether a term is unifiable with a term of a given type
-   If it is, return Some evm where evm is the assignment
-   Otherwise, return None *)
-val unifiable : env -> types -> eterm -> evar_map option
-
 (* --- Auxiliary functions for dealing with two terms at once --- *)
 
-type kind = (types, types) kind_of_term
-val kinds_of_terms : (types * types) -> (kind * kind)
-
+(*type kind = (types, types) kind_of_term*)
+val kinds_of_terms :
+  (types * types) ->
+  ((types, types, Sorts.t, Univ.Instance.t) kind_of_term * 
+   (types, types, Sorts.t, Univ.Instance.t) kind_of_term)

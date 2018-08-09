@@ -524,7 +524,7 @@ let shortest_path_length (c : proof_cat) (o : context_object) : int =
           (fun path ->
             (find (Array.of_list path) is_o 0) + 1)
           pdsts_with_o
-      in List.hd (List.sort compare lengths_to_o))
+      in List.hd (List.sort Pervasives.compare lengths_to_o))
     i
 
 (* --- Functors --- *)
