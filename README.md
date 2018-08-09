@@ -19,10 +19,8 @@ may also be helpful.
 
 ## Building PUMPKIN
 
-The plugin works for Coq 8.6. There is a branch for Coq 8.5, which we are no
-longer maintaining. If you would like to extend the plugin to
-handle Coq 8.7, please submit a pull request. I plan to support 8.7 in the
-future, especially with the new plugin API.
+The plugin works for Coq 8.8. There are branches for Coq 8.5 and 8.6, which we are no
+longer maintaining.
 
 ```
 cd plugin
