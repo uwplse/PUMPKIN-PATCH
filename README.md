@@ -20,14 +20,15 @@ may also be helpful.
 ## Building PUMPKIN
 
 The plugin works for Coq 8.6. There is a branch for Coq 8.5, which we are no
-longer maintaining. If you would like to extend the plugin to
-handle Coq 8.7, please submit a pull request. I plan to support 8.7 in the
-future, especially with the new plugin API.
+longer maintaining. I am in the process of adding support for Coq 8.8.
 
 ```
 cd plugin
+coq_makefile -f _CoqProject -o Makefile.coq
 make
 ```
+
+If there's already a Makefile.coq, you can ignore the second step.
 
 ## Using PUMPKIN
 
