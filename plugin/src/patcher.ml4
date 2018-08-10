@@ -75,7 +75,7 @@ let invert_patch n env evm patch =
   try
     let patch_inv = List.hd inverted in
     let _ = infer_type env patch_inv in
-    ignore (define_term n evm patch_inv);
+    ignore (define_term n evm patch_inv false);
     let n_string = Id.to_string n in
     if !opt_printpatches then
       print_patch env evm n_string patch_inv
@@ -90,7 +90,7 @@ let patch n old_term new_term try_invert a search =
   let reduce = try_reduce reduce_remove_identities in
   let patch = reduce env (search env evm a) in
   let prefix = Id.to_string n in
-  ignore (define_term n evm patch);
+  ignore (define_term n evm patch false);
   (if !opt_printpatches then
     print_patch env evm prefix patch
   else
@@ -148,7 +148,7 @@ let specialize n trm : unit =
   let (evm, env) = Lemmas.get_current_context() in
   let reducer = specialize_body specialize_term in
   let specialized = reducer env (intern env evm trm) in
-  ignore (define_term n evm specialized)
+  ignore (define_term n evm specialized false)
 
 (* Abstract a term by a function or arguments *)
 let abstract n trm goal : unit =
@@ -159,7 +159,7 @@ let abstract n trm goal : unit =
   let abstracted = abstract_with_strategies config in
   if List.length abstracted > 0 then
     try
-      ignore (define_term n evm (List.hd abstracted))
+      ignore (define_term n evm (List.hd abstracted) false)
     with _ -> (* Temporary, hack to support arguments *)
       let num_args = List.length (config.args_base) in
       let num_discard = nb_rel config.env - num_args in
@@ -168,7 +168,7 @@ let abstract n trm goal : unit =
       let app = mkApp (List.hd abstracted, args) in
       let reduced = reduce_term config.env app in
       let reconstructed = reconstruct_lambda config.env reduced in
-      ignore (define_term n evm reconstructed)
+      ignore (define_term n evm reconstructed false)
   else
     failwith "Failed to abstract"
 
@@ -183,7 +183,7 @@ let factor n trm : unit =
       (fun i lemma ->
         let lemma_id_string = String.concat "_" [prefix; string_of_int i] in
         let lemma_id = Id.of_string lemma_id_string in
-        ignore (define_term lemma_id evm lemma);
+        ignore (define_term lemma_id evm lemma false);
         Printf.printf "Defined %s\n" lemma_id_string)
       fs
   with _ -> failwith "Could not find lemmas"

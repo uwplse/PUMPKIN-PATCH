@@ -11,6 +11,7 @@
 -I src/core/components/differencing
 -I src/core/procedures
 -I src
+-R src Patcher
 -Q theories Patcher
 
 src/library/utilities/utilities.mli
