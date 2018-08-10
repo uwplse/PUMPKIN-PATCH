@@ -1,6 +1,5 @@
-open Term
+open Constr
 open Environ
-open Category
 open Assumptions
 
 (* Proof categories, core logic *)

@@ -1,6 +1,6 @@
 (* --- Cutting by intermediate lemmas/guiding search --- *)
 
-open Term
+open Constr
 open Environ
 
 (*

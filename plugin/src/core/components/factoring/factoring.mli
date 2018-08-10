@@ -1,6 +1,6 @@
 (* --- The Factoring Component --- *)
 
-open Term
+open Constr
 open Environ
 
 (*

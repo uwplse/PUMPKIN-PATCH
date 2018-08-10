@@ -1,13 +1,12 @@
 (* --- Merging environments --- *)
 
-open Term
+open Constr
 open Environ
 open Debruijn
 open Assumptions
 open Collections
 open Coqterms
 open Coqenvs
-open Printing
 
 module CRD = Context.Rel.Declaration
 

@@ -1,6 +1,6 @@
 (* --- Evaluation, which is lazy (takes one step) --- *)
 
-open Term
+open Constr
 open Environ
 open Proofcat
 open Proofcatterms
@@ -9,9 +9,7 @@ open Utilities
 open Names
 open Debruijn
 open Collections
-open Substitution
 open Declarations
-open Printing
 
 module CRD = Context.Rel.Declaration
 
@@ -53,7 +51,7 @@ let rec induction_constrs (nc : int) (env : env) ((n, t, b) : Name.t * types * t
   else
     let e = LazyBinding (mkRel 1, push_rel CRD.(LocalAssum(n, t)) env) in
     let c = eval_theorem_bind e env t in
-    match kind_of_term b with
+    match kind b with
     | Prod (n', t', b') ->
        let d = List.length (morphisms c) in
        let prod' = (n', unshift_by d t', unshift_by d b') in
@@ -134,7 +132,6 @@ let eval_induction (mutind_body : mutual_inductive_body) (fc : proof_cat) (args 
     let c = combine_constrs fc cs_bound in
     let property = arg_partition.property in
     let params = arg_partition.params in
-    let env = context_env t in
     let c_bound = bind_property_and_params property params npms c in
     (c_bound, npms, arg_partition.final_args)
   else

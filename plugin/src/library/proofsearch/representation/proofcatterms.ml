@@ -1,23 +1,20 @@
 (* Logic for proof categories that is specific to terms and types *)
 
-open Term
+open Constr
 open Environ
 open Proofcat
 open Names
 open Debruijn
 open Assumptions
-open Substitution
 open Utilities
 open Collections
-open Coqterms
-open Printing
 
 module CRD = Context.Rel.Declaration
 
 (* --- Construction --- *)
 
 (* Get the extension for a trm in env *)
-let rec ext_of_term (env : env) (trm : types) : extension =
+let ext_of_term (env : env) (trm : types) : extension =
   LazyBinding (trm, env)
 
 (* Get a fresh inductive hypothesis *)
@@ -609,21 +606,6 @@ let sub_obj_property_params pi pb subs ds o =
     let d = List.assoc i ds in
     let subs_shift = shift_substitutions_by d subs in
     substitute_ext_params subs_shift e
-
-(*
- * Auxiliary function for binding properties and parameters
- * Substitute a property into an extension e at distance d from initial
- * Get d from a map of context indexes to distances for efficiency
- *
- * Can still make this more efficient, but not sure if it's worth it
- *)
- let sub_ext_property ds pi pb env i e =
-   let d = List.assoc i ds in
-   let d_to_p = d - pi in
-   let p_shift = shift_ext_by d_to_p pb in
-   let subs = build_substitution (ext_term p_shift) no_substitutions in
-   let subs_shift = shift_from_substitutions_by d_to_p subs in
-   substitute_ext_params subs_shift e
 
 (*
  * Auxiliary function for binding properties and parameters

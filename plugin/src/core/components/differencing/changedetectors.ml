@@ -1,12 +1,11 @@
 (* --- Change detectors --- *)
 
-open Term
+open Constr
 open Environ
 open Coqterms
 open Proofdiff
 open Proofcatterms
 open Cutlemma
-open Differencers
 open Kindofchange
 open Reducers
 open Assumptions

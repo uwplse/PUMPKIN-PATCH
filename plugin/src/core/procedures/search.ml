@@ -1,14 +1,13 @@
 (* Search procedures *)
 
 open Environ
-open Term
+open Constr
 open Assumptions
 open Abstraction
 open Abstractionconfig
 open Proofdiff
 open Reducers
 open Specialization
-open Printing
 open Collections
 open Inverting
 open Searchopts

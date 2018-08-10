@@ -1,11 +1,10 @@
 (* --- DeBruijn management --- *)
 
 open Environ
-open Term
+open Constr
 open Hofs
 open Collections
 open Coqenvs
-open Printing
 
 (* TODO move shiftability into a module/functor *)
 
@@ -36,7 +35,7 @@ let shift_i (i : int) : int =
 let unshift_local (max : int) (n : int) (trm : types) : types =
   map_term
     (fun (m, adj) t ->
-      match kind_of_term t with
+      match kind t with
       | Rel i ->
          let i' = if i > m then unshift_i_by adj i else i in
          mkRel i'
@@ -73,7 +72,7 @@ let unshift (t : types) : types =
 let shift_by_unconditional (n : int) (trm : types) : types =
   map_term
     (fun _ t ->
-      match kind_of_term t with
+      match kind t with
       | Rel i ->
          let i' = shift_i_by n i in
          mkRel i'

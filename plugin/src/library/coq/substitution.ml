@@ -1,13 +1,10 @@
 (* Substitution auxiliary functions *)
 
 open Environ
-open Term
+open Constr
 open Coqterms
 open Hofs
 open Debruijn
-open Coqenvs
-open Collections
-open Printing
 
 (* TODO clean up so retrieval is easier *)
 type ('a, 'b) substitution = env -> 'a -> types -> 'b

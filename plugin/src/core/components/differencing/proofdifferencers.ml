@@ -1,18 +1,16 @@
 (* --- Differencing of Proofs --- *)
 
 open Proofcatterms
-open Term
+open Constr
 open Coqterms
 open Environ
 open Searchopts
-open Differencers
 open Substitution
 open Proofdiff
 open Debruijn
 open Filters
 open Candidates
 open Reducers
-open Printing
 open Kindofchange
 
 module CRD = Context.Rel.Declaration
@@ -77,13 +75,13 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
  *)
 let build_app_candidates (env : env) (from_type : types) (old_term : types) (new_term : types) =
   try
-    let env_shift = push_rel CRD.(LocalAssum(Anonymous, from_type)) env in
+    let env_shift = push_rel CRD.(LocalAssum(Names.Name.Anonymous, from_type)) env in
     let old_term_shift = shift old_term in
     let new_term_shift = shift new_term in
     let sub = all_conv_substs_combs env_shift (new_term_shift, (mkRel 1)) in
     let bodies = sub old_term_shift in
     List.map
-      (fun b -> mkLambda (Anonymous, from_type, b))
+      (fun b -> mkLambda (Names.Name.Anonymous, from_type, b))
       (filter_not_same env_shift old_term_shift bodies)
   with _ ->
     give_up
@@ -129,7 +127,7 @@ let find_difference (opts : options) (d : goal_proof_diff) : candidates =
       infer_type env_merge new_term
   in
   let candidates = build_app_candidates env_merge from_type old_term new_term in
-  let goal_type = mkProd (Anonymous, new_goal_type, shift old_goal_type) in
+  let goal_type = mkProd (Names.Name.Anonymous, new_goal_type, shift old_goal_type) in
   let reduced = reduce_all reduce_remove_identities env_merge candidates in
   let filter = filter_by_type env_merge goal_type in
   List.map
@@ -148,8 +146,8 @@ let no_diff opts (d : goal_proof_diff) : bool =
   match get_change opts with
   | FixpointCase ((d_old, d_new), _) ->
      conv
-     || (eq_constr d_old old_term && eq_constr d_new new_term)
-     || (eq_constr d_old new_term && eq_constr d_new old_term)
+     || (equal d_old old_term && equal d_new new_term)
+     || (equal d_old new_term && equal d_new old_term)
   | _ ->
      conv
 

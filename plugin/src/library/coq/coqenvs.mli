@@ -1,7 +1,7 @@
 open Environ
 open Context
 open Declarations
-open Term
+open Constr
 open Names
 
 type 'a contextual = env -> 'a
@@ -32,4 +32,4 @@ val bindings_for_inductive : env -> mutual_inductive_body -> one_inductive_body 
  * A fixpoint also creates bindings that we need to push to the environment
  * This function gets all of those bindings
  *)
-val bindings_for_fix : name array -> types array -> Rel.Declaration.t list
+val bindings_for_fix : Name.t array -> types array -> Rel.Declaration.t list

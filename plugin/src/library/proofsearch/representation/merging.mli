@@ -1,6 +1,6 @@
 (* --- Merging environments --- *)
 
-open Term
+open Constr
 open Environ
 open Assumptions
 open Coqterms

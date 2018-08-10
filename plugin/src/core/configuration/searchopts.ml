@@ -1,6 +1,6 @@
 (* Search configuration *)
 
-open Term
+open Constr
 open Environ
 open Coqterms
 open Proofcat
@@ -9,9 +9,7 @@ open Collections
 open Debruijn
 open Utilities
 open Proofdiff
-open Reducers
 open Assumptions
-open Printing
 open Kindofchange
 open Cutlemma
 open Zooming
@@ -79,9 +77,9 @@ let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
        let k_n = destConst f_n in
        let ind_o = mkInd (Option.get (inductive_of_elim env_o k_o), 0) in
        let ind_n = mkInd (Option.get (inductive_of_elim env_n k_n), 0) in
-       (eq_constr f_o f_n) || (eq_constr ind_o o && eq_constr ind_n n))
+       (equal f_o f_n) || (equal ind_o o && equal ind_n n))
   | _ ->
-     eq_constr
+     equal
 
 (*
  * Given a set of goals, update the goal terms for a change in types.
@@ -161,7 +159,7 @@ let configure_update_goals change d_old d =
      let default_goals = map_tuple fst (old_proof d_def, new_proof d_def) in
      let (g_o, g_n) = context_terms old_goals in
      let (g_o', g_n') = context_terms default_goals in
-     if eq_constr g_o g_o' && eq_constr g_n g_n' then (* set initial goals *)
+     if equal g_o g_o' && equal g_n g_n' then (* set initial goals *)
        set_hypothesis_goals t_old t_new d_def
      else (* update goals *)
        update_goals_types d_old d

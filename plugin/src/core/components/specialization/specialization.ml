@@ -10,7 +10,7 @@
  *)
 
 open Environ
-open Term
+open Constr
 open Coqterms
 open Reducers
 open Collections
@@ -38,7 +38,7 @@ let specialize_using (s : specializer) env f args =
  * At the bottom level, it returns betaiota reduction.
  *)
 let rec specialize_body (s : specializer) (env : env) (t : types) : types =
-  match kind_of_term t with
+  match kind t with
   | Lambda (n, t, b) ->
      mkLambda (n, t, specialize_body s (push_rel CRD.(LocalAssum(n, t)) env) b)
   | App (f, args) ->

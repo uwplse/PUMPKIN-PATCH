@@ -12,9 +12,7 @@ open Debruijn
 open Kindofchange
 open Searchopts
 open Abstraction
-open Differencers
 open Expansion
-open Printing
 open Environ
 
 (* --- Cases --- *)

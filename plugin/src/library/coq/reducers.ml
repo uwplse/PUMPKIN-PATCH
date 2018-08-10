@@ -1,7 +1,7 @@
 (* Strategies for reducing terms *)
 
 open Environ
-open Term
+open Constr
 open Hofs
 open Coqterms
 open Utilities
@@ -34,7 +34,7 @@ let rec reduce_body_if p (r : reducer) env trm =
   if p env trm then
     r env trm
   else
-    match kind_of_term trm with
+    match kind trm with
     | Lambda (n, t, b) ->
        reduce_body_if p r (push_rel CRD.(LocalAssum(n, t)) env) b
     | _ ->
@@ -59,7 +59,7 @@ let remove_identities (env : env) (trm : types) : types =
   map_term_if
     (fun _ t -> applies_identity t)
     (fun _ t ->
-      match kind_of_term t with
+      match kind t with
       | App (_, args) ->
          Array.get args 1
       | _ ->
@@ -99,7 +99,7 @@ let reduce_whd_if_let_in (env : env) (trm : types) : types  =
  * has only hypotheses that are referenced.
  *)
 let rec remove_unused_hypos (env : env) (trm : types) : types =
-  match kind_of_term trm with
+  match kind trm with
   | Lambda (n, t, b) ->
      let env_b = push_rel CRD.(LocalAssum(n, t)) env in
      let b' = remove_unused_hypos env_b b in

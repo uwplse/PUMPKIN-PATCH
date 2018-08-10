@@ -1,13 +1,10 @@
 open Environ
-open Term
+open Constr
 open Abstracters
 open Candidates
 open Coqterms
 open Debruijn
 open Collections
-open Searchopts
-open Reducers
-open Printing
 open Proofdiff
 open Cutlemma
 
@@ -53,7 +50,7 @@ let rec configure_goal_body env goal c : abstraction_config =
        let cs = [c] in
        let args_base = Array.to_list (snd (destApp gt)) in
        let args_goal = List.map unshift (Array.to_list (snd (destApp gb))) in
-       if List.for_all2 eq_constr args_base args_goal then (* argument *)
+       if List.for_all2 equal args_base args_goal then (* argument *)
 	 if isApp ctt then
 	   let f_goal = unshift (unwrap_definition env (fst (destApp gb))) in
 	   let f_base = unwrap_definition env (fst (destApp gt)) in
@@ -97,7 +94,7 @@ let configure_args env (d_type : types proof_diff) cs =
  * top-level
  *)
 let rec apply_prop pi goal =
-  match kind_of_term goal with
+  match kind goal with
   | Prod (n, t, b) when isProd b ->
      mkProd (n, t, apply_prop (shift_i pi) b)
   | Prod (n, t, b) ->
@@ -105,6 +102,8 @@ let rec apply_prop pi goal =
      let t_args = singleton_array t in
      let b_args = singleton_array b in
      mkProd (n, mkApp (p, t_args), mkApp (shift p, b_args))
+  | _ ->
+     failwith "called apply_prop on a non-product"
 
 (*
  * Push the function to abstract into the environment
@@ -112,12 +111,12 @@ let rec apply_prop pi goal =
  * We should check this is actually well-typed
  *)
 let rec push_prop env typ : env =
-  match kind_of_term typ with
+  match kind typ with
   | Prod (n, t, b) ->
      push_prop (push_rel CRD.(LocalAssum(n, t)) env) b
   | App (f, _) ->
      push_rel
-       CRD.(LocalAssum(Anonymous, infer_type env f))
+       CRD.(LocalAssum(Names.Name.Anonymous, infer_type env f))
        (pop_rel_context (nb_rel env) env)
   | _ ->
      failwith "Could not find function to abstract"
@@ -141,12 +140,12 @@ let configure_fixpoint_cases env (diffs : types list) (cs : candidates) =
 
 (* Given some cut lemma application, configure arguments to abstract *)
 let rec configure_args_cut_app env (app : types) cs : abstraction_config =
-  match kind_of_term app with
+  match kind app with
   | Lambda (n, t, b) ->
      configure_args_cut_app (push_rel CRD.(LocalAssum(n, t)) env) b cs
   | App (f, args) ->
      let rec get_lemma_functions typ =
-       match kind_of_term typ with
+       match kind typ with
        | Prod (n, t, b) when isProd b ->
           let (f_base, f_goal) = get_lemma_functions b in
           (mkLambda (n, t, f_base), mkLambda (n, t, f_goal))
@@ -168,7 +167,7 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
   let cs = filter_consistent_cut env cut cs in
   if List.length cs > 0 then
     let (_, _, b) = destLambda (get_app cut) in
-    let env_cut = push_rel CRD.(LocalAssum(Anonymous, get_lemma cut)) env in
+    let env_cut = push_rel CRD.(LocalAssum(Names.Name.Anonymous, get_lemma cut)) env in
     configure_args_cut_app env_cut b cs
   else
     failwith "No candidates are consistent with the cut lemma type"

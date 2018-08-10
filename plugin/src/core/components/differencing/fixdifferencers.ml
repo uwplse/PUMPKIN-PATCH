@@ -1,7 +1,7 @@
 (* --- Differencing of Fixpoints --- *)
 
 open Collections
-open Term
+open Constr
 open Environ
 open Coqterms
 open Coqenvs
@@ -10,7 +10,6 @@ open Candidates
 open Reducers
 open Assumptions
 open Debruijn
-open Differencers
 open Higherdifferencers
 
 module CRD = Context.Rel.Declaration
@@ -33,7 +32,7 @@ let rec get_goal_fix env (d : types proof_diff) : candidates =
   let old_term = old_proof d in
   let new_term = new_proof d in
   let assums = assumptions d in
-  if eq_constr old_term new_term then
+  if equal old_term new_term then
     give_up
   else
     match kinds_of_terms (old_term, new_term) with
@@ -47,11 +46,11 @@ let rec get_goal_fix env (d : types proof_diff) : candidates =
          let red_old = reduce_hd (old_proof d) in
          let red_new = reduce_hd (new_proof d) in
          match kinds_of_terms (red_old, red_new) with
-         | (App (f1, args1), App (f2, args2)) when eq_constr f1 f2 ->
+         | (App (f1, args1), App (f2, args2)) when equal f1 f2 ->
             let d_args = difference args1 args2 no_assumptions in
             diff_map_flat get_goal_reduced d_args
-         | _ when not (eq_constr red_old red_new) ->
-            [reduce_unfold env (mkProd (Anonymous, red_old, shift red_new))]
+         | _ when not (equal red_old red_new) ->
+            [reduce_unfold env (mkProd (Names.Name.Anonymous, red_old, shift red_new))]
          | _ ->
             give_up
        in get_goal_reduced (difference old_term new_term no_assumptions)
@@ -67,7 +66,7 @@ let rec diff_fix_case env (d : types proof_diff) : candidates =
      diff_fix_case (push_rel CRD.(LocalAssum(n1, t1)) env) (difference b1 b2 assums)
   | (Case (_, ct1, m1, bs1), Case (_, ct2, m2, bs2)) when conv m1 m2  ->
      if same_length bs1 bs2 then
-       let env_m = push_rel CRD.(LocalAssum(Anonymous, m1)) env in
+       let env_m = push_rel CRD.(LocalAssum(Names.Name.Anonymous, m1)) env in
        let diff_bs = diff_map_flat (get_goal_fix env_m) in
        List.map
          unshift
@@ -102,7 +101,7 @@ let diff_fix_cases env (d : types proof_diff) : candidates =
         List.map
           (fun t -> mkApp (t, singleton_array new_term))
           lambdas
-      in unique eq_constr (reduce_all reduce_term env apps)
+      in unique equal (reduce_all reduce_term env apps)
     else
       failwith "Cannot infer goals for generalizing change in definition"
   | _ ->

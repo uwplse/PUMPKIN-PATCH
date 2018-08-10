@@ -9,7 +9,7 @@
  * for future extension to the tool.
  *)
 
-open Term
+open Constr
 open Environ
 open Reducers
 

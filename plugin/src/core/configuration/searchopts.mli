@@ -1,7 +1,6 @@
 (* Search configuration *)
 
-open Term
-open Environ
+open Constr
 open Proofdiff
 open Cutlemma
 open Kindofchange

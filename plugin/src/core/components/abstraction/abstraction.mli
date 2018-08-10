@@ -1,9 +1,6 @@
 (* --- Abstraction Component --- *)
 
-open Abstracters
-open Environ
-open Term
-open Coqterms
+open Constr
 open Candidates
 open Abstractionconfig
 open Proofdiff

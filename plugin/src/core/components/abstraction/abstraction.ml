@@ -4,17 +4,13 @@ open Proofcatterms
 open Abstracters
 open Abstractionconfig
 open Environ
-open Term
+open Constr
 open Debruijn
 open Coqterms
-open Printing
 open Collections
 open Reducers
 open Specialization
-open Coqenvs
-open Utilities
 open Candidates
-open Coqenvs
 open Proofdiff
 open Searchopts
 open Cutlemma
@@ -43,7 +39,7 @@ let generalize (env : env) (num_to_abstract : int) (cs : candidates) : candidate
        (fun _ (en, l) ->
          let typ = unshift (infer_type en (mkRel 1)) in
          let env_pop = Environ.pop_rel_context 1 en in
-         (env_pop, List.map (fun b -> mkLambda (Anonymous, typ, b)) l))
+         (env_pop, List.map (fun b -> mkLambda (Names.Name.Anonymous, typ, b)) l))
        (range 1 (num_to_abstract + 1))
        (env, cs))
 
@@ -56,7 +52,7 @@ let get_prop_abstract_goal_type (config : abstraction_config) =
   let prop = mkRel (nb_rel env) in
   let base = mkApp (prop, Array.of_list config.args_base) in
   let goal = mkApp (prop, Array.of_list config.args_goal) in
-  let goal_type_env = mkProd (Anonymous, base, shift goal) in
+  let goal_type_env = mkProd (Names.Name.Anonymous, base, shift goal) in
   reconstruct_prod env goal_type_env
 
 (*
@@ -78,7 +74,7 @@ let get_arg_abstract_goal_type (config : abstraction_config) : types =
     | (Prod (n_b, t_b, b_b), Prod (_, _, b_g)) ->
        mkProd (n_b, t_b, infer_goal b_b b_g)
     | _ ->
-       mkProd (Anonymous, b, shift g)
+       mkProd (Names.Name.Anonymous, b, shift g)
   in infer_goal config.f_base config.f_goal
 
 (*
@@ -109,7 +105,7 @@ let get_abstraction_args config : closure =
     if i = 0 then
       (en, [])
     else
-      match kind_of_term g with
+      match kind g with
       | Lambda (n, t, b) ->
 	 let en' = push_rel CRD.(LocalAssum(n, t)) en in
 	 let (en'', b') = infer_args (i - 1) en' b in
@@ -228,12 +224,12 @@ let abstract_case (opts : options) (d : goal_case_diff) cs : candidates =
   let old_goal = old_proof d_goal in
   let env = context_env old_goal in
   match get_change opts with
-  | Hypothesis (_, _) ->
+  | Kindofchange.Hypothesis (_, _) ->
      let (g_o, g_n) = map_tuple context_term (old_goal, new_proof d_goal) in
-     filter_by_type env (mkProd (Anonymous, g_n, shift g_o)) cs
-  | InductiveType (_, _) ->
+     filter_by_type env (mkProd (Names.Name.Anonymous, g_n, shift g_o)) cs
+  | Kindofchange.InductiveType (_, _) ->
      cs
-  | FixpointCase ((_, _), cut) when are_cut env cut cs ->
+  | Kindofchange.FixpointCase ((_, _), cut) when are_cut env cut cs ->
      cs
   | _ ->
      try_abstract_inductive d_goal cs

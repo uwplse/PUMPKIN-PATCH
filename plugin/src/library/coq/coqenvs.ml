@@ -1,7 +1,7 @@
 open Environ
 open Collections
 open Declarations
-open Term
+open Constr
 open Coqterms
 open Names
 
@@ -53,7 +53,7 @@ let bindings_for_inductive (env : env) (mutind_body : mutual_inductive_body) (in
  * A fixpoint creates bindings that we need to push to the environment
  * This function gets all of those bindings
  *)
-let bindings_for_fix (names : name array) (typs : types array) : CRD.t list =
+let bindings_for_fix (names : Name.t array) (typs : types array) : CRD.t list =
   Array.to_list
     (CArray.map2_i
       (fun i name typ -> CRD.LocalAssum (name, Vars.lift i typ))

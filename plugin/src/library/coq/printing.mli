@@ -2,7 +2,7 @@
 
 open Format
 open Names
-open Term
+open Constr
 open Environ
 open Evd
 
@@ -14,7 +14,7 @@ val print_to_string : (formatter -> 'a -> unit) -> 'a -> string
 (* --- Coq terms --- *)
 
 (* Gets a name as a string *)
-val name_as_string : name -> string
+val name_as_string : Name.t -> string
 
 (* Gets a term as a string in an environment *)
 val term_as_string : env -> types -> string

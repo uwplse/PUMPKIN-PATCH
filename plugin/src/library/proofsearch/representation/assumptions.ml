@@ -1,13 +1,13 @@
 (* Equality assumptions for substitutions in proof search *)
 
-open Term
+open Constr
 open Environ
 open Collections
 open Coqenvs
 open Debruijn
-open Printing
 open Coqterms
 open Hofs
+open Printing
 
 module CRD = Context.Rel.Declaration
 
@@ -36,7 +36,7 @@ let substitutions_as_string (env : env) (subs : param_substitutions) : string =
 
 (* Is there an assumption or substitution about the term? *)
 let has_assumption_or_substitution (l : (int * 'a) list) (trm : types) : bool =
-  match kind_of_term trm with
+  match kind trm with
   | Rel i -> List.mem_assoc i l
   | _ -> false
 
@@ -226,7 +226,7 @@ let substitute_env_params (subs : param_substitutions) (env : env) : env =
  * Given a swap map, make a unique swap map (no repeats and only one direction)
  *)
 let unique_swaps (swaps : swap_map) : swap_map =
-  let same = eq_constr in
+  let same = equal in
   let are_unique (s1, d1) (s2, d2) =
     (same s1 s2 && same d1 d2) || (same s1 d2 && same d1 s2)
   in unique are_unique swaps
@@ -289,7 +289,7 @@ let shift_swaps = shift_swaps_by 1
  * Get a swap map for all combinations of a function application
  *)
 let build_swap_map (en : env) (t : types) : swap_map =
-  match kind_of_term t with
+  match kind t with
   | App (_, args) ->
      filter_swaps
        (fun (a1, a2) ->
@@ -336,7 +336,7 @@ let apply_swaps_combine c a env args swaps : 'a list =
  *)
 let all_typ_swaps_combs (env : env) (trm : types) : types list =
   unique
-    eq_constr
+    equal
     (map_subterms_env_if_lazy
        (fun en _ t  ->
          isApp t)
@@ -358,14 +358,14 @@ let all_typ_swaps_combs (env : env) (trm : types) : types list =
  *)
 let all_conv_swaps_combs (env : env) (swaps : swap_map) (trm : types) =
     unique
-    eq_constr
+    equal
     (map_subterms_env_if_lazy
        (fun _ _ t  -> isApp t)
        (fun en depth t ->
 	 let swaps = shift_swaps_by depth swaps in
 	 let (f, args) = destApp t in
 	 unique
-	   eq_constr
+	   equal
 	   (apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps))
        (fun depth -> depth + 1)
        env

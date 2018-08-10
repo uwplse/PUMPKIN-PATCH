@@ -1,10 +1,9 @@
 (* Logic for proof categories that is specific to terms and types *)
 
-open Term
+open Constr
 open Environ
 open Proofcat
 open Names
-open Assumptions
 
 (* --- Construction --- *)
 

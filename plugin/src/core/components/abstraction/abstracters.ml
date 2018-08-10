@@ -1,12 +1,10 @@
 (* --- Abstraction Strategies --- *)
 
-open Term
+open Constr
 open Environ
 open Coqterms
 open Collections
 open Substitution
-open Debruijn
-open Printing
 open Reducers
 open Filters
 open Candidates
@@ -29,7 +27,7 @@ type abstraction_strategy =
  * Do not consider lambdas.
  *)
 let rec num_apps (trm : types) : int =
-  match kind_of_term trm with
+  match kind trm with
   | App (f, args) ->
      Array.fold_left (fun n a -> n + num_apps a) (1 + num_apps f) args
   | _ ->
@@ -91,7 +89,7 @@ let kind_of_abstraction strategy = strategy.to_abstract
 
 (* Fully abstract each term, substituting every convertible subterm *)
 let syntactic_full (env : env) (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
-  if eq_constr arg_actual arg_abstract then
+  if equal arg_actual arg_abstract then
     trms
   else
     List.map (all_conv_substs env (arg_actual, arg_abstract)) trms
@@ -101,7 +99,7 @@ let syntactic_full_strategy : abstracter =
 
 (* Fully abstract each term, substituting every subterm w/ convertible types *)
 let types_full (env : env) (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
-  if eq_constr arg_actual arg_abstract then
+  if equal arg_actual arg_abstract then
     trms
   else
     List.map (all_typ_substs env (arg_actual, arg_abstract)) trms
@@ -113,7 +111,7 @@ let types_full_strategy : abstracter =
 let pattern_full (env : env) (arg_actual : types) (arg_abstract : types) (trms : types list) : types list =
   let types_conv = types_convertible env arg_abstract in
   let exists_types_conv = List.exists types_conv in
-  match map_tuple kind_of_term (arg_actual, arg_abstract) with
+  match map_tuple kind (arg_actual, arg_abstract) with
   | (App (f, args), _) when exists_types_conv (Array.to_list args) ->
      let arg = List.find types_conv (Array.to_list args) in
      let sub = all_constr_substs env f in
@@ -126,7 +124,7 @@ let pattern_full_strategy : abstracter =
 
 (* All combinations of abstractions of convertible subterms *)
 let syntactic_all_combinations (env : env) (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
-  if eq_constr arg_actual arg_abstract then
+  if equal arg_actual arg_abstract then
     trms
   else
     flat_map (all_conv_substs_combs env (arg_actual, arg_abstract)) trms

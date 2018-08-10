@@ -1,18 +1,12 @@
 (* Expanding proof categories *)
 
-open Names
 open Environ
-open Term
+open Constr
 open Proofcat
 
 (* --- Type definitions --- *)
 
 type 'a expansion_strategy = 'a -> 'a
-
-(* --- Terms and types ---*)
-
-(* TODO hide me when refactoring is done *)
-val expand_product : env -> (Name.t * types * types) -> proof_cat
 
 (* --- Contexts --- *)
 

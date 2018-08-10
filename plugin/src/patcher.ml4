@@ -1,6 +1,6 @@
 DECLARE PLUGIN "patch"
 
-open Term
+open Constr
 open Names
 open Environ
 open Coqterms
@@ -53,14 +53,14 @@ let _ = Goptions.declare_bool_option {
 
 (* Intern terms corresponding to two definitions *)
 let intern_defs d1 d2 : types * types =
-  let (evm, env) = Lemmas.get_current_context() in
+  let (evm, env) = Pfedit.get_current_context() in
   let d1 = intern env evm d1 in
   let d2 = intern env evm d2 in
   (unwrap_definition env d1, unwrap_definition env d2)
 
 (* Initialize diff & search configuration *)
 let configure trm1 trm2 cut : goal_proof_diff * options =
-  let (evm, env) = Lemmas.get_current_context() in
+  let (evm, env) = Pfedit.get_current_context() in
   let cut_term = Option.map (intern env evm) cut in
   let lemma = Option.map (build_cut_lemma env) cut_term in
   let c1 = eval_proof env trm1 in
@@ -86,7 +86,7 @@ let invert_patch n env evm patch =
 
 (* Common patch command functionality *)
 let patch n old_term new_term try_invert a search =
-  let (evm, env) = Lemmas.get_current_context() in
+  let (evm, env) = Pfedit.get_current_context () in
   let reduce = try_reduce reduce_remove_identities in
   let patch = reduce env (search env evm a) in
   let prefix = Id.to_string n in
@@ -129,7 +129,7 @@ let patch_proof n d_old d_new cut =
  * It just might be useful in the future, so feel free to play with it
  *)
 let patch_theorem n d_old d_new t =
-  let (evm, env) = Lemmas.get_current_context() in
+  let (evm, env) = Pfedit.get_current_context() in
   let (old_term, new_term) = (intern env evm d_old, intern env evm d_new) in
   patch n old_term new_term false t
     (fun env evm t ->
@@ -139,20 +139,20 @@ let patch_theorem n d_old d_new t =
 
 (* Invert a term *)
 let invert n trm : unit =
-  let (evm, env) = Lemmas.get_current_context() in
+  let (evm, env) = Pfedit.get_current_context() in
   let body = lookup_definition env (intern env evm trm) in
   invert_patch n env evm body
 
 (* Specialize a term *)
 let specialize n trm : unit =
-  let (evm, env) = Lemmas.get_current_context() in
+  let (evm, env) = Pfedit.get_current_context() in
   let reducer = specialize_body specialize_term in
   let specialized = reducer env (intern env evm trm) in
   ignore (define_term n evm specialized false)
 
 (* Abstract a term by a function or arguments *)
 let abstract n trm goal : unit =
-  let (evm, env) = Lemmas.get_current_context() in
+  let (evm, env) = Pfedit.get_current_context() in
   let c = lookup_definition env (intern env evm trm) in
   let goal_type = unwrap_definition env (intern env evm goal) in
   let config = configure_from_goal env goal_type c in
@@ -174,7 +174,7 @@ let abstract n trm goal : unit =
 
 (* Factor a term into a sequence of lemmas *)
 let factor n trm : unit =
-  let (evm, env) = Lemmas.get_current_context() in
+  let (evm, env) = Pfedit.get_current_context() in
   let body = lookup_definition env (intern env evm trm) in
   let fs = reconstruct_factors (factor_term env body) in
   let prefix = Id.to_string n in

@@ -60,19 +60,19 @@ let rec combinations (l : 'a list) =
  * Cartesian product of two lists
  * From http://stackoverflow.com/questions/1507496/ocaml-permutation-of-every-value-in-two-sets-how-to-translate-this-from-java
  *)
-let rec cartesian (l1 : 'a list) (l2 : 'b list) : ('a * 'b) list =
+let cartesian (l1 : 'a list) (l2 : 'b list) : ('a * 'b) list =
   List.concat (List.map (fun a -> List.map (fun b -> (a, b)) l2) l1)
 
 (*
  * Combine all permutations of pairs of elements in lists l1 and l2 via f
  *)
-let rec combine_cartesian (f : 'a -> 'b -> 'c) (l1 : 'a list) (l2 : 'b list) : 'c list =
+let  combine_cartesian (f : 'a -> 'b -> 'c) (l1 : 'a list) (l2 : 'b list) : 'c list =
   List.map (fun (a, b) -> f a b) (cartesian l1 l2)
 
 (*
  * Turns an array of lists into a list of arrays
  *)
-let rec combine_cartesian_append (al : 'a list array) : 'a array list =
+let combine_cartesian_append (al : 'a list array) : 'a array list =
   let al' = Array.to_list (Array.map (List.map (fun a -> [a])) al) in
   if (Array.length al) <= 1 then
     List.map Array.of_list (List.concat al')
@@ -128,6 +128,8 @@ let rec map3 (f : 'a -> 'b -> 'c -> 'd) l1 l2 l3 : 'd list =
      []
   | (h1 :: t1, h2 :: t2, h3 :: t3) ->
      let r = f h1 h2 h3 in r :: map3 f t1 t2 t3
+  | _ ->
+     failwith "illegal call to map3"
 
 (*
  * Get the head of a transformation on a list,

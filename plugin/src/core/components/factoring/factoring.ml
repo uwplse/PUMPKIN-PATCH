@@ -1,6 +1,6 @@
 (* --- The Factoring Component --- *)
 
-open Term
+open Constr
 open Environ
 open Coqterms
 open Reducers
@@ -8,7 +8,6 @@ open Specialization
 open Names
 open Collections
 open Debruijn
-open Printing
 
 module CRD = Context.Rel.Declaration
 
@@ -36,7 +35,7 @@ let is_assumption (env : env) (trm : types) : bool =
 (*
  * Assume a term of type typ in an environment
  *)
-let assume (env : env) (n : name) (typ : types) : env =
+let assume (env : env) (n : Name.t) (typ : types) : env =
   let env_pop = pop_rel_context 1 env in
   push_rel CRD.(LocalAssum(n, typ)) env_pop
 
@@ -78,7 +77,7 @@ let rec find_path (env : env) (trm : types) : factors =
   if is_assumption env trm then
     [(env, trm)]
   else
-    match kind_of_term trm with
+    match kind trm with
     | App (f, args) ->
        let paths = Array.map (find_path env) args in
        let nonempty_paths = filter_non_empty (Array.to_list paths) in

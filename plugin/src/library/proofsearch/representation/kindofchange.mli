@@ -1,6 +1,6 @@
 (* --- Kinds of changes --- *)
 
-open Term
+open Constr
 open Cutlemma
 
 (*

@@ -1,12 +1,11 @@
 (* --- Recursive Differencers for Application --- *)
 
-open Term
+open Constr
 open Proofcatterms
 open Proofdiff
 open Candidates
 open Searchopts
 open Coqterms
-open Differencers
 open Collections
 open Proofdifferencers
 open Higherdifferencers
@@ -14,7 +13,6 @@ open Assumptions
 open Cutlemma
 open Specialization
 open Zooming
-open Printing
 open Debruijn
 open Filters
 
@@ -65,9 +63,9 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
      let d_f = difference f_o f_n no_assumptions in
      let d_args = difference args_o args_n no_assumptions in
      (match get_change opts with
-      | InductiveType (_, _) ->
+      | Kindofchange.InductiveType (_, _) ->
          diff_rec diff_f opts d_f
-      | FixpointCase ((_, _), cut) ->
+      | Kindofchange.FixpointCase ((_, _), cut) ->
          let filter_diff_cut diff = filter_diff (filter_cut env cut) diff in
          let fs = filter_diff_cut (diff_rec diff_f opts) d_f in
          if non_empty fs then
@@ -75,7 +73,7 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
          else
            let d_args_rev = reverse d_args in
            filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
-      | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
+      | Kindofchange.ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          let diff_arg o d = if no_diff o d then give_up else diff_arg o d in
          filter_diff
            (fun args ->
@@ -84,13 +82,13 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
                filter_applies_cut env (Option.get cut) args_lambdas
              else
                args)
-           (diff_map_flat (diff_rec diff_arg (set_change opts Conclusion)))
+           (diff_map_flat (diff_rec diff_arg (set_change opts Kindofchange.Conclusion)))
 	   d_args
-      | Hypothesis (_, _) ->
+      | Kindofchange.Hypothesis (_, _) ->
          let old_goal = fst (old_proof d) in
          let new_goal = fst (new_proof d) in
          let (g_o, g_n) = map_tuple context_term (old_goal, new_goal) in
-         let goal_type = mkProd (Anonymous, g_n, shift g_o) in
+         let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
          let filter_goal = filter_by_type env goal_type in
          let filter_diff_h diff = filter_diff filter_goal diff in
          let fs = filter_diff_h (diff_rec diff_f opts) d_f in
@@ -98,7 +96,7 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
            fs
          else
            filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args
-      | Conclusion ->
+      | Kindofchange.Conclusion ->
          if args_convertible env args_o args_n then
            let specialize = specialize_using specialize_no_reduce env in
            let combine_app = combine_cartesian specialize in
@@ -106,7 +104,9 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
 	   let args = Array.map (fun a_o -> [a_o]) args_o in
            combine_app fs (combine_cartesian_append args)
          else
-           give_up)
+           give_up
+      | _ ->
+         give_up)
   | _ ->
      give_up
 
@@ -130,9 +130,9 @@ let diff_app_ind diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
     let (n, npms_new, args_n) = new_proof d_zoom in
     let f = diff_ind opts (difference (o, npms_old) (n, npms_new) assums) in
     match get_change opts with
-    | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
+    | (Kindofchange.InductiveType (_, _)) | (Kindofchange.Hypothesis (_, _)) ->
        f
-    | FixpointCase ((_, _), cut) ->
+    | Kindofchange.FixpointCase ((_, _), cut) ->
        let env = context_env (fst (old_proof d)) in
        let filter_diff_cut diff = filter_diff (filter_cut env cut) diff in
        if non_empty f then
@@ -148,7 +148,7 @@ let diff_app_ind diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
          let (_, prop_trm_ext, _) = prop o npms_old in
          let prop_trm = ext_term prop_trm_ext in
          let rec prop_arity p =
-           match kind_of_term p with
+           match kind p with
            | Lambda (_, _, b) ->
               1 + prop_arity b
            | Prod (_, _, b) ->

@@ -1,10 +1,9 @@
 (* --- Inversion Component --- *)
 
-open Term
+open Constr
 open Environ
 open Coqterms
 open Collections
-open Printing
 open Utilities
 open Debruijn
 open Reducers
@@ -51,9 +50,9 @@ let invert_factors (invert : inverter) (fs : factors) : factors =
  *)
 let build_swap_map (env : env) (o : types) (n : types) : swap_map =
   let rec build_swaps i swap =
-    match map_tuple kind_of_term swap with
+    match map_tuple kind swap with
     | (App (f_s, args_s), App (f_n, args_n)) ->
-       let is_swap s = not (fold_tuple eq_constr s) in
+       let is_swap s = not (fold_tuple equal s) in
        let arg_swaps = filter_swaps is_swap (of_arguments args_s args_n) in
        let swaps = unshift_swaps_by i arg_swaps in
        merge_swaps (swaps :: (map_swaps (build_swaps i) swaps))
@@ -76,7 +75,7 @@ let build_swap_map (env : env) (o : types) (n : types) : swap_map =
  * Generalizing how to swap arguments is hard and will still probably involve
  * swaps above.
  *)
-let rec exploit_type_symmetry (env : env) (trm : types) : types list =
+let exploit_type_symmetry (env : env) (trm : types) : types list =
   map_subterms_env_if_lazy
     (fun _ _ t -> isApp t && is_rewrite (fst (destApp t)))
     (fun en _ t ->
@@ -135,7 +134,7 @@ let rec exploit_type_symmetry (env : env) (trm : types) : types list =
  *)
 let invert_factor (env, rp) : (env * types) option =
   let rp = reduce_term env rp in
-  match kind_of_term rp with
+  match kind rp with
   | Lambda (n, old_goal_type, body) ->
      let env_body = push_rel CRD.(LocalAssum(n, old_goal_type)) env in
      let new_goal_type = unshift (reduce_term env_body (infer_type env_body body)) in

@@ -1,6 +1,6 @@
 (* Filters *)
 
-open Term
+open Constr
 open Environ
 open Coqterms
 open Debruijn
@@ -23,7 +23,7 @@ let find_by_type (env : env) (typ : types) (trms : types list) : types list =
 
 (* Filter a list of terms to those not exactly the same as the supplied term *)
 let filter_not_same (_ : env) (trm : types) (trms : types list) : types list =
-  let same = eq_constr trm in (* exact equality for constructors *)
+  let same = equal trm in (* exact equality for constructors *)
   List.filter (fun t -> not (same t)) trms
 
 (*
@@ -44,7 +44,7 @@ let filter_ihs (env : env) (cs : types list) : types list =
     (fun c ->
       let c_no_ih = unshift c in
       try
-        let c_type = infer_type env_no_ih c_no_ih in
+        ignore (infer_type env_no_ih c_no_ih);
         true
       with _ -> false)
     cs

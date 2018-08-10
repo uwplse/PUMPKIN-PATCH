@@ -3,15 +3,9 @@ open Proofdiff
 open Proofcatterms
 open Expansion
 open Assumptions
-open Coqterms
-open Evaluation
-open Term
-open Utilities
 open Candidates
-open Term
+open Constr
 open Debruijn
-open Expansion
-open Printing
 
 (* --- Zooming --- *)
 
@@ -29,7 +23,6 @@ type 'a zoomer =
 (* Remove the initial object of c *)
 let remove_initial (c : proof_cat) : proof_cat =
   let i = initial c in
-  let os = objects c in
   let ms = morphisms c in
   let os' = all_objects_except i (objects c) in
   let (ms', ims) = List.partition (map_source (objects_not_equal i)) ms in

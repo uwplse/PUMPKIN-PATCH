@@ -1,9 +1,8 @@
 (* Updating theorems instead of proofs *)
 
-open Term
+open Constr
 open Environ
 open Coqterms
-open Printing
 open Substitution
 open Debruijn
 open Reducers
@@ -17,7 +16,7 @@ module CRD = Context.Rel.Declaration
  * TODO common with reversal, factor that out
  *)
 let rec zoom_lambda_term (env : env) (trm : types) : env * types =
-  match kind_of_term trm with
+  match kind trm with
   | Lambda (n, t, b) ->
      zoom_lambda_term (push_rel CRD.(LocalAssum(n, t)) env) b
   | _ ->
@@ -27,7 +26,7 @@ let rec zoom_lambda_term (env : env) (trm : types) : env * types =
  * Zoom all the way into a product type
  *)
 let rec zoom_product_type (env : env) (typ : types) : env * types =
-  match kind_of_term typ with
+  match kind typ with
   | Prod (n, t, b) ->
      zoom_product_type (push_rel CRD.(LocalAssum(n, t)) env) b
   | _ ->
@@ -41,7 +40,7 @@ let rec zoom_product_type (env : env) (typ : types) : env * types =
  *)
 let rec args_to (env : env) (f : types) (trm : types) : env * (types array) =
   let nonempty (_, a) = Array.length a > 0 in
-  match kind_of_term trm with
+  match kind trm with
   | Lambda (n, t, b) ->
      args_to (push_rel CRD.(LocalAssum(n,t)) env) f b
   | App (g, args) ->

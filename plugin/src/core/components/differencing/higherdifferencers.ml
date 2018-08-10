@@ -1,4 +1,4 @@
-open Term
+open Constr
 open Proofdiff
 open Collections
 open Candidates
@@ -32,7 +32,7 @@ let diff_reduced diff d =
   let (o, n) = proof_terms d in
   let d_red = reduce_diff reduce_term d in
   let (o_red, n_red) = proof_terms d_red in
-  if not ((eq_constr o o_red) && (eq_constr n n_red)) then
+  if not ((equal o o_red) && (equal n n_red)) then
     diff d_red
   else
     give_up

@@ -1,7 +1,7 @@
 (* DeBruijn management *)
 
 open Environ
-open Term
+open Constr
 
 (* --- Indexes --- *)
 

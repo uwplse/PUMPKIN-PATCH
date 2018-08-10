@@ -1,8 +1,7 @@
 (* Equality assumptions for substitutions in proof search *)
 
-open Term
+open Constr
 open Environ
-open Coqterms
 
 type equal_assumptions
 type param_substitutions

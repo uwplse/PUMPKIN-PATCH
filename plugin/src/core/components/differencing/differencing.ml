@@ -12,12 +12,7 @@ open Proofdifferencers
 open Higherdifferencers
 open Appdifferencers
 open Inddifferencers
-open Proofcatterms
-open Debruijn
-open Expansion
-open Utilities
 open Term
-open Collections
 
 (* --- Debugging --- *)
 

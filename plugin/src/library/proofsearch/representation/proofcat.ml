@@ -1,11 +1,10 @@
 (* Proof categories, core logic *)
 
 open Category
-open Term
+open Constr
 open Environ
 open Printing
 open Coqterms
-open Substitution
 open Assumptions
 open Utilities
 open Collections
@@ -530,7 +529,6 @@ let shortest_path_length (c : proof_cat) (o : context_object) : int =
 (* --- Functors --- *)
 
 module ProofFunctor = Functor (ProofCat) (ProofCat)
-type proof_functor = ProofFunctor.t
 
 (*
  * Apply a functor over proof categories

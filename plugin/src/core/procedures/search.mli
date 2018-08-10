@@ -1,6 +1,6 @@
 (* Search procedures *)
 
-open Term
+open Constr
 open Proofdiff
 open Searchopts
 

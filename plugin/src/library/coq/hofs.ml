@@ -4,13 +4,11 @@
 (* TODO can still generalize these to make them easier to extend further *)
 
 open Environ
-open Term
+open Constr
 open Coqterms
 open Coqenvs
 open Collections
 open Names
-open Utilities
-open Printing
 
 module CRD = Context.Rel.Declaration
 
@@ -68,7 +66,6 @@ type ('a, 'b) conditional_cartesian_mapper_with_env =
 
 (* Specific predicates and functions for implementation *)
 type 'a p_no_env = ('a, types) pred
-type 'a pe_no_env = ('a, eterm) pred
 type 'a p_with_env = ('a, types) pred_with_env
 type 'a pe_with_env = ('a, eterm) pred_with_env
 type 'a f_no_env = ('a, types) transformer
@@ -83,7 +80,7 @@ type 'a f_cart_no_env = ('a, types) cartesian_transformer
 (*
  * Recurse on a mapping function with an environment for a fixpoint
  *)
-let map_rec_env_fix (map_rec : ('a, 'b) transformer_with_env) (d : 'a updater) (env : env) (a : 'a) (ns : name array) (ts : types array) =
+let map_rec_env_fix (map_rec : ('a, 'b) transformer_with_env) (d : 'a updater) (env : env) (a : 'a) (ns : Name.t array) (ts : types array) =
   let fix_bindings = bindings_for_fix ns ts in
   let env_fix = push_rel_context fix_bindings env in
   let n = List.length fix_bindings in
@@ -93,7 +90,7 @@ let map_rec_env_fix (map_rec : ('a, 'b) transformer_with_env) (d : 'a updater) (
 (*
  * Recurse on a mapping function with an environment for a fixpoint
  *)
-let map_rec_env_fix_cartesian (map_rec : ('a, 'b) cartesian_transformer_with_env) (d : 'a updater) (env : env) (a : 'a) (ns : name array) (ts : types array) =
+let map_rec_env_fix_cartesian (map_rec : ('a, 'b) cartesian_transformer_with_env) (d : 'a updater) (env : env) (a : 'a) (ns : Name.t array) (ts : types array) =
   let fix_bindings = bindings_for_fix ns ts in
   let env_fix = push_rel_context fix_bindings env in
   let n = List.length fix_bindings in
@@ -108,7 +105,7 @@ let map_rec_env_fix_cartesian (map_rec : ('a, 'b) cartesian_transformer_with_env
  *)
 let rec map_term_env (f : 'a f_with_env) (d : 'a updater) (env : env) (a : 'a) (trm : types) : types =
   let map_rec = map_term_env f d in
-  match kind_of_term trm with
+  match kind trm with
   | Cast (c, k, t) ->
      let c' = map_rec env a c in
      let t' = map_rec env a t in
@@ -165,7 +162,7 @@ let map_term (f : 'a f_no_env) (d : 'a updater) (a : 'a) (trm : types) : types =
  *)
 let rec map_subterms_env (f : 'a f_cart_with_env) (d : 'a updater) (env : env) (a : 'a) (trm : types) : types list =
   let map_rec = map_subterms_env f d in
-  match kind_of_term trm with
+  match kind trm with
   | Cast (c, k, t) ->
      let cs' = map_rec env a c in
      let ts' = map_rec env a t in
@@ -227,7 +224,7 @@ let rec map_term_env_if (p : 'a p_with_env) (f : 'a f_with_env) (d : 'a updater)
   if p env a trm then
     f env a trm
   else
-    match kind_of_term trm with
+    match kind trm with
     | Cast (c, k, t) ->
        let c' = map_rec env a c in
        let t' = map_rec env a t in
@@ -282,7 +279,7 @@ let rec map_term_env_if_shallow (p : 'a p_with_env) (f : 'a f_with_env) (d : 'a 
   if p env a trm then
     f env a trm
   else
-    match kind_of_term trm with
+    match kind trm with
     | Cast (c, k, t) ->
        let c' = map_rec env a c in
        let t' = map_rec env a t in
@@ -350,7 +347,7 @@ let rec map_subterms_env_if (p : 'a p_with_env) (f : 'a f_cart_with_env) (d : 'a
   if p env a trm then
     f env a trm
   else
-    match kind_of_term trm with
+    match kind trm with
     | Cast (c, k, t) ->
        let cs' = map_rec env a c in
        let ts' = map_rec env a t in
@@ -404,7 +401,7 @@ let rec map_subterms_env_if_combs (p : 'a p_with_env) (f : 'a f_cart_with_env) (
   let trms = if p env a trm then f env a trm else [trm] in
   flat_map
     (fun trm' ->
-      match kind_of_term trm' with
+      match kind trm' with
       | Cast (c, k, t) ->
          let cs' = map_rec env a c in
          let ts' = map_rec env a t in
@@ -459,7 +456,7 @@ let rec map_subterms_env_if_combs (p : 'a p_with_env) (f : 'a f_cart_with_env) (
 let rec map_subterms_env_if_lazy (p : 'a p_with_env) (f : 'a f_cart_with_env) (d : 'a updater) (env : env) (a : 'a) (trm : types) : types list =
   let map_rec = map_subterms_env_if_lazy p f d in
   let trms' =
-    match kind_of_term trm with
+    match kind trm with
     | Cast (c, k, t) ->
        let cs' = map_rec env a c in
        let ts' = map_rec env a t in
@@ -522,7 +519,7 @@ let map_eterms (f : eterm -> eterm) ((evm, ts) : eterms) : eterms =
  *)
 let rec map_eterm_env (f : 'a fe_with_env) (d : 'a updater) (env : env) (a : 'a) ((evm, trm) : eterm) : eterm =
   let map_rec = map_eterm_env f d in
-  match kind_of_term trm with
+  match kind trm with
   | Cast (c, k, t) ->
      let (evm', c') = map_rec env a (evm, c) in
      let (evm'', t') = map_rec env a (evm', t) in
@@ -582,7 +579,7 @@ let map_eterm (f : 'a fe_no_env) (d : 'a updater) (a : 'a) (etrm : eterm) : eter
 let rec map_eterm_env_if_lazy (p : 'a pe_with_env) (f : 'a fe_with_env) (d : 'a updater) (env : env) (a : 'a) ((evm, trm) : eterm) : eterm =
   let map_rec = map_eterm_env_if_lazy p f d in
   let (evm', trm') =
-    match kind_of_term trm with
+    match kind trm with
     | Cast (c, k, t) ->
        let (evm', c') = map_rec env a (evm, c) in
        let (evm'', t') = map_rec env a (evm', t) in

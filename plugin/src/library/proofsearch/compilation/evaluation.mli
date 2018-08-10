@@ -1,6 +1,6 @@
 (* --- Evaluation, which is lazy (takes one step) --- *)
 
-open Term
+open Constr
 open Environ
 open Proofcat
 open Declarations

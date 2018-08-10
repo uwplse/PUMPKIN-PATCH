@@ -1,6 +1,6 @@
 (* --- Abstraction Strategies --- *)
 
-open Term
+open Constr
 open Environ
 open Candidates
 

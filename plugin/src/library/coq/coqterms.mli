@@ -2,7 +2,7 @@
 
 open Environ
 open Evd
-open Term
+open Constr
 open Declarations
 open Names
 
@@ -78,7 +78,7 @@ val reconstruct_prod : env -> types -> types
 (* --- Inductive types --- *)
 
 (* (To avoid confusing Coq naming) get the body of a mutually inductive type *)
-val lookup_mutind_body : mutual_inductive -> env -> mutual_inductive_body
+val lookup_mutind_body : MutInd.t -> env -> mutual_inductive_body
 
 (* Get the type of a mutually inductive type *)
 val type_of_inductive : env -> mutual_inductive_body -> one_inductive_body -> types
@@ -94,7 +94,7 @@ val check_inductive_supported : mutual_inductive_body -> unit
  * If so, return Some with the inductive type
  * Otherwise, return None
  *)
-val inductive_of_elim : env -> pconstant -> mutual_inductive option
+val inductive_of_elim : env -> pconstant -> MutInd.t option
 
 (*
  * Get the number of constructors for an inductive type

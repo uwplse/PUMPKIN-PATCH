@@ -1,6 +1,6 @@
 (* Basic types for proof search *)
 
-open Term
+open Constr
 
 type candidates = types list
 

@@ -2,7 +2,7 @@
 
 open Names
 open Environ
-open Term
+open Constr
 open Coqterms
 open Coqenvs
 open Proofcat
@@ -11,7 +11,7 @@ open Evaluation
 open Collections
 open Utilities
 open Debruijn
-open Printing
+open Declarations
 
 module CRD = Context.Rel.Declaration
 
@@ -77,7 +77,7 @@ let expand_app (env : env) ((f, args) : types * types array) =
  *)
 let expand_term (default : env -> types -> proof_cat) (o : context_object) : proof_cat =
   let (trm, env) = dest_context_term o in
-  match kind_of_term trm with
+  match kind trm with
   | Prod (n, t, b) ->
       expand_product env (n, t, b)
   | Lambda (n, t, b) ->
@@ -85,7 +85,7 @@ let expand_term (default : env -> types -> proof_cat) (o : context_object) : pro
   | Ind ((i, ii), u) ->
       expand_inductive env ((i, ii), u)
   | App (f, args) ->
-     (match kind_of_term f with
+     (match kind f with
      | Lambda (n, t, b) ->
         (* Does not yet delta-reduce *)
         if Array.length args > 0 then
@@ -100,7 +100,7 @@ let expand_term (default : env -> types -> proof_cat) (o : context_object) : pro
 (* Expand a product type as far as its conclusion goes *)
 let expand_product_fully (o : context_object) : proof_cat =
   let rec expand_fully env (n, t, b) =
-    match kind_of_term b with
+    match kind b with
     | Prod (n', t', b') ->
        let t'' = eval_theorem env t in
        let env' = push_rel CRD.(LocalAssum(n, t)) env in
@@ -260,7 +260,7 @@ let expand_application (c, n, l) : proof_cat * int * (types list) =
       match e with
       | LazyBinding (trm, env) ->
          let (f, args) = destApp trm in
-         (match kind_of_term f with
+         (match kind f with
           | Const (c, u) ->
              expand_const_app env (c, u) (f, args) l
           | _ ->

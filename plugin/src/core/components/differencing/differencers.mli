@@ -1,6 +1,6 @@
 (* --- Type definitions for differencers --- *)
 
-open Term
+open Constr
 open Proofdiff
 open Candidates
 open Proofcat

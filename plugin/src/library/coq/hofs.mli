@@ -1,7 +1,7 @@
 (* Higher-order functions on terms *)
 
 open Environ
-open Term
+open Constr
 open Coqterms
 
 (* Predicates to determine whether to apply a mapped function *)

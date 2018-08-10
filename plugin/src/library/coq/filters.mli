@@ -1,8 +1,7 @@
 (* Filters for terms and eterms *)
 
-open Term
+open Constr
 open Environ
-open Coqterms
 
 type 'a filter_strategy = env -> types -> 'a list -> 'a list
 

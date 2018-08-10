@@ -1,7 +1,7 @@
 (* Strategies for reducing terms *)
 
 open Environ
-open Term
+open Constr
 
 type reducer = env -> types -> types
 

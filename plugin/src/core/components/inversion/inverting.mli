@@ -1,6 +1,6 @@
 (* --- Inversion Component --- *)
 
-open Term
+open Constr
 open Environ
 
 type inverter

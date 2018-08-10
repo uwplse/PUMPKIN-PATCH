@@ -3,12 +3,10 @@
 open Environ
 open Evd
 open Constr
-open Constrexpr
-open Declarations
 open Decl_kinds
 open Names
-open Univ
 open Collections
+open Declarations
 
 module CRD = Context.Rel.Declaration
 
@@ -147,7 +145,7 @@ let eq_sym : types =
 let is_prop (trm : types) : bool =
   match kind trm with
   | Sort s ->
-     s = Term.prop_sort
+     s = Sorts.prop
   | _ ->
      false
 
@@ -214,7 +212,7 @@ let rec reconstruct_prod (env : env) (b : types) : types =
 (* --- Inductive types --- *)
 
 (* Get the body of a mutually inductive type *)
-let lookup_mutind_body (i : mutual_inductive) (env : env) : mutual_inductive_body =
+let lookup_mutind_body i (env : env) : mutual_inductive_body =
   lookup_mind i env
 
 (* Get the type of a mutually inductive type *)
@@ -230,7 +228,7 @@ let check_inductive_supported (mutind_body : mutual_inductive_body) : unit =
   if not (Array.length ind_bodies = 1) then
     failwith "mutually inductive types not yet supported"
   else
-    if (mutind_body.mind_finite = Decl_kinds.CoFinite) then
+    if (mutind_body.mind_finite = CoFinite) then
       failwith "coinductive types not yet supported"
     else
       ()
@@ -243,7 +241,7 @@ let check_inductive_supported (mutind_body : mutual_inductive_body) : unit =
  *
  * TODO clean me after changes
  *)
-let inductive_of_elim (env : env) (pc : pconstant) : mutual_inductive option =
+let inductive_of_elim (env : env) (pc : pconstant) =
   let (c, u) = pc in
   let kn = Constant.canonical c in
   let (modpath, dirpath, label) = KerName.repr kn in
@@ -258,7 +256,7 @@ let inductive_of_elim (env : env) (pc : pconstant) : mutual_inductive option =
         let ind_label_string = String.sub label_string 0 split_index in
         let ind_label = Label.of_id (Id.of_string_soft ind_label_string) in
         let ind_name = MutInd.make1 (KerName.make modpath dirpath ind_label) in
-        lookup_mutind_body ind_name env;
+        ignore (lookup_mutind_body ind_name env);
         Some ind_name
       else
         if not is_rev then
@@ -299,7 +297,7 @@ let conv_ignoring_univ_inconsistency env evm (trm1 : types) (trm2 : types) : boo
     Reductionops.is_conv env evm etrm1 etrm2
   with _ ->
     match map_tuple kind (trm1, trm2) with
-    | (Sort (Type u1), Sort (Type u2)) -> true
+    | (Sort (Sorts.Type u1), Sort (Sorts.Type u2)) -> true
     | _ -> false
 
 (* Checks whether two terms are convertible in env with the empty evar environment *)

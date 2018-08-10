@@ -1,19 +1,16 @@
 (* Difference between old and new proofs *)
 
-open Term
+open Constr
 open Environ
 open Proofcat
 open Assumptions
 open Expansion
 open Coqterms
 open Evaluation
-open Utilities
 open Proofcatterms
-open Substitution
 open Reducers
 open Declarations
 open Collections
-open Printing
 open Merging
 
 (* --- Types --- *)
@@ -318,20 +315,20 @@ let changed_constrs env ind_o ind_n =
   let cs_o = constructor_types env ind_o in
   let cs_n = constructor_types env ind_n in
   let cs = List.map2 (fun o n -> (o, n)) cs_o cs_n in
-  List.filter (fun (o, n) -> not (eq_constr o n)) cs
+  List.filter (fun (o, n) -> not (equal o n)) cs
 
 (*
  * Check if two types are inductive types with the same shape
  *
  * Fail if there are any assumptions in d
  * For now, only allow one constructor to change
- * The rest must be eq_constr
+ * The rest must be equal
  *)
 let same_shape (env : env) (d : types proof_diff) : bool =
   assert (num_assumptions (assumptions d) = 0);
   let o = old_proof d in
   let n = new_proof d in
-  match map_tuple kind_of_term (o, n) with
+  match map_tuple kind (o, n) with
   | (Ind ((i_o, ii_o), u_o), Ind ((i_n, ii_n), u_n)) ->
      let ind_o = lookup_mutind_body i_o env in
      let ind_n = lookup_mutind_body i_n env in
@@ -356,12 +353,12 @@ let ind_type_diff (env : env) (d : types proof_diff) : types proof_diff =
   assert (same_shape env d);
   let o = old_proof d in
   let n = new_proof d in
-  let (Ind ((i_o, _), _), Ind ((i_n, _), _)) = map_tuple kind_of_term (o, n) in
+  let (Ind ((i_o, _), _), Ind ((i_n, _), _)) = map_tuple kind (o, n) in
   let ind_o = lookup_mutind_body i_o env in
   let ind_n = lookup_mutind_body i_n env in
   let neqs = changed_constrs env ind_o ind_n in
   let rec remove_conclusion c =
-    match kind_of_term c with
+    match kind c with
     | Prod (n, t, b) ->
        if isProd b then
          mkProd (n, t, remove_conclusion b)
@@ -391,14 +388,13 @@ let induct_over_same_h eq (d : goal_proof_diff) : bool =
   if (isApp trm1) && (isApp trm2) then
     let (f1, _) = destApp trm1 in
     let (f2, _) = destApp trm2 in
-    match (kind_of_term f1, kind_of_term f2) with
+    match (kind f1, kind f2) with
     | (Const k1, Const k2) ->
        let ind1_opt = inductive_of_elim (context_env (terminal o)) k1 in
        let ind2_opt = inductive_of_elim (context_env (terminal n)) k2 in
        if Option.has_some ind1_opt && Option.has_some ind2_opt then
-           let ind1 = Option.get ind1_opt in
-           let ind2 = Option.get ind2_opt in
-           eq f1 f2
+         (* should be checking that the types are the same, too *)
+         eq f1 f2
        else
          false
     | _ ->

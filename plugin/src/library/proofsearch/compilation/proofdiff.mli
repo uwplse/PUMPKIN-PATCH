@@ -1,11 +1,9 @@
 (* Differences between old and new proofs *)
 
-open Term
+open Constr
 open Environ
 open Proofcat
 open Assumptions
-open Expansion
-open Substitution
 open Reducers
 open Merging
 

@@ -3,7 +3,7 @@ open Expansion
 open Proofcat
 open Candidates
 open Names
-open Term
+open Constr
 
 (* --- Zooming --- *)
 
@@ -113,13 +113,13 @@ val zoom_search : search_function -> goal_proof_diff -> candidates
  * Zoom in, search, and wrap the result in a lambda
  *)
 val zoom_wrap_lambda :
-  search_function -> name -> types -> goal_proof_diff -> candidates
+  search_function -> Name.t -> types -> goal_proof_diff -> candidates
 
 (*
  * Zoom in, search, and wrap the result in a product
  *)
 val zoom_wrap_prod :
-  search_function -> name -> types -> goal_proof_diff -> candidates
+  search_function -> Name.t -> types -> goal_proof_diff -> candidates
 
 (*
  * Zoom in, search, and unshift the result

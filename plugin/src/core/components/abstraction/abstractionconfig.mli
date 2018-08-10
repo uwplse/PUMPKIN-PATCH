@@ -1,8 +1,7 @@
 open Environ
-open Term
+open Constr
 open Abstracters
 open Candidates
-open Searchopts
 open Proofdiff
 open Cutlemma
 

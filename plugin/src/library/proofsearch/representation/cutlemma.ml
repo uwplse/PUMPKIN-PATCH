@@ -1,6 +1,6 @@
 (* --- Cutting by intermediate lemmas/guiding search --- *)
 
-open Term
+open Constr
 open Environ
 open Reducers
 open Coqterms
@@ -43,7 +43,7 @@ let has_cut_type_strict env cut trm =
 
 (* Flip the conclusions of a cut lemma *)
 let rec flip_concls lemma =
-  match kind_of_term lemma with
+  match kind lemma with
   | Prod (n, t, b) when isProd b ->
      mkProd (n, t, flip_concls b)
   | Prod (n, t, b) ->
@@ -97,7 +97,7 @@ let has_cut_type env cut trm =
 let has_cut_type_app env cut trm =
   try
     let typ = shift (reduce_term env (infer_type env trm)) in
-    let env_cut = push_rel CRD.(LocalAssum(Anonymous, get_lemma cut)) env in
+    let env_cut = push_rel CRD.(LocalAssum(Names.Name.Anonymous, get_lemma cut)) env in
     let app = get_app cut in
     let app_app = reduce_term env_cut (mkApp (app, singleton_array (mkRel 1))) in
     let app_app_typ = infer_type env_cut app_app in

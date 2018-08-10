@@ -1,6 +1,6 @@
 (* Updating theorems instead of proofs *)
 
-open Term
+open Constr
 open Environ
 
 (* 
