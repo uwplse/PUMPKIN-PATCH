@@ -89,9 +89,10 @@ let get_concrete_prop (config : abstraction_config) (concrete : closure) : closu
 (* Get the concrete environment and arguments to abstract *)
 let get_concrete config strategy : closure =
   let env = config.env in
+  let evd = config.evd in
   let args = config.args_base in
   let s = reducer_to_specializer reduce_term in
-  let base = specialize_using s env config.f_base (Array.of_list args) in
+  let base = specialize_using s env evd config.f_base (Array.of_list args) in
   let concrete = (env, List.append args [base]) in
   match kind_of_abstraction strategy with
   | Arguments ->
@@ -117,18 +118,19 @@ let get_abstraction_args config : closure =
 (* Get the abstract arguments that map to concrete arguments
    for a particular strategy, function, and arguments *)
 let get_abstract config concrete strategy : closure =
+  let evd = config.evd in
   let s = reducer_to_specializer reduce_term in
   match kind_of_abstraction strategy with
   | Arguments ->
      let (env_abs, args_abs) = get_abstraction_args config in
      let p = shift_by (List.length args_abs) config.f_base in
-     let base_abs = specialize_using s env_abs p (Array.of_list args_abs) in
+     let base_abs = specialize_using s env_abs evd p (Array.of_list args_abs) in
      (env_abs, List.append args_abs [base_abs])
   | Property ->
      let args_abs = config.args_base in
      let (env_p, args_p) = concrete in
      let p = mkRel (nb_rel env_p) in
-     let base_abs = specialize_using s env_p p (Array.of_list args_abs) in
+     let base_abs = specialize_using s env_p evd p (Array.of_list args_abs) in
      (env_p, List.append (p :: List.tl args_abs) [base_abs])
 
 (* Given a abstraction strategy, get the abstraction options for the
@@ -151,9 +153,10 @@ let get_abstraction_opts config strategy : abstraction_options =
 (* Abstract candidates with a provided abstraction strategy *)
 let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let opts = get_abstraction_opts config strategy in
+  let evd = config.evd in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
-  let reduced_cs = reduce_all_using strategy env config.cs in
+  let reduced_cs = reduce_all_using strategy env evd config.cs in
   let shift_concrete = List.map (shift_by (nb_rel env_abs - nb_rel env)) in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
@@ -194,7 +197,7 @@ let abstract_with_strategies (config : abstraction_config) : candidates =
  *
  * If the goal types are both specialized, then we abstract.
  *)
-let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) : candidates =
+let try_abstract_inductive evd (d : lift_goal_diff) (cs : candidates) : candidates =
   let goals = goal_types d in
   let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
   if goals_are_apps && non_empty cs then
@@ -202,7 +205,7 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) : candidates =
     let new_goal_type = new_proof d_type in
     let old_goal_type = old_proof d_type in
     if fun_args_convertible env old_goal_type new_goal_type then
-      let config = configure_args env d_type cs in
+      let config = configure_args env evd d_type cs in
       let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
       List.map
         (unshift_local (num_new_rels - 1) num_new_rels)
@@ -219,17 +222,17 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) : candidates =
  * If there is nothing to abstract or if we cannot determine what to
  * abstract, then return the original list.
  *)
-let abstract_case (opts : options) (d : goal_case_diff) cs : candidates =
+let abstract_case (opts : options) evd (d : goal_case_diff) cs : candidates =
   let d_goal = erase_proofs d in
   let old_goal = old_proof d_goal in
   let env = context_env old_goal in
-  match get_change opts with
+  match get_change opts evd with
   | Kindofchange.Hypothesis (_, _) ->
      let (g_o, g_n) = map_tuple context_term (old_goal, new_proof d_goal) in
      filter_by_type env (mkProd (Names.Name.Anonymous, g_n, shift g_o)) cs
   | Kindofchange.InductiveType (_, _) ->
      cs
-  | Kindofchange.FixpointCase ((_, _), cut) when are_cut env cut cs ->
+  | Kindofchange.FixpointCase ((_, _), cut) when are_cut env evd cut cs ->
      cs
   | _ ->
-     try_abstract_inductive d_goal cs
+     try_abstract_inductive evd d_goal cs

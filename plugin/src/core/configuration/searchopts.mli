@@ -6,11 +6,12 @@ open Cutlemma
 open Kindofchange
 open Candidates
 open Zooming
+open Evd
 
 (* --- Options for search --- *)
 
 type options
-type 'a configurable = options -> 'a
+type 'a configurable = options -> evar_map -> 'a
 
 (* --- Configuring options --- *)
 

@@ -66,8 +66,8 @@ let substitute_using (strategy : abstraction_strategy) (env : env) (args : types
 (*
  * Reduce using the reducer in the abstraction strategy
  *)
-let reduce_all_using strategy (env : env) (cs : candidates) : candidates =
-  reduce_all strategy.reducer env cs
+let reduce_all_using strategy env evd (cs : candidates) : candidates =
+  reduce_all strategy.reducer env evd cs
 
 (*
  * Filter using the filter in the abstraction stragegy

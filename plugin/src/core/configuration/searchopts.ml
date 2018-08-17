@@ -13,6 +13,7 @@ open Assumptions
 open Kindofchange
 open Cutlemma
 open Zooming
+open Evd
 
 module CRD = Context.Rel.Declaration
 
@@ -54,7 +55,7 @@ type options =
     is_app : goal_proof_diff -> bool;
   }
 
-type 'a configurable = options -> 'a
+type 'a configurable = options -> evar_map -> 'a
 
 (* --- Configuring options --- *)
 
@@ -254,32 +255,32 @@ let set_is_ind opts is_ind = { opts with is_ind = is_ind }
 
 (* --- Using options --- *)
 
-let update_search_goals opts = opts.update_goals
-let swap_search_goals opts = opts.swap_goals
-let reset_case_goals opts = opts.reset_goals
-let same_h opts = opts.same_h
-let is_app opts = opts.is_app
-let get_change opts = opts.change
-let is_ind opts = opts.is_ind
+let update_search_goals opts evd = opts.update_goals
+let swap_search_goals opts evd = opts.swap_goals
+let reset_case_goals opts evd = opts.reset_goals
+let same_h opts evd = opts.same_h
+let is_app opts evd = opts.is_app
+let get_change opts evd = opts.change
+let is_ind opts evd = opts.is_ind
 
 (* Keep the same assumptions, but update the goals and terms for a diff *)
-let update_terms_goals opts t_o t_n d =
-  let update = update_search_goals opts d in
+let update_terms_goals opts evd t_o t_n d =
+  let update = update_search_goals opts evd d in
   update (erase_goals (eval_with_terms t_o t_n d))
 
 (* Convert search to a search_function for zooming *)
-let to_search_function search opts d : search_function =
-  let update_goals = update_search_goals opts d in
-  (fun d -> search opts (update_goals d))
+let to_search_function search opts evd d : search_function =
+  let update_goals = update_search_goals opts evd d in
+  (fun d -> search opts evd (update_goals d))
 
 (*
  * Check if a term applies the inductive hypothesis
  * This is naive for now
  *)
-let applies_ih opts (d : goal_proof_diff) : bool =
+let applies_ih opts evd (d : goal_proof_diff) : bool =
   match kinds_of_terms (proof_terms d) with
   | (App (f1, args1), App (f2, args2)) ->
-     is_ind opts && same_length args1 args2 && isLambda f1 && isLambda f2
+     is_ind opts evd && same_length args1 args2 && isLambda f1 && isLambda f2
   | _ ->
      false
 

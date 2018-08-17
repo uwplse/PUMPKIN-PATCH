@@ -3,6 +3,7 @@
 open Constr
 open Environ
 open Candidates
+open Evd
 
 type abstraction_dimension = Arguments | Property
 
@@ -23,7 +24,7 @@ val substitute_using :
  * how to reduce
  *)
 val reduce_all_using :
-  abstraction_strategy -> env -> candidates -> candidates
+  abstraction_strategy -> env -> evar_map -> candidates -> candidates
 
 (*
  * Filter candidates, using the abstraction strategy to determine
