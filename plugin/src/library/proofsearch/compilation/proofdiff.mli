@@ -6,6 +6,7 @@ open Proofcat
 open Assumptions
 open Reducers
 open Merging
+open Evd
 
 (* --- Types --- *)
 
@@ -68,7 +69,7 @@ val diff_proofs : 'a goal_diff -> 'a * 'a
 val proof_terms : goal_proof_diff -> (types * types)
 
 (* Get the reduced proof terms for a proof diff *)
-val reduced_proof_terms : reducer -> goal_proof_diff -> env * types * types
+val reduced_proof_terms : reducer -> evar_map -> goal_proof_diff -> env * types * types
 
 (* Get the goal types for a lift goal diff *)
 val goal_types : lift_goal_diff -> (types * types)
@@ -180,7 +181,7 @@ val merge_diff_closures :
 (* --- Reduction and Simplification --- *)
 
 (* Reduce the terms inside of a goal_proof_diff *)
-val reduce_diff : reducer -> goal_proof_diff -> goal_proof_diff
+val reduce_diff : reducer -> evar_map -> goal_proof_diff -> goal_proof_diff
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
 val reduce_casts : goal_proof_diff -> goal_proof_diff
@@ -189,7 +190,7 @@ val reduce_casts : goal_proof_diff -> goal_proof_diff
  * Given a differrence in proofs, weak head reduce any let-ins
  * If this fails because of a substituted assumption, then fail silently
  *)
-val reduce_letin : goal_proof_diff -> goal_proof_diff
+val reduce_letin : evar_map -> goal_proof_diff -> goal_proof_diff
 
 (* Given a difference in proofs, trim applications of the IH *)
 val reduce_trim_ihs : goal_proof_diff -> goal_proof_diff

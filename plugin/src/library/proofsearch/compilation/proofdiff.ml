@@ -220,11 +220,11 @@ let merge_diff_closures (d : goal_type_term_diff) (trms : types list) =
     assums
 
 (* Get the reduced proof terms for a proof diff *)
-let reduced_proof_terms (r : reducer) (d : goal_proof_diff) : env * types * types =
+let reduced_proof_terms (r : reducer) evd (d : goal_proof_diff) : env * types * types =
   let (env, ns, os) = merge_diff_closures (dest_goals (proof_to_term d)) [] in
   let [new_goal_type; new_term] = ns in
   let [old_goal_type; old_term] = os in
-  (env, r env old_term, r env new_term)
+  (env, r env evd old_term, r env evd new_term)
 
 (* Get the goal types for a lift goal diff *)
 let goal_types (d : lift_goal_diff) : types * types =
@@ -236,13 +236,13 @@ let goal_types (d : lift_goal_diff) : types * types =
 (* --- Reduction and Simplification --- *)
 
 (* Reduce the terms inside of a goal_proof_diff *)
-let reduce_diff (r : reducer) (d : goal_proof_diff) : goal_proof_diff =
+let reduce_diff (r : reducer) evd (d : goal_proof_diff) : goal_proof_diff =
   let (o, n) = proof_terms d in
   let (goal_o, _) = old_proof d in
   let (goal_n, _) = new_proof d in
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
-  eval_with_terms (r env_o o) (r env_n n) d
+  eval_with_terms (r env_o evd o) (r env_n evd n) d
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
 let rec reduce_casts (d : goal_proof_diff) : goal_proof_diff =
@@ -258,15 +258,15 @@ let rec reduce_casts (d : goal_proof_diff) : goal_proof_diff =
  * Given a difference in proofs, substitute the head let ins
  * Fail silently
  *)
-let reduce_letin (d : goal_proof_diff) : goal_proof_diff =
+let reduce_letin evd (d : goal_proof_diff) : goal_proof_diff =
   let (o, n) = proof_terms d in
   try
     if isLetIn o || isLetIn n then
       let d_dest = dest_goals d in
       let ((_, old_env), _) = old_proof d_dest in
       let ((_, new_env), _) = new_proof d_dest in
-      let o' = reduce_whd_if_let_in old_env o in
-      let n' = reduce_whd_if_let_in new_env n in
+      let o' = reduce_whd_if_let_in old_env evd o in
+      let n' = reduce_whd_if_let_in new_env evd n in
       eval_with_terms o' n' d
     else
       d
