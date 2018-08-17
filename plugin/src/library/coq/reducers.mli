@@ -2,12 +2,13 @@
 
 open Environ
 open Constr
+open Evd
 
-type reducer = env -> types -> types
+type reducer = env -> evar_map -> types -> types
 
 (* --- Top-level --- *)
 
-val reduce_all : reducer -> env -> types list -> types list
+val reduce_all : reducer -> env -> evar_map -> types list -> types list
 
 (* --- Defaults --- *)
 
@@ -71,4 +72,4 @@ val try_reduce : reducer -> reducer
  * then this recurses into the body and checks the condition, and so on.
  * It reduces as soon as the condition holds.
  *)
-val reduce_body_if : (env -> types -> bool) -> reducer -> reducer
+val reduce_body_if : (env -> evar_map -> types -> bool) -> reducer -> reducer

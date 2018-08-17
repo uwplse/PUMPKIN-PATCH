@@ -59,13 +59,11 @@ let intern_defs d1 d2 : types * types =
   (unwrap_definition env d1, unwrap_definition env d2)
 
 (* Initialize diff & search configuration *)
-let configure trm1 trm2 cut : goal_proof_diff * options =
+let configure trm1 trm2 cut : types proof_diff * options =
   let (evm, env) = Pfedit.get_current_context() in
   let cut_term = Option.map (intern env evm) cut in
   let lemma = Option.map (build_cut_lemma env) cut_term in
-  let c1 = eval_proof env trm1 in
-  let c2 = eval_proof env trm2 in
-  let d = add_goals (difference c1 c2 no_assumptions) in
+  let d = add_goals (difference trm1 trm2 no_assumptions) in
   let change = find_kind_of_change lemma d in
   (d, configure_search d change lemma)
 

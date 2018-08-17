@@ -10,6 +10,7 @@ open Kindofchange
 open Reducers
 open Assumptions
 open Collections
+open Evd
 
 module CRD = Context.Rel.Declaration
 
@@ -52,13 +53,11 @@ let find_kind_of_conclusion cut (d : goal_proof_diff) =
  *
  * Otherwise, search for a change in conclusion.
  *)
-let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
-  let d_goals = erase_proofs d in
-  let goals = goal_types d_goals in
-  let env = context_env (old_proof d_goals) in
-  let r = reduce_remove_identities env in
-  let old_goal = r (fst goals) in
-  let new_goal = r (snd goals) in
+let find_kind_of_change (cut : cut_lemma option) (evd : evar_map) (d : (types * env) proof_diff) =
+  let (old_trm, env) = old_proof d in
+  let (new_trm, _) = new_proof d in
+  let goals = map_tuple (infer_type env) (old_trm, new_trm) in
+  let (old_goal, new_goal) = map_tuple (reduce_remove_identities env evd) goals in
   let rec diff env typ_o typ_n =
     match kinds_of_terms (typ_o, typ_n) with
     | (Prod (n_o, t_o, b_o), Prod (_, t_n, b_n)) ->
