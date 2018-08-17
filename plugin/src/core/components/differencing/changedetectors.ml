@@ -22,8 +22,9 @@ module CRD = Context.Rel.Declaration
  * This is a heuristic and may sometimes be wrong, so we should
  * expose an option to users as well (TODO).
  *)
-let find_kind_of_conclusion cut (d : goal_proof_diff) =
-  let (trm_o, trm_n) = proof_terms d in
+let find_kind_of_conclusion cut d =
+  let (trm_o, _) = old_proof d in
+  let (trm_n, _) = new_proof d in
   let rec configure trm_o trm_n =
     match kinds_of_terms (trm_o, trm_n) with
     | (Lambda (_, _, b_o), _) ->
