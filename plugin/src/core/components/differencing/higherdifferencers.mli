@@ -2,6 +2,7 @@ open Searchopts
 open Proofdiff
 open Candidates
 open Differencers
+open Evd
 
 (* --- Recursive differencing --- *)
 
@@ -16,7 +17,7 @@ val try_chain_diffs :
  * Reduce and then diff
  * If reducing has no effect, then give up to prevent inifinite recursion
  *)
-val diff_reduced : proof_differencer -> proof_differencer
+val diff_reduced : proof_differencer -> evar_map -> proof_differencer
 
 (*
  * Convert a proof differencer to a term differencer

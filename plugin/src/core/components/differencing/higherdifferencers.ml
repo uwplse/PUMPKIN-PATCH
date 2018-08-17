@@ -28,9 +28,9 @@ let rec try_chain_diffs diffs d =
  * If reducing does not change the term, then give_up to prevent
  * inifinite recursion
  *)
-let diff_reduced diff d =
+let diff_reduced diff evd d =
   let (o, n) = proof_terms d in
-  let d_red = reduce_diff reduce_term d in
+  let d_red = reduce_diff reduce_term evd d in
   let (o_red, n_red) = proof_terms d_red in
   if not ((equal o o_red) && (equal n n_red)) then
     diff d_red
@@ -44,8 +44,8 @@ let diff_reduced diff d =
  * 1. Update the terms and goals of the diff d to use those terms
  * 2. Apply the differencing function to the new diff
  *)
-let diff_terms (diff : proof_differencer) d opts d_t : candidates =
-  diff (update_terms_goals opts (old_proof d_t) (new_proof d_t) d)
+let diff_terms (diff : proof_differencer) d opts evd d_t : candidates =
+  diff (update_terms_goals opts evd (old_proof d_t) (new_proof d_t) d)
 
 (*
  * Recursively difference each term in a diff of arrays
