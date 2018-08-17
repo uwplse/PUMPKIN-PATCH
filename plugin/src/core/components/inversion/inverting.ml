@@ -12,10 +12,11 @@ open Assumptions
 open Hofs
 open Filters
 open Factoring
+open Evd
 
 module CRD = Context.Rel.Declaration
 
-type inverter = (env * types) -> (env * types) option
+type inverter = evar_map -> (env * types) -> (env * types) option
 
 (* --- Inverting type paths --- *)
 
@@ -27,8 +28,8 @@ type inverter = (env * types) -> (env * types) option
  *
  * If inverting any term along the way fails, produce the empty list.
  *)
-let invert_factors (invert : inverter) (fs : factors) : factors =
-  let inverse_options = List.map invert fs in
+let invert_factors (invert : inverter) evd (fs : factors) : factors =
+  let inverse_options = List.map (invert evd) fs in
   let inverted = List.rev (get_all_or_none inverse_options) in
   match inverted with (* swap final hypothesis *)
   | (env_inv, trm_inv) :: t when List.length t > 0 ->
@@ -132,12 +133,12 @@ let exploit_type_symmetry (env : env) (trm : types) : types list =
  * and will increase candidates significantly, so for now we leave it
  * as a separate step.
  *)
-let invert_factor (env, rp) : (env * types) option =
-  let rp = reduce_term env rp in
+let invert_factor evd (env, rp) : (env * types) option =
+  let rp = reduce_term env evd rp in
   match kind rp with
   | Lambda (n, old_goal_type, body) ->
      let env_body = push_rel CRD.(LocalAssum(n, old_goal_type)) env in
-     let new_goal_type = unshift (reduce_term env_body (infer_type env_body body)) in
+     let new_goal_type = unshift (reduce_term env_body evd (infer_type env_body body)) in
      let rp_goal = all_conv_substs env (old_goal_type, new_goal_type) rp in
      let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
      let flipped = exploit_type_symmetry env rp_goal in
@@ -160,11 +161,11 @@ let invert_factor (env, rp) : (env * types) option =
  * Recursively invert function composition
  * Use the supplied inverter to handle factors
  *)
-let invert_using (invert : inverter) (env : env) (trm : types) : types option =
-  let fs = factor_term env trm in
-  let inv_fs = invert_factors invert fs in
+let invert_using (invert : inverter) env evd (trm : types) : types option =
+  let fs = factor_term env evd trm in
+  let inv_fs = invert_factors invert evd fs in
   if List.length inv_fs > 0 then
-    Some (apply_factors inv_fs)
+    Some (apply_factors evd inv_fs)
   else
     None
 
@@ -173,5 +174,5 @@ let invert_using (invert : inverter) (env : env) (trm : types) : types option =
  * Recursively invert function composition
  * Use the supplied inverter to handle low-level inverses
  *)
-let invert_terms invert (env : env) (ps : types list) : types list =
-  get_some (List.map (invert_using invert env) ps)
+let invert_terms invert env evd (ps : types list) : types list =
+  get_some (List.map (invert_using invert env evd) ps)
