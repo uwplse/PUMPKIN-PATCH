@@ -111,31 +111,31 @@ let build_app_candidates (env : env) (from_type : types) (old_term : types) (new
  *
  * Currently heuristics-driven, and does not work for all cases.
  *)
-let find_difference (opts : options) (d : goal_proof_diff) : candidates =
+let find_difference (opts : options) evd (d : goal_proof_diff) : candidates =
   let d = proof_to_term d in
-  let d = swap_search_goals opts d in
+  let d = swap_search_goals opts evd d in
   let d_dest = dest_goals d in
   let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
-  let is_ind = is_ind opts in
+  let is_ind = is_ind opts evd in
   let (env_merge, d_merge) = merge_diff_envs is_ind num_new_rels d_dest in
   let (old_goal_type, old_term) = old_proof d_merge in
   let (new_goal_type, new_term) = new_proof d_merge in
   let from_type =
-    if is_hypothesis (get_change opts) then
+    if is_hypothesis (get_change opts evd) then
       new_goal_type
     else
       infer_type env_merge new_term
   in
   let candidates = build_app_candidates env_merge from_type old_term new_term in
   let goal_type = mkProd (Names.Name.Anonymous, new_goal_type, shift old_goal_type) in
-  let reduced = reduce_all reduce_remove_identities env_merge candidates in
+  let reduced = reduce_all reduce_remove_identities env_merge evd candidates in
   let filter = filter_by_type env_merge goal_type in
   List.map
     (unshift_local (num_new_rels - 1) num_new_rels)
     (filter (if is_ind then filter_ihs env_merge reduced else reduced))
 
 (* Determine if two diffs are identical (convertible). *)
-let no_diff opts (d : goal_proof_diff) : bool =
+let no_diff opts evd (d : goal_proof_diff) : bool =
   let d_term = proof_to_term d in
   let d_dest = dest_goals d_term in
   let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
@@ -143,7 +143,7 @@ let no_diff opts (d : goal_proof_diff) : bool =
   let (_, old_term) = old_proof d_merge in
   let (_, new_term) = new_proof d_merge in
   let conv = convertible env old_term new_term in
-  match get_change opts with
+  match get_change opts evd with
   | FixpointCase ((d_old, d_new), _) ->
      conv
      || (equal d_old old_term && equal d_new new_term)
