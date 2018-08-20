@@ -23,8 +23,8 @@ module CRD = Context.Rel.Declaration
  * expose an option to users as well (TODO).
  *)
 let find_kind_of_conclusion cut d =
-  let (trm_o, _) = old_proof d in
-  let (trm_n, _) = new_proof d in
+  let trm_o = old_proof d in
+  let trm_n = new_proof d in
   let rec configure trm_o trm_n =
     match kinds_of_terms (trm_o, trm_n) with
     | (Lambda (_, _, b_o), _) ->
@@ -54,9 +54,9 @@ let find_kind_of_conclusion cut d =
  *
  * Otherwise, search for a change in conclusion.
  *)
-let find_kind_of_change (cut : cut_lemma option) (evd : evar_map) (d : (types * env) proof_diff) =
-  let (old_trm, env) = old_proof d in
-  let (new_trm, _) = new_proof d in
+let find_kind_of_change (cut : cut_lemma option) env evd (d : types proof_diff) =
+  let old_trm = old_proof d in
+  let new_trm = new_proof d in
   let goals = map_tuple (infer_type env) (old_trm, new_trm) in
   let (old_goal, new_goal) = map_tuple (reduce_remove_identities env evd) goals in
   let rec diff env typ_o typ_n =

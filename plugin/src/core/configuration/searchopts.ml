@@ -14,6 +14,7 @@ open Kindofchange
 open Cutlemma
 open Zooming
 open Evd
+open Reducers
 
 module CRD = Context.Rel.Declaration
 
@@ -65,14 +66,11 @@ type 'a configurable = options -> evar_map -> 'a
  *    then two types we induct over are "the same" if they are either identical
  *    or are the same as the types we changed.
  * 2) Otherwise, two types we induct over are "the same" if they are identical.
- *
- * POST-DEADLINE: No need for goals here, just need environments
  *)
-let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
+let configure_same_h change (d : env proof_diff) : types -> types -> bool =
   match change with
   | InductiveType (o, n) ->
-     let goals = (old_proof d, new_proof d) in
-     let (env_o, env_n) = context_envs goals in
+     let (env_o, env_n) = (old_proof d, new_proof d) in
      (fun f_o f_n ->
        let k_o = destConst f_o in
        let k_n = destConst f_n in
@@ -235,13 +233,34 @@ let configure_reset_goals change d_old (d : goal_case_diff) : goal_case_diff =
      d
 
 (*
- * Build configuration options for the search based on the goal diff
+ * TODO move into zooming once we remove categories
  *)
-let configure_search d (change : kind_of_change) (cut : cut_lemma option) =
+let rec zoom_product_type env typ =
+  match kind typ with
+  | Prod (n, t, b) ->
+     zoom_product_type (push_rel (CRD.LocalAssum (n, t)) env) b
+  | _ ->
+     (env, typ)
+
+(*
+ * TODO move into reducers
+ *)
+let reduce_type env evd typ =
+  reduce_remove_identities env evd (infer_type env typ)
+       
+(*
+ * Build configuration options for the search based on the goal diff
+ * TODO some repeat work, maybe save/cache somewhere
+ *)
+let configure_search env evd d (change : kind_of_change) (cut : cut_lemma option) =
+  let typs = map_tuple (reduce_type env evd) (old_proof d, new_proof d) in
+  let goals = map_tuple (zoom_product_type env) typs in
+  let (env_o, env_n) = map_tuple fst goals in
+  let d_env = difference env_o env_n (assumptions d) in 
   {
     is_ind = false;
     change = change;
-    same_h = configure_same_h change (erase_proofs d);
+    same_h = configure_same_h change d_env;
     update_goals = configure_update_goals change;
     swap_goals = configure_swap_goals change;
     reset_goals = configure_reset_goals change;

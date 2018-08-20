@@ -6,6 +6,7 @@ open Cutlemma
 open Kindofchange
 open Candidates
 open Zooming
+open Environ
 open Evd
 
 (* --- Options for search --- *)
@@ -17,7 +18,7 @@ type 'a configurable = options -> evar_map -> 'a
 
 (* Build configuration options for the search *)
 val configure_search :
-  goal_proof_diff -> kind_of_change -> cut_lemma option -> options
+  env -> evar_map -> types proof_diff -> kind_of_change -> cut_lemma option -> options
 
 (* --- Modifying options --- *)
 

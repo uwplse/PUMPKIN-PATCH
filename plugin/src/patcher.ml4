@@ -60,12 +60,12 @@ let intern_defs d1 d2 : types * types =
 
 (* Initialize diff & search configuration *)
 let configure trm1 trm2 cut : types proof_diff * options =
-  let (evm, env) = Pfedit.get_current_context() in
-  let cut_term = Option.map (intern env evm) cut in
+  let (evd, env) = Pfedit.get_current_context () in
+  let cut_term = Option.map (intern env evd) cut in
   let lemma = Option.map (build_cut_lemma env) cut_term in
-  let d = add_goals (difference trm1 trm2 no_assumptions) in
-  let change = find_kind_of_change lemma d in
-  (d, configure_search d change lemma)
+  let d = difference trm1 trm2 no_assumptions in
+  let change = find_kind_of_change lemma env evd d in
+  (d, configure_search env evd d change lemma)
 
 (* Common inversion functionality *)
 let invert_patch n env evm patch =
