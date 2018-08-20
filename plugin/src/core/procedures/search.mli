@@ -3,6 +3,7 @@
 open Constr
 open Proofdiff
 open Searchopts
+open Environ
 open Evd
 
 (*
@@ -10,5 +11,5 @@ open Evd
  * Return the default patch if we cannot find a patch
  * Otherwise, return any patch we can find
  *)
-val search_for_patch : types -> options -> evar_map -> goal_proof_diff -> types
+val search_for_patch : types -> options -> env -> evar_map -> types proof_diff -> types
 

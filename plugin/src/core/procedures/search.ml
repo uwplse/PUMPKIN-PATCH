@@ -16,6 +16,7 @@ open Fixdifferencers
 open Differencing
 open Cutlemma
 open Kindofchange
+open Evaluation
 
 (* --- Procedure --- *)
 
@@ -76,9 +77,13 @@ let return_patch (opts : options) (env : env) evd (patches : types list) : types
  * Search in one direction, and if we fail try the other direction.
  * If we find patches, return the head for now, since any patch will do.
  *)
-let search_for_patch (default : types) (opts : options) evd (d : goal_proof_diff) : types =
+let search_for_patch (default : types) (opts : options) env evd (d : types proof_diff) : types =
   Printf.printf "%s\n\n" "----";
   let change = get_change opts evd in
+  (* TODO temporary for incremental cleanup, remove once we remove cats *)
+  let (c1, c2) = map_tuple (eval_proof env) (old_proof d, new_proof d) in
+  let d = add_goals (difference c1 c2 no_assumptions) in
+  (* TODO end temporary *)
   let start_backwards = is_fixpoint_case change || is_hypothesis change in
   let d = if start_backwards then reverse d else d in (* explain *)
   let d = update_search_goals opts evd d (erase_goals d) in

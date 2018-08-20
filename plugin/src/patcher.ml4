@@ -68,15 +68,15 @@ let configure trm1 trm2 cut : types proof_diff * options =
   (d, configure_search env evd d change lemma)
 
 (* Common inversion functionality *)
-let invert_patch n env evm patch =
-  let inverted = invert_terms invert_factor env [patch] in
+let invert_patch n env evd patch =
+  let inverted = invert_terms invert_factor env evd [patch] in
   try
     let patch_inv = List.hd inverted in
     let _ = infer_type env patch_inv in
-    ignore (define_term n evm patch_inv false);
+    ignore (define_term n evd patch_inv false);
     let n_string = Id.to_string n in
     if !opt_printpatches then
-      print_patch env evm n_string patch_inv
+      print_patch env evd n_string patch_inv
     else
       Printf.printf "Defined %s\n" (Id.to_string n)
   with _ ->
@@ -84,20 +84,20 @@ let invert_patch n env evm patch =
 
 (* Common patch command functionality *)
 let patch n old_term new_term try_invert a search =
-  let (evm, env) = Pfedit.get_current_context () in
+  let (evd, env) = Pfedit.get_current_context () in
   let reduce = try_reduce reduce_remove_identities in
-  let patch = reduce env (search env evm a) in
+  let patch = reduce env evd (search env evd a) in
   let prefix = Id.to_string n in
-  ignore (define_term n evm patch false);
+  ignore (define_term n evd patch false);
   (if !opt_printpatches then
-    print_patch env evm prefix patch
+    print_patch env evd prefix patch
   else
     Printf.printf "Defined %s\n" prefix);
   if try_invert then
     try
       let inv_n_string = String.concat "_" [prefix; "inv"] in
       let inv_n = Id.of_string inv_n_string in
-      invert_patch inv_n env evm patch
+      invert_patch inv_n env evd patch
     with _ ->
       ()
   else
@@ -111,13 +111,14 @@ let patch n old_term new_term try_invert a search =
  * The latter two just pass extra guidance for now
  *)
 let patch_proof n d_old d_new cut =
+  let (evd, _) = Pfedit.get_current_context () in
   let (old_term, new_term) = intern_defs d_old d_new in
   let (d, opts) = configure old_term new_term cut in
-  let change = get_change opts in
+  let change = get_change opts evd in
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   patch n old_term new_term try_invert ()
-    (fun env evm _ ->
-      search_for_patch old_term opts d)
+    (fun env evd _ ->
+      search_for_patch old_term opts env evd d)
 
 (*
  * The Patch Theorem command functionality
@@ -127,61 +128,61 @@ let patch_proof n d_old d_new cut =
  * It just might be useful in the future, so feel free to play with it
  *)
 let patch_theorem n d_old d_new t =
-  let (evm, env) = Pfedit.get_current_context() in
-  let (old_term, new_term) = (intern env evm d_old, intern env evm d_new) in
+  let (evd, env) = Pfedit.get_current_context () in
+  let (old_term, new_term) = (intern env evd d_old, intern env evd d_new) in
   patch n old_term new_term false t
     (fun env evm t ->
-      let theorem = intern env evm t in
+      let theorem = intern env evd t in
       let t_trm = lookup_definition env theorem in
-      update_theorem env old_term new_term t_trm)
+      update_theorem env evd old_term new_term t_trm)
 
 (* Invert a term *)
 let invert n trm : unit =
-  let (evm, env) = Pfedit.get_current_context() in
-  let body = lookup_definition env (intern env evm trm) in
-  invert_patch n env evm body
+  let (evd, env) = Pfedit.get_current_context () in
+  let body = lookup_definition env (intern env evd trm) in
+  invert_patch n env evd body
 
 (* Specialize a term *)
 let specialize n trm : unit =
-  let (evm, env) = Pfedit.get_current_context() in
+  let (evd, env) = Pfedit.get_current_context () in
   let reducer = specialize_body specialize_term in
-  let specialized = reducer env (intern env evm trm) in
-  ignore (define_term n evm specialized false)
+  let specialized = reducer env evd (intern env evd trm) in
+  ignore (define_term n evd specialized false)
 
 (* Abstract a term by a function or arguments *)
 let abstract n trm goal : unit =
-  let (evm, env) = Pfedit.get_current_context() in
-  let c = lookup_definition env (intern env evm trm) in
-  let goal_type = unwrap_definition env (intern env evm goal) in
-  let config = configure_from_goal env goal_type c in
+  let (evd, env) = Pfedit.get_current_context() in
+  let c = lookup_definition env (intern env evd trm) in
+  let goal_type = unwrap_definition env (intern env evd goal) in
+  let config = configure_from_goal env evd goal_type c in
   let abstracted = abstract_with_strategies config in
   if List.length abstracted > 0 then
     try
-      ignore (define_term n evm (List.hd abstracted) false)
+      ignore (define_term n evd (List.hd abstracted) false)
     with _ -> (* Temporary, hack to support arguments *)
       let num_args = List.length (config.args_base) in
       let num_discard = nb_rel config.env - num_args in
       let rels = List.map (fun i -> i + num_discard) (from_one_to num_args) in
       let args = Array.map (fun i -> mkRel i) (Array.of_list rels) in
       let app = mkApp (List.hd abstracted, args) in
-      let reduced = reduce_term config.env app in
+      let reduced = reduce_term config.env evd app in
       let reconstructed = reconstruct_lambda config.env reduced in
-      ignore (define_term n evm reconstructed false)
+      ignore (define_term n evd reconstructed false)
   else
     failwith "Failed to abstract"
 
 (* Factor a term into a sequence of lemmas *)
 let factor n trm : unit =
-  let (evm, env) = Pfedit.get_current_context() in
-  let body = lookup_definition env (intern env evm trm) in
-  let fs = reconstruct_factors (factor_term env body) in
+  let (evd, env) = Pfedit.get_current_context() in
+  let body = lookup_definition env (intern env evd trm) in
+  let fs = reconstruct_factors (factor_term env evd body) in
   let prefix = Id.to_string n in
   try
     List.iteri
       (fun i lemma ->
         let lemma_id_string = String.concat "_" [prefix; string_of_int i] in
         let lemma_id = Id.of_string lemma_id_string in
-        ignore (define_term lemma_id evm lemma false);
+        ignore (define_term lemma_id evd lemma false);
         Printf.printf "Defined %s\n" lemma_id_string)
       fs
   with _ -> failwith "Could not find lemmas"
