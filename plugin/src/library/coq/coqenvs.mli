@@ -3,8 +3,9 @@ open Context
 open Declarations
 open Constr
 open Names
+open Evd
 
-type 'a contextual = env -> 'a
+type 'a contextual = env -> evar_map -> 'a
 
 (* --- General environment management auxiliary functions --- *)
 

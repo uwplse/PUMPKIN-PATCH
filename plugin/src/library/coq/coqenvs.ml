@@ -4,10 +4,11 @@ open Declarations
 open Constr
 open Coqterms
 open Names
+open Evd
 
 module CRD = Context.Rel.Declaration
 
-type 'a contextual = env -> 'a
+type 'a contextual = env -> evar_map -> 'a
 
 (* --- General environment management auxiliary functions --- *)
 

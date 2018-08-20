@@ -80,34 +80,34 @@ let debug_search (d : goal_proof_diff) : unit =
  * 6c. When 6b doesn't produce anything, try reducing the diff and calling
  *    recursively. (Support for this is preliminary.)
  *)
-let rec diff (opts : options) (d : goal_proof_diff) : candidates =
-  let d = reduce_letin (reduce_casts d) in
-  if no_diff opts d then
+let rec diff (opts : options) evd (d : goal_proof_diff) : candidates =
+  let d = reduce_letin evd (reduce_casts d) in
+  if no_diff opts evd d then
     (*1*) identity_candidates d
-  else if induct_over_same_h (same_h opts) d then
+  else if induct_over_same_h (same_h opts evd) d then
     try_chain_diffs
-      [(diff_app_ind (diff_inductive diff d) diff opts); (* 2a *)
-       (find_difference opts)]                           (* 2b *)
+      [(diff_app_ind (diff_inductive diff d) diff opts evd); (* 2a *)
+       (find_difference opts evd)]                           (* 2b *)
       d
-  else if applies_ih opts d then
-    (*3*) diff_app diff diff opts (reduce_trim_ihs d)
+  else if applies_ih opts evd d then
+    (*3*) diff_app diff diff opts evd (reduce_trim_ihs d)
   else
     match kinds_of_terms (proof_terms d) with
     | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
-       let change = get_change opts in
-       let ind = is_ind opts in
-       if no_diff opts (eval_with_terms t_o t_n d) then
-         (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
+       let change = get_change opts evd in
+       let ind = is_ind opts evd in
+       if no_diff opts evd (eval_with_terms t_o t_n d) then
+         (*4*) zoom_wrap_lambda (to_search_function diff opts evd d) n_o t_o d
        else if ind || not (is_conclusion change) then
-         (*5*) zoom_unshift (to_search_function diff opts d) d
+         (*5*) zoom_unshift (to_search_function diff opts evd d) d
        else
          give_up
     | _ ->
-       if is_app opts d then
+       if is_app opts evd d then
          try_chain_diffs
-           [(find_difference opts);     (* 6a *)
-            (diff_app diff diff opts);  (* 6b *)
-            (diff_reduced (diff opts))] (* 6c *)
+           [(find_difference opts evd);         (* 6a *)
+            (diff_app diff diff opts evd);      (* 6b *)
+            (diff_reduced (diff opts evd) evd)] (* 6c *)
            d
        else
          give_up
@@ -115,9 +115,9 @@ let rec diff (opts : options) (d : goal_proof_diff) : candidates =
 (* --- Top-level differencer --- *)
 
 (* Given a configuration, return the appropriate differencer *)
-let get_differencer (opts : options) =
-  let should_reduce = is_inductive_type (get_change opts) in
+let get_differencer (opts : options) evd =
+  let should_reduce = is_inductive_type (get_change opts evd) in
   if should_reduce then
-    (fun d -> diff opts (reduce_diff reduce_term d))
+    (fun d -> diff opts evd (reduce_diff reduce_term evd d))
   else
-    diff opts
+    diff opts evd
