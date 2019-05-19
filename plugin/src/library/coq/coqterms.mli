@@ -103,6 +103,35 @@ val inductive_of_elim : env -> pconstant -> MutInd.t option
  * Get the number of constructors for an inductive type
  *)
 val num_constrs : mutual_inductive_body -> int
+                                             
+(* --- Modules --- *)
+
+(*
+ * Pull any functor parameters off the module signature, returning the list of
+ * functor parameters and the list of module elements (i.e., fields).
+ *)
+val decompose_module_signature : module_signature -> (Names.MBId.t * module_type_body) list * structure_body
+
+(*
+ * Declare an interactive (i.e., elementwise) module structure, with the
+ * functional argument called to populate the module elements by declaration.
+ *
+ * The optional argument specifies functor parameters.
+ *)
+val declare_module_structure :
+  ?params:(Constrexpr.module_ast Declaremods.module_params) ->
+  Names.Id.t -> (unit -> unit) -> ModPath.t
+
+(* Type-sensitive transformation of terms *)
+type constr_transformer = env -> evar_map ref -> constr -> constr
+
+(*
+ * Declare a new constant under the given name with the transformed term and
+ * type from the given constant.
+ *
+ * NOTE: Global side effects.
+ *)
+val transform_constant : Id.t -> constr_transformer -> constant_body -> Constant.t
 
 (* --- Convertibility of terms --- *)
 

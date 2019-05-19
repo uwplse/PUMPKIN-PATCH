@@ -352,6 +352,65 @@ let fun_args_convertible (env : env) (t1 : types) (t2 : types) : bool =
     let (_, args1) = destApp t1 in
     let (_, args2) = destApp t2 in
     args_convertible env args1 args2
+                     
+(* --- Modules --- *)
+
+(*
+ * Pull any functor parameters off the module signature, returning the list of
+ * functor parameters and the list of module elements (i.e., fields).
+ *)
+let decompose_module_signature mod_sign =
+  let rec aux mod_arity mod_sign =
+    match mod_sign with
+    | MoreFunctor (mod_name, mod_type, mod_sign) ->
+      aux ((mod_name, mod_type) :: mod_arity) mod_sign
+    | NoFunctor mod_fields ->
+      mod_arity, mod_fields
+  in
+  aux [] mod_sign
+
+(*
+ * Define an interactive (i.e., elementwise) module structure, with the
+ * functional argument called to populate the module elements.
+ *
+ * The optional argument specifies functor parameters.
+ *)
+let declare_module_structure ?(params=[]) ident declare_elements =
+  let mod_sign = Vernacexpr.Check [] in
+  let mod_path =
+    Declaremods.start_module Modintern.interp_module_ast None ident params mod_sign
+  in
+  Dumpglob.dump_moddef mod_path "mod";
+  declare_elements ();
+  let mod_path = Declaremods.end_module () in
+  Dumpglob.dump_modref mod_path "mod";
+  Flags.if_verbose Feedback.msg_info
+    Pp.(str "\nModule " ++ Id.print ident ++ str " is defined");
+  mod_path
+
+(* Type-sensitive transformation of terms *)
+type constr_transformer = env -> evar_map ref -> constr -> constr
+
+(*
+ * Declare a new constant under the given name with the transformed term and
+ * type from the given constant.
+ *
+ * NOTE: Global side effects.
+ *)
+let transform_constant ident tr_constr const_body =
+  let env =
+    match const_body.const_universes with
+    | Monomorphic_const univs ->
+      Global.env () |> Environ.push_context_set univs
+    | Polymorphic_const univs ->
+      CErrors.user_err ~hdr:"transform_constant"
+        Pp.(str "Universe polymorphism is not supported")
+  in
+  let term = force_constant_body const_body in
+  let evm = ref (Evd.from_env env) in
+  let term' = tr_constr env evm term in
+  let type' = tr_constr env evm const_body.const_type in
+  define_term ~typ:type' ident !evm term' true |> Globnames.destConstRef
 
 (* --- Types --- *)
 
