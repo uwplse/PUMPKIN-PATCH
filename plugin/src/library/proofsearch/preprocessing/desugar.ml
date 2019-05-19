@@ -13,11 +13,20 @@ open Inductiveops
 open CErrors
 open Coqterms
 open Abstraction
-
-(*
- * Is the declaration a local assumption?
- *)
+       
+(* Is the rel declaration a local assumption? *)
 let is_rel_assum = Rel.Declaration.is_local_assum
+
+(* Is the rel declaration a local definition? *)
+let is_rel_defin = Rel.Declaration.is_local_def
+
+(* Make the rel declaration for a local assumption *)
+let rel_assum (name, typ) =
+  Rel.Declaration.LocalAssum (name, typ)
+
+(* Make the rel declaration for a local definition *)
+let rel_defin (name, def, typ) =
+  Rel.Declaration.LocalDef (name, def, typ)
 
 (*
  * Pair the outputs of two functions on the same input.
