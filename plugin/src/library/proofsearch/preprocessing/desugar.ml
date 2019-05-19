@@ -13,6 +13,14 @@ open Inductiveops
 open CErrors
 open Coqterms
 open Abstraction
+
+(* --- Begin declaration management --- *)
+       
+(*
+ * When we merge PUMPKIN with DEVOID, these will move into
+ * coqterms in the library. For now, that doesn't make sense
+ * with the current organization of coqterms.
+ *)
        
 (* Is the rel declaration a local assumption? *)
 let is_rel_assum = Rel.Declaration.is_local_assum
@@ -27,6 +35,20 @@ let rel_assum (name, typ) =
 (* Make the rel declaration for a local definition *)
 let rel_defin (name, def, typ) =
   Rel.Declaration.LocalDef (name, def, typ)
+                           
+(* Get the name of a rel declaration *)
+let rel_name decl =
+  Rel.Declaration.get_name decl
+
+(* Get the optional value of a rel declaration *)
+let rel_value decl =
+  Rel.Declaration.get_value decl
+
+(* Get the type of a rel declaration *)
+let rel_type decl =
+  Rel.Declaration.get_type decl
+
+(* --- End declaration management --- *)
 
 (*
  * Pair the outputs of two functions on the same input.
