@@ -28,7 +28,7 @@ val qualid_of_reference : Libnames.reference -> Libnames.qualid
  * Refresh universes if the bool is true, otherwise don't
  * (Refreshing universes is REALLY costly)
  *)
-val define_term : Id.t -> evar_map -> types -> bool -> global_reference
+val define_term : ?typ:types -> Id.t -> evar_map -> types -> bool -> global_reference
 
 (* Get the Coq identity term for a type *)
 val identity_term : env -> types -> types

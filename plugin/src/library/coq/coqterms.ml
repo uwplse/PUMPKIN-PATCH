@@ -1,13 +1,17 @@
 (* Simple auxiliary functions for Coq terms *)
 
 open Util
-open Environ
-open Evd
-open Constr
-open Decl_kinds
-open Names
 open Collections
+open Context
+open Environ
+open Constr
+open Names
+open Constrexpr
+open Evd
+open Utilities
 open Declarations
+open Decl_kinds
+open Constrextern
 
 module CRD = Context.Rel.Declaration
 
@@ -36,12 +40,15 @@ let edeclare ident (_, poly, _ as k) ~opaque sigma udecl body tyopt imps hook re
   (* XXX: "Standard" term construction combinators such as `mkApp`
      don't add any universe constraints that may be needed later for
      the kernel to check that the term is correct.
+
      We could manually call `Evd.add_universe_constraints`
      [high-level] or `Evd.add_constraints` [low-level]; however, that
      turns out to be a bit heavyweight.
+
      Instead, we call type inference on the manually-built term which
      will happily infer the constraint for us, even if that's way more
      costly in term of CPU cycles.
+
      Beware that `type_of` will perform full type inference including
      canonical structure resolution and what not.
    *)
@@ -66,12 +73,13 @@ let edeclare ident (_, poly, _ as k) ~opaque sigma udecl body tyopt imps hook re
   DeclareDef.declare_definition ident k ce ubinders imps hook
 
 (* Define a new Coq term *)
-let define_term (n : Id.t) (evm : evar_map) (trm : types) (refresh : bool) =
+let define_term ?typ (n : Id.t) (evm : evar_map) (trm : types) (refresh : bool) =
   let k = (Global, Flags.is_universe_polymorphism(), Definition) in
   let udecl = Univdecls.default_univ_decl in
   let nohook = Lemmas.mk_hook (fun _ x -> x) in
   let etrm = EConstr.of_constr trm in
-  edeclare n k ~opaque:false evm udecl etrm None [] nohook refresh
+  let etyp = Option.map EConstr.of_constr typ in
+  edeclare n k ~opaque:false evm udecl etrm etyp [] nohook refresh
 
 (* The identity proposition *)
 let id_prop : types =
@@ -391,6 +399,16 @@ let declare_module_structure ?(params=[]) ident declare_elements =
 (* Type-sensitive transformation of terms *)
 type constr_transformer = env -> evar_map ref -> constr -> constr
 
+let force_constant_body const_body =
+  match const_body.const_body with
+  | Def const_def ->
+    Mod_subst.force_constr const_def
+  | OpaqueDef opaq ->
+    Opaqueproof.force_proof (Global.opaque_tables ()) opaq
+  | _ ->
+    CErrors.user_err ~hdr:"force_constant_body"
+      (Pp.str "An axiom has no defining term")
+                                                             
 (*
  * Declare a new constant under the given name with the transformed term and
  * type from the given constant.
