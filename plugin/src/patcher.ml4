@@ -25,6 +25,8 @@ open Stdarg
 open Desugar
 open Utilities
 
+module Globmap = Globnames.Refmap
+
 (*
  * Plugin for patching Coq proofs given a change.
  *
