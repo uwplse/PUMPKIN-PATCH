@@ -54,6 +54,9 @@ src/library/proofsearch/representation/cutlemma.ml
 src/library/proofsearch/representation/kindofchange.mli
 src/library/proofsearch/representation/kindofchange.ml
 
+src/library/proofsearch/preprocessing/desugar.mli
+src/library/proofsearch/preprocessing/desugar.ml
+
 src/library/proofsearch/compilation/evaluation.mli
 src/library/proofsearch/compilation/evaluation.ml
 src/library/proofsearch/compilation/expansion.mli
