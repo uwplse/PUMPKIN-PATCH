@@ -15,6 +15,11 @@ open Coqterms
 open Abstraction
 
 (*
+ * Is the declaration a local assumption?
+ *)
+let is_rel_assum = Rel.Declaration.is_local_assum
+
+(*
  * Pair the outputs of two functions on the same input.
  *)
 let pair f g =
