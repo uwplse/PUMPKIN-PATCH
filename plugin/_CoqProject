@@ -2,6 +2,7 @@
 -I src/library/categories
 -I src/library/coq
 -I src/library/proofsearch/representation
+-I src/library/proofsearch/preprocessing
 -I src/library/proofsearch/compilation
 -I src/core/configuration
 -I src/core/components/abstraction

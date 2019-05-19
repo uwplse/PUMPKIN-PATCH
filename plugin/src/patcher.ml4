@@ -22,6 +22,7 @@ open Cutlemma
 open Kindofchange
 open Changedetectors
 open Stdarg
+open Desugar
 
 (*
  * Plugin for patching Coq proofs given a change.
