@@ -38,3 +38,6 @@ let and_p (p1 : 'a -> bool) (p2 : 'a -> bool) (a : 'a) : bool =
 (* Join two predicates by or *)
 let or_p (p1 : 'a -> bool) (p2 : 'a -> bool) (a : 'a) : bool =
   p1 a || p2 a
+
+(* Flip the first and second parameters of a function. *)
+let flip f = fun x y -> f y x

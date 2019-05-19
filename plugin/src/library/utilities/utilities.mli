@@ -27,3 +27,10 @@ val and_p : ('a -> bool) -> ('a -> bool) -> 'a -> bool
 
 (* Join two predicates by or *)
 val or_p : ('a -> bool) -> ('a -> bool) -> 'a -> bool
+
+(* --- Functions --- *)
+
+(*
+ * Flip the first and second parameters of a function.
+ *)
+val flip : ('a -> 'b -> 'c) -> ('b -> 'a -> 'c)

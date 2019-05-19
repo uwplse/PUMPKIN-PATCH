@@ -23,6 +23,7 @@ open Kindofchange
 open Changedetectors
 open Stdarg
 open Desugar
+open Utilities
 
 (*
  * Plugin for patching Coq proofs given a change.
@@ -120,7 +121,12 @@ let do_desugar_constant ident const_ref =
       Global.lookup_constant |> transform_constant ident desugar_constr
     end
 
-(* Convert a term into a global reference with universes (or raise Not_found) *)
+(*
+ * Convert a term into a global reference with universes (or raise Not_found)
+ *
+ * When we merge DEVOID into PUMPKIN, this will move to coqterms,
+ * but this doesn't make sense to move yet.
+ *)
 let pglobal_of_constr term =
   match Constr.kind term with
   | Const (const, univs) -> ConstRef const, univs
