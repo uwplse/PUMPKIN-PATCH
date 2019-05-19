@@ -23,6 +23,10 @@ let intern (env : env) (evm : evar_map) (t : Constrexpr.constr_expr) : types =
 let extern (env : env) (evm : evar_map) (trm : types) : Constrexpr.constr_expr =
   Constrextern.extern_constr true env evm (EConstr.of_constr trm)
 
+(* Convert an external reference into a qualid *)
+let qualid_of_reference =
+  Libnames.qualid_of_reference %> CAst.with_val identity
+
 (* --- Terms --- *)
 
 (* https://github.com/ybertot/plugin_tutorials/blob/master/tuto1/src/simple_declare.ml *)

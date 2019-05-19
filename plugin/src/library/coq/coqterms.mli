@@ -18,6 +18,9 @@ val intern : env -> evar_map -> Constrexpr.constr_expr -> types
 (* Externalize *)
 val extern : env -> evar_map -> types -> Constrexpr.constr_expr
 
+(* Convert an external reference into a qualid *)
+val qualid_of_reference : Libnames.reference -> Libnames.qualid
+                                           
 (* --- Terms --- *)
 
 (*
