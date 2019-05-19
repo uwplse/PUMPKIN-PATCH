@@ -137,6 +137,14 @@ let pglobal_of_constr term =
   | Var id -> VarRef id, Univ.Instance.empty
   | _ -> raise Not_found
 
+(* Convert a global reference with universes into a term *)
+let constr_of_pglobal (glob, univs) =
+  match glob with
+  | ConstRef const -> mkConstU (const, univs)
+  | IndRef ind -> mkIndU (ind, univs)
+  | ConstructRef cons -> mkConstructU (cons, univs)
+  | VarRef id -> mkVar id
+
 (*
  * Substitute global references throughout a term
  *
