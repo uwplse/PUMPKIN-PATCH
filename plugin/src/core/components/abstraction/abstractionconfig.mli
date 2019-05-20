@@ -1,4 +1,5 @@
 open Environ
+open Evd
 open Constr
 open Abstracters
 open Candidates
@@ -35,7 +36,7 @@ val configure_args :
  * This produces one configuration for each difference.
  *)
 val configure_fixpoint_cases :
-  env -> types list -> candidates -> abstraction_config list
+  env -> evar_map -> types list -> candidates -> abstraction_config list
 
 (* --- Cut Lemmas --- *)
 
@@ -52,7 +53,7 @@ val configure_fixpoint_cases :
  * configure argument abstraction.
  *)
 val configure_cut_args :
-  env -> cut_lemma -> candidates -> abstraction_config
+  env -> evar_map -> cut_lemma -> candidates -> abstraction_config
 
 (* --- Goals --- *)
 
@@ -70,4 +71,4 @@ val configure_cut_args :
  * Automatically infer which kind of abstraction to try from the goal type.
  *)
 val configure_from_goal :
-  env -> types -> types -> abstraction_config
+  env -> evar_map -> types -> types -> abstraction_config

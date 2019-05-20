@@ -4,7 +4,7 @@ open Abstracters
 open Candidates
 open Coqterms
 open Debruijn
-open Collections
+open Utilities
 open Proofdiff
 open Cutlemma
 
@@ -40,12 +40,12 @@ let default_fun_strategies = reduce_strategies_prop
  *
  * TODO clean and document arg case
  *)
-let rec configure_goal_body env goal c : abstraction_config =
-  match kinds_of_terms (goal, c) with
+let rec configure_goal_body env evd goal c : abstraction_config =
+  match map_tuple kind (goal, c) with
   | (Prod (_, _, gb), Lambda (n, t, cb)) when isProd gb && isLambda cb ->
-     configure_goal_body (push_rel CRD.(LocalAssum(n, t)) env) gb cb
+     configure_goal_body (push_rel CRD.(LocalAssum(n, t)) env) evd gb cb
   | (Prod (_, gt, gb), Lambda (_, _, _)) when isApp gt && isApp gb ->
-     let (_, ctt, ctb) = destProd (infer_type env c) in
+     let (_, ctt, ctb) = destProd (infer_type env evd c) in
      if isApp ctb then
        let cs = [c] in
        let args_base = Array.to_list (snd (destApp gt)) in
@@ -99,8 +99,8 @@ let rec apply_prop pi goal =
      mkProd (n, t, apply_prop (shift_i pi) b)
   | Prod (n, t, b) ->
      let p = mkRel pi in
-     let t_args = singleton_array t in
-     let b_args = singleton_array b in
+     let t_args = Array.make 1 t in
+     let b_args = Array.make 1 b in
      mkProd (n, mkApp (p, t_args), mkApp (shift p, b_args))
   | _ ->
      failwith "called apply_prop on a non-product"
@@ -110,13 +110,13 @@ let rec apply_prop pi goal =
  *
  * We should check this is actually well-typed
  *)
-let rec push_prop env typ : env =
+let rec push_prop env evd typ : env =
   match kind typ with
   | Prod (n, t, b) ->
-     push_prop (push_rel CRD.(LocalAssum(n, t)) env) b
+     push_prop (push_rel CRD.(LocalAssum(n, t)) env) evd b
   | App (f, _) ->
      push_rel
-       CRD.(LocalAssum(Names.Name.Anonymous, infer_type env f))
+       CRD.(LocalAssum(Names.Name.Anonymous, infer_type env evd f))
        (pop_rel_context (nb_rel env) env)
   | _ ->
      failwith "Could not find function to abstract"
@@ -126,23 +126,24 @@ let rec push_prop env typ : env =
  * Take an environment, a list of differences between those cases,
  * and a list of candidates
  *)
-let configure_fixpoint_cases env (diffs : types list) (cs : candidates) =
+let configure_fixpoint_cases env evd (diffs : types list) (cs : candidates) =
   let goals = List.map (apply_prop 1) diffs in
   flat_map
     (fun goal ->
       List.map
 	(fun c ->
-	  configure_goal_body (push_prop env (infer_type env c)) goal c)
+          let env_prop = push_prop env evd (infer_type env evd c) in
+	  configure_goal_body env_prop evd goal c)
 	cs)
     goals
 
 (* --- Cut Lemmas --- *)
 
 (* Given some cut lemma application, configure arguments to abstract *)
-let rec configure_args_cut_app env (app : types) cs : abstraction_config =
+let rec configure_args_cut_app env evd (app : types) cs : abstraction_config =
   match kind app with
   | Lambda (n, t, b) ->
-     configure_args_cut_app (push_rel CRD.(LocalAssum(n, t)) env) b cs
+     configure_args_cut_app (push_rel CRD.(LocalAssum(n, t)) env) evd b cs
   | App (f, args) ->
      let rec get_lemma_functions typ =
        match kind typ with
@@ -154,7 +155,7 @@ let rec configure_args_cut_app env (app : types) cs : abstraction_config =
        | _ ->
           failwith "Could not infer arguments to generalize"
      in
-     let (f_base, f_goal) = get_lemma_functions (infer_type env f) in
+     let (f_base, f_goal) = get_lemma_functions (infer_type env evd f) in
      let args_base = Array.to_list args in
      let args_goal = args_base in
      let strategies = no_reduce_strategies in
@@ -163,12 +164,12 @@ let rec configure_args_cut_app env (app : types) cs : abstraction_config =
      failwith "Ill-formed cut lemma"
 
 (* Configure abstraction over arguments when cutting by a cut lemma *)
-let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
+let configure_cut_args env evd (cut : cut_lemma) (cs : candidates) =
   let cs = filter_consistent_cut env cut cs in
   if List.length cs > 0 then
     let (_, _, b) = destLambda (get_app cut) in
     let env_cut = push_rel CRD.(LocalAssum(Names.Name.Anonymous, get_lemma cut)) env in
-    configure_args_cut_app env_cut b cs
+    configure_args_cut_app env_cut evd b cs
   else
     failwith "No candidates are consistent with the cut lemma type"
 
@@ -181,7 +182,7 @@ let configure_cut_args env (cut : cut_lemma) (cs : candidates) =
  * Eventually, we would like to handle multiple cs without
  * one configuration for each c. Same for the fixpoint case.
  *)
-let configure_from_goal env goal c : abstraction_config =
+let configure_from_goal env evd goal c : abstraction_config =
   let (n, t, goal_body) = destProd goal in
-  configure_goal_body (push_rel CRD.(LocalAssum(n, t)) env) goal_body c
+  configure_goal_body (push_rel CRD.(LocalAssum(n, t)) env) evd goal_body c
 
