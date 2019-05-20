@@ -9,7 +9,8 @@ open Cutlemma
 open Kindofchange
 open Reducers
 open Assumptions
-open Collections
+open Utilities
+open Zooming
 
 module CRD = Context.Rel.Declaration
 
@@ -24,7 +25,7 @@ module CRD = Context.Rel.Declaration
 let find_kind_of_conclusion cut (d : goal_proof_diff) =
   let (trm_o, trm_n) = proof_terms d in
   let rec configure trm_o trm_n =
-    match kinds_of_terms (trm_o, trm_n) with
+    match map_tuple kind (trm_o, trm_n) with
     | (Lambda (_, _, b_o), _) ->
        configure b_o trm_n
     | (_, Lambda (_, _, b_n)) ->
@@ -52,31 +53,33 @@ let find_kind_of_conclusion cut (d : goal_proof_diff) =
  *
  * Otherwise, search for a change in conclusion.
  *)
-let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
+let find_kind_of_change evd (cut : cut_lemma option) (d : goal_proof_diff) =
   let d_goals = erase_proofs d in
   let goals = goal_types d_goals in
   let env = context_env (old_proof d_goals) in
-  let r = reduce_remove_identities env in
+  let r = reduce_remove_identities env evd in
   let old_goal = r (fst goals) in
   let new_goal = r (snd goals) in
   let rec diff env typ_o typ_n =
-    match kinds_of_terms (typ_o, typ_n) with
+    match map_tuple kind (typ_o, typ_n) with
     | (Prod (n_o, t_o, b_o), Prod (_, t_n, b_n)) ->
-       if (not (convertible env t_o t_n)) then
+       if (not (convertible env evd t_o t_n)) then
          let d_typs = difference t_o t_n no_assumptions in
          if same_shape env d_typs then
            InductiveType (t_o, t_n)
          else
-           let (t_o', t_n') = map_tuple (reconstruct_prod env) (t_o, t_n) in
+           let (t_o', t_n') = map_tuple (reconstruct_product env) (t_o, t_n) in
            Hypothesis (t_o', t_n')
        else
          diff (push_rel CRD.(LocalAssum(n_o, t_o)) env) b_o b_n
     | (App (f_o, args_o), App (f_n, args_n)) ->
-       if (not (same_length args_o args_n)) then
+       if (not (Array.length args_o = Array.length args_n)) then
          Conclusion
        else
-         if isConst f_o && isConst f_n && (not (convertible env f_o f_n)) then
-           if args_convertible env args_o args_n then
+         let args_o = Array.to_list args_o in
+         let args_n = Array.to_list args_n in
+         if isConst f_o && isConst f_n && (not (convertible env evd f_o f_n)) then
+           if List.for_all2 (convertible env evd) args_o args_n then
              if not (Option.has_some cut) then
                failwith "Must supply cut lemma for change in fixpoint"
              else
@@ -84,8 +87,7 @@ let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
            else
              Conclusion
          else
-           let conf_args = apply_to_arrays (List.map2 (diff env)) in
-           let arg_confs = conf_args args_o args_n in
+           let arg_confs = List.map2 (diff env) args_o args_n in
            if List.for_all is_conclusion arg_confs then
              Conclusion
            else
