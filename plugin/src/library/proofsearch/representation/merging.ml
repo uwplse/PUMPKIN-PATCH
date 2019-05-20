@@ -4,9 +4,8 @@ open Constr
 open Environ
 open Debruijn
 open Assumptions
-open Collections
+open Utilities
 open Coqterms
-open Coqenvs
 
 module CRD = Context.Rel.Declaration
 
@@ -20,13 +19,13 @@ type merged_closure = env * types list * types list
  *)
 let merge_environments (env1 : env) (env2 : env) (assums : equal_assumptions) : env =
   let num_rels = nb_rel env2 in
-  let unshift_assums = map_tuple_hetero (unshift_from_assumptions_by num_rels) (unshift_assumptions_by num_rels) in
+  let unshift_assums (a1, a2) = (unshift_from_assumptions_by num_rels a1, unshift_assumptions_by num_rels a2) in
   let split_assums = unshift_assums (split_assumptions assums env2) in
   let (env_merged, _, _) =
     List.fold_left
        (fun (env, substs, l) i ->
          if has_assumption assums (mkRel i) then
-           let shift_assums = map_tuple_hetero shift_from_assumptions shift_assumptions in
+           let shift_assums (a1, a2) = (shift_from_assumptions a1, shift_assumptions a2) in
            (env, shift_assums substs, l)
          else
            let shift_assums = map_tuple shift_assumptions in
