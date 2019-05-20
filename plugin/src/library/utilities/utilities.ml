@@ -5,7 +5,7 @@ open Util
  *)
 
 (*
- * TODO remove unused functions from DEVOID 
+ * TODO remove unused functions from DEVOID and organize
  *)
 
 (* This should be in the standard library, but isn't bound for some reason *)
@@ -119,3 +119,9 @@ let flip f = fun x y -> f y x
 let suffix_term_name term suffix =
   let base = Nametab.basename_of_global (Globnames.global_of_constr term) in
   Nameops.add_suffix base (Names.Id.to_string suffix)
+
+(*
+ * The identity function
+ *)
+let id (a : 'a) :=
+  a

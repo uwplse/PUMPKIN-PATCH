@@ -77,3 +77,8 @@ val flip : ('a -> 'b -> 'c) -> ('b -> 'a -> 'c)
 
 (* Look up the name referenced by a term and append a suffix to it. *)
 val suffix_term_name : Constr.t -> Names.Id.t -> Names.Id.t
+
+(*
+ * The identity function
+ *)
+val id : 'a -> 'a
