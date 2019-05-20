@@ -1,13 +1,14 @@
 (* Strategies for reducing terms *)
 
 open Environ
+open Evd
 open Constr
 
-type reducer = env -> types -> types
+type reducer = env -> evar_map -> types -> types
 
 (* --- Top-level --- *)
 
-val reduce_all : reducer -> env -> types list -> types list
+val reduce_all : reducer -> env -> evar_map -> types list -> types list
 
 (* --- Defaults --- *)
 
