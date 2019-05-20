@@ -480,6 +480,14 @@ let chain_reduce rg rf (env : env) (trm : types) : types =
 let on_type f env evd trm =
   f (reduce_type env evd trm)
 
+(* Checks whether the types of two terms are convertible *)
+let types_convertible (env : env) (evd : evar_map) (trm1 : types) (trm2 : types) : bool =
+  try
+    let typ1 = infer_type env evd trm1 in
+    let typ2 = infer_type env evd trm2 in
+    convertible env typ1 typ2
+  with _ -> false
+
 (* --- Environments --- *)
 
 (* Look up all indexes from is in env *)

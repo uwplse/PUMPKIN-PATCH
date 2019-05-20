@@ -531,6 +531,11 @@ val chain_reduce : (* sequencing *)
  *)
 val on_type : (types -> 'a) -> env -> evar_map -> types -> 'a
 
+(* 
+ * Checks whether the types of two terms are convertible
+ *)
+val types_convertible : env -> evar_map -> types -> types -> bool
+
 (* --- Basic mapping --- *)
 
 val map_rec_env_fix :
