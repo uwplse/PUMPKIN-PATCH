@@ -410,7 +410,7 @@ let projections (app : sigT_app) trm =
 (* Infer the type of trm in env *)
 let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   EConstr.to_constr evd (Typing.unsafe_type_of env evd (EConstr.of_constr trm))
-
+                    
 (* Safely infer the WHNF type of a term, updating the evar map *)
 let e_infer_type env evm term =
   EConstr.of_constr term |> Typing.e_type_of ~refresh:true env evm |>
@@ -438,6 +438,13 @@ let conv_ignoring_univ_inconsistency env evm (trm1 : types) (trm2 : types) : boo
 (* Checks whether two terms are convertible in env with no evars *)
 let convertible (env : env) (evd : evar_map) (trm1 : types) (trm2 : types) : bool =
   conv_ignoring_univ_inconsistency env evd trm1 trm2
+                                   
+(* Check whether a term has a given type *)
+let has_type (env : env) (evd : evar_map) (typ : types) (trm : types) : bool =
+  try
+    let trm_typ = infer_type env evd trm in
+    convertible env evd trm_typ typ
+  with _ -> false
 
 (* Default reducer *)
 let reduce_term (env : env) (trm : types) : types =

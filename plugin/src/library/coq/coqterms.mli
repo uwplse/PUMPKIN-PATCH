@@ -498,6 +498,9 @@ val eq_constr_head : ?eq_constr:(constr -> constr -> bool) -> constr -> constr -
  *)
 val infer_type : env -> evar_map -> types -> types
 
+(* Check whether a term has a given type *)
+val has_type : env -> evar_map -> types -> types -> bool
+
 (* Safely infer the WHNF type of a term, updating the evar map. *)
 val e_infer_type : env -> evar_map ref -> constr -> constr
 
