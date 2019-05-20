@@ -123,5 +123,5 @@ let suffix_term_name term suffix =
 (*
  * The identity function
  *)
-let id (a : 'a) :=
+let id (a : 'a) =
   a
