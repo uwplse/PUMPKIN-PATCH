@@ -43,6 +43,11 @@ val unique : ('a -> 'a -> bool) -> 'a list -> 'a list
 val flat_map : ('a -> 'b list) -> 'a list -> 'b list
 
 (*
+ * All combinations of elements in a list
+ *)
+val combinations : 'a list -> ('a * 'a) list
+
+(*
  * Cartesian product of two lists
  *)
 val cartesian : 'a list -> 'b list -> ('a * 'b) list

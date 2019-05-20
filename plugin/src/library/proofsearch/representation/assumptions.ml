@@ -2,8 +2,7 @@
 
 open Constr
 open Environ
-open Collections
-open Coqenvs
+open Utilities
 open Debruijn
 open Coqterms
 open Hofs

@@ -66,6 +66,14 @@ let flat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
   List.flatten (List.map f l)
 
 (*
+ * All combinations of elements in a list
+ *)
+let rec combinations (l : 'a list) =
+  match l with
+  | [] -> []
+| h :: t -> List.append (List.map (fun e -> (h, e)) t) (combinations t)
+
+(*
  * Cartesian product of two lists
  * From http://stackoverflow.com/questions/1507496/ocaml-permutation-of-every-value-in-two-sets-how-to-translate-this-from-java
  *)
