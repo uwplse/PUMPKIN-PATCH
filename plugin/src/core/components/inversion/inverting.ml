@@ -81,14 +81,14 @@ let build_swap_map (env : env) (evd : evar_map) (o : types) (n : types) : swap_m
  * Generalizing how to swap arguments is hard and will still probably involve
  * swaps above.
  *)
-let exploit_type_symmetry (env : env) (trm : types) : types list =
+let exploit_type_symmetry (env : env) (evd : evar_map) (trm : types) : types list =
   map_subterms_env_if_lazy
     (fun _ _ t -> isApp t && is_rewrite (fst (destApp t)))
     (fun en _ t ->
       let (f, args) = destApp t in
       let i_eq = Array.length args - 1 in
       let eq = args.(i_eq) in
-      let eq_type = infer_type en eq in
+      let eq_type = infer_type en evd eq in
       let eq_args = List.append (Array.to_list (snd (destApp eq_type))) [eq] in
       let eq_r = mkApp (eq_sym, Array.of_list eq_args) in
       let i_src = 1 in
@@ -138,22 +138,22 @@ let exploit_type_symmetry (env : env) (trm : types) : types list =
  * and will increase candidates significantly, so for now we leave it
  * as a separate step.
  *)
-let invert_factor (env, rp) : (env * types) option =
-  let rp = reduce_term env rp in
+let invert_factor evd (env, rp) : (env * types) option =
+  let rp = reduce_term env evd rp in
   match kind rp with
   | Lambda (n, old_goal_type, body) ->
      let env_body = push_rel CRD.(LocalAssum(n, old_goal_type)) env in
-     let new_goal_type = unshift (reduce_term env_body (infer_type env_body body)) in
-     let rp_goal = all_conv_substs env (old_goal_type, new_goal_type) rp in
+     let new_goal_type = unshift (reduce_type env_body evd body) in
+     let rp_goal = all_conv_substs env evd (old_goal_type, new_goal_type) rp in
      let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
-     let flipped = exploit_type_symmetry env rp_goal in
-     let flipped_wt = filter_by_type env goal_type flipped in
+     let flipped = exploit_type_symmetry env evd rp_goal in
+     let flipped_wt = filter_by_type env evd goal_type flipped in
      if List.length flipped_wt > 0 then
        Some (env, List.hd flipped_wt)
      else
-       let swap_map = build_swap_map env old_goal_type new_goal_type in
-       let swapped = all_conv_swaps_combs env swap_map rp_goal in
-       let swapped_wt = filter_by_type env goal_type swapped in
+       let swap_map = build_swap_map env evd old_goal_type new_goal_type in
+       let swapped = all_conv_swaps_combs env evd swap_map rp_goal in
+       let swapped_wt = filter_by_type env evd goal_type swapped in
        if List.length swapped_wt > 0 then
 	 Some (env, List.hd swapped_wt)
        else
@@ -166,11 +166,11 @@ let invert_factor (env, rp) : (env * types) option =
  * Recursively invert function composition
  * Use the supplied inverter to handle factors
  *)
-let invert_using (invert : inverter) (env : env) (trm : types) : types option =
-  let fs = factor_term env trm in
+let invert_using (invert : inverter) env evd (trm : types) : types option =
+  let fs = factor_term env evd trm in
   let inv_fs = invert_factors invert fs in
   if List.length inv_fs > 0 then
-    Some (apply_factors inv_fs)
+    Some (apply_factors evd inv_fs)
   else
     None
 
@@ -179,5 +179,7 @@ let invert_using (invert : inverter) (env : env) (trm : types) : types option =
  * Recursively invert function composition
  * Use the supplied inverter to handle low-level inverses
  *)
-let invert_terms invert (env : env) (ps : types list) : types list =
-  get_some (List.map (invert_using invert env) ps)
+let invert_terms invert env evd (ps : types list) : types list =
+  List.map
+    Option.get
+    (List.filter Option.has_some (List.map (invert_using invert env evd) ps))

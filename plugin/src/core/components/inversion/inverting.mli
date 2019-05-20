@@ -2,6 +2,7 @@
 
 open Constr
 open Environ
+open Evd
 
 type inverter
 
@@ -10,11 +11,11 @@ type inverter
  * Try both exploiting type symmetry (as in eq_ind), and also
  * strategically swapping arguments with convertible types
  *)
-val invert_factor : inverter
+val invert_factor : evar_map -> inverter
 
 (*
  * Try to invert a list of terms in an environment
  * Recursively invert function composition
  * Use the supplied inverter to handle low-level inverses
  *)
-val invert_terms : inverter -> env -> types list -> types list
+val invert_terms : inverter -> env -> evar_map -> types list -> types list
