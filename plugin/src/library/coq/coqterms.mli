@@ -254,6 +254,11 @@ val check_inductive_supported : mutual_inductive_body -> unit
 val is_elim : env -> types -> bool
 
 (*
+ * Get the number of constructors for an inductive type
+ *)
+val num_constrs : mutual_inductive_body -> int
+
+(*
  * Get the type of an inductive type
  *)
 val type_of_inductive : env -> int -> mutual_inductive_body -> types

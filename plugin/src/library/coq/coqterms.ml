@@ -20,6 +20,11 @@ module Globset = Globnames.Refset
 module CRD = Context.Rel.Declaration
 
 (*
+ * Note: This will clean up significantly when we merge DEVOID and PUMPKIN,
+ * and split back into multiple files.
+ *)
+
+(*
  * TODO remove unused functions for now
  *)
 
@@ -885,12 +890,25 @@ let inductive_of_elim (env : env) (pc : pconstant) : mutual_inductive option =
       else
         None
   in try_find_ind false
-
+                  
 (*
  * Boolean version of above that doesn't care about the term type
  *)
 let is_elim (env : env) (trm : types) =
   isConst trm && Option.has_some (inductive_of_elim env (destConst trm))
+                                 
+(*
+ * Get the number of constructors for an inductive type
+ *
+ * When we implement mutually inductive types, we may need to
+ * update this heuristic.
+ *)
+let num_constrs (mutind_body : mutual_inductive_body) : int =
+  Array.fold_left
+    (fun n i ->
+      n + (Array.length i.mind_consnames))
+    0
+    mutind_body.mind_packets
 
 (* Lookup the eliminator over the type sort *)
 let type_eliminator (env : env) (ind : inductive) =
