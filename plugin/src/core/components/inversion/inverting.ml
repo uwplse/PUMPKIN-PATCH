@@ -2,8 +2,8 @@
 
 open Constr
 open Environ
+open Evd
 open Coqterms
-open Collections
 open Utilities
 open Debruijn
 open Reducers
@@ -28,6 +28,12 @@ type inverter = (env * types) -> (env * types) option
  * If inverting any term along the way fails, produce the empty list.
  *)
 let invert_factors (invert : inverter) (fs : factors) : factors =
+  let get_all_or_none (l : 'a option list) : 'a list =
+    if List.for_all Option.has_some l then
+      List.map Option.get l
+    else
+      []
+  in
   let inverse_options = List.map invert fs in
   let inverted = List.rev (get_all_or_none inverse_options) in
   match inverted with (* swap final hypothesis *)
@@ -48,7 +54,7 @@ let invert_factors (invert : inverter) (fs : factors) : factors =
  * arguments
  * Especially since rels will go negative
  *)
-let build_swap_map (env : env) (o : types) (n : types) : swap_map =
+let build_swap_map (env : env) (evd : evar_map) (o : types) (n : types) : swap_map =
   let rec build_swaps i swap =
     match map_tuple kind swap with
     | (App (f_s, args_s), App (f_n, args_n)) ->
@@ -63,7 +69,7 @@ let build_swap_map (env : env) (o : types) (n : types) : swap_map =
     | (_, _) ->
        no_swaps
   in
-  let srcs = List.filter (convertible env o) (all_typ_swaps_combs env n) in
+  let srcs = List.filter (convertible env evd o) (all_typ_swaps_combs env evd n) in
   merge_swaps (List.map (fun s -> build_swaps 0 (s, n)) srcs)
 
 (*

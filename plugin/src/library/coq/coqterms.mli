@@ -30,7 +30,10 @@ val projT1 : types
 val projT2 : types
 val eq : types
 val eq_refl : types
+val eq_ind_r : types
 val eq_ind : types
+val eq_rec_r : types
+val eq_rec : types
 val eq_sym : types
 
 (* --- Questions about constants --- *)
@@ -40,6 +43,12 @@ val eq_sym : types
  * For efficiency, don't consider convertible terms
  *)
 val applies_identity : types -> bool
+
+(*
+ * Check if a term is a rewrite via eq_ind or eq_ind_r
+ * For efficiency, don't consider convertible terms
+ *)
+val is_rewrite : types -> bool
                
 (* --- Representations --- *)
 

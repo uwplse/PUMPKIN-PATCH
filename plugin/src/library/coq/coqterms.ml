@@ -74,9 +74,21 @@ let eq : types =
 let eq_refl : types =
   mkConstruct (fst (destInd eq), 1)
 
-(* Eliminator for quality *)
+(* Symmetric eliminator for equality *)
+let eq_ind_r : types =
+  mkConst (Constant.make2 coq_init_logic (Label.make "eq_ind_r"))
+
+(* Eliminator for equality *)
 let eq_ind : types =
   mkConst (Constant.make2 coq_init_logic (Label.make "eq_ind"))
+
+(* Symmetric eleiminator for equality into type *)
+let eq_rec_r : types =
+  mkConst (Constant.make2 coq_init_logic (Label.make "eq_rec_r"))
+
+(* Eliminator for equality into type *)
+let eq_rec : types =
+  mkConst (Constant.make2 coq_init_logic (Label.make "eq_rec"))
 
 (* Symmetry *)
 let eq_sym : types =
@@ -99,6 +111,15 @@ let applies_identity (trm : types) : bool =
      equal f id_prop || equal f id_typ
   | _ ->
      false
+
+(*
+ * Check if a term is a rewrite via eq_ind or eq_ind_r
+ * For efficiency, just check syntactic equality
+ * Don't consider convertible terms for now
+ *)
+let is_rewrite (trm : types) : bool =
+  let eq_term = equal trm in
+  eq_term eq_ind_r || eq_term eq_ind || eq_term eq_rec_r || eq_term eq_rec
 
 (* --- Representations --- *)
 
