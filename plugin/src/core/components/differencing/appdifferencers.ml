@@ -6,7 +6,8 @@ open Proofdiff
 open Candidates
 open Searchopts
 open Coqterms
-open Collections
+open Evd
+open Utilities
 open Proofdifferencers
 open Higherdifferencers
 open Assumptions
@@ -55,10 +56,10 @@ open Filters
  *
  * TODO: clean up
  *)
-let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
+let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candidates =
   let (_, env) = fst (old_proof (dest_goals d)) in
-  match kinds_of_terms (proof_terms d) with
-  | (App (f_o, args_o), App (f_n, args_n)) when same_length args_o args_n ->
+  match map_tuple kind (proof_terms d) with
+  | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
      let diff_rec diff opts = diff_terms (diff opts) d opts in
      let d_f = difference f_o f_n no_assumptions in
      let d_args = difference args_o args_n no_assumptions in
@@ -66,7 +67,7 @@ let diff_app diff_f diff_arg opts (d : goal_proof_diff) : candidates =
       | Kindofchange.InductiveType (_, _) ->
          diff_rec diff_f opts d_f
       | Kindofchange.FixpointCase ((_, _), cut) ->
-         let filter_diff_cut diff = filter_diff (filter_cut env cut) diff in
+         let filter_diff_cut diff = filter_diff (filter_cut env evd cut) diff in
          let fs = filter_diff_cut (diff_rec diff_f opts) d_f in
          if non_empty fs then
            fs

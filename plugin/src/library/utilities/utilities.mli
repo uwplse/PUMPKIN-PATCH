@@ -95,7 +95,6 @@ val split_at : int -> 'a list -> (('a list) * ('a list))
 val map_tuple : ('a -> 'b) -> ('a * 'a) -> ('b * 'b)
 val fold_tuple : ('a -> 'b -> 'c) -> ('a * 'b) -> 'c
 val twice : ('a -> 'a -> bool -> 'b) -> 'a -> 'a -> ('b * 'b)
-val reverse: ('a * 'b) -> ('b * 'a)
 
 (* --- Propositions --- *)
 

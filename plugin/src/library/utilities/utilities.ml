@@ -130,10 +130,6 @@ let twice (f : 'a -> 'a -> bool -> 'b) (a1 : 'a) (a2 : 'a) : 'b * 'b  =
   let backward = f a2 a1 false in
   (forward, backward)
 
-(* Reverse a tuple *)
-let reverse ((a, b) : 'a * 'b) : 'b * 'a =
-  (b, a)
-
 (* Map3 *)
 let rec map3 (f : 'a -> 'b -> 'c -> 'd) l1 l2 l3 : 'd list =
   match (l1, l2, l3) with
