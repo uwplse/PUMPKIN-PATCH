@@ -315,10 +315,17 @@ val declare_inductive : Id.t -> Id.t list -> bool -> Entries.inductive_universes
 
 (* --- Environments --- *)
 
-(*
- * Return a list of all indexes in env as ints, starting with 1
- *)
+(* Look up all indexes from a list in an environment *)
+val lookup_rels : int list -> env -> Rel.Declaration.t list
+
+(* Return a list of all indexes in an environment, starting with 1 *)
 val all_rel_indexes : env -> int list
+
+(* Return a list of all bindings in an environment, starting with the closest *)
+val lookup_all_rels : env -> Rel.Declaration.t list
+
+(* Push something to the highest position in an environment *)
+val push_last : Rel.Declaration.t -> env -> env
 
 (*
  * Return a list of relative indexes, from highest to lowest, of size n

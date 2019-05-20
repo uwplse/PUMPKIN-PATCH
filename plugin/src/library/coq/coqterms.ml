@@ -482,9 +482,29 @@ let on_type f env evd trm =
 
 (* --- Environments --- *)
 
+(* Look up all indexes from is in env *)
+let lookup_rels (is : int list) (env : env) : CRD.t list =
+ List.map (fun i -> lookup_rel i env) is
+
 (* Return a list of all indexes in env, starting with 1 *)
 let all_rel_indexes (env : env) : int list =
   from_one_to (nb_rel env)
+
+(* Return a list of all bindings in env, starting with the closest *)
+let lookup_all_rels (env : env) : CRD.t list =
+  lookup_rels (all_rel_indexes env) env
+
+(*
+ * Push something to the highest position in an environment.
+ *
+ * Note: We need pop_rel_conext (nb_rel env) env rather than empty_env
+ * because empty_env does not contain global definitions like nat.
+ *)
+let push_last (decl : CRD.t) (env : env) : env =
+  List.fold_left
+    (fun en decl -> push_rel decl en)
+    (pop_rel_context (nb_rel env) env)
+    (decl :: (List.rev (lookup_all_rels env)))
 
 (* Make n relative indices, from highest to lowest *)
 let mk_n_rels n =

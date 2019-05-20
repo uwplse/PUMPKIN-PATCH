@@ -3,8 +3,8 @@
 open Environ
 open Constr
 open Hofs
-open Collections
-open Coqenvs
+open Utilities
+open Coqterms
 
 (* TODO move shiftability into a module/functor *)
 
