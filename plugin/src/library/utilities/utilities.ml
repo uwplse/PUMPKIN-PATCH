@@ -64,6 +64,19 @@ let rec unique (eq : 'a -> 'a -> bool)  (l : 'a list) : 'a list =
  *)
 let flat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
   List.flatten (List.map f l)
+
+(*
+ * Cartesian product of two lists
+ * From http://stackoverflow.com/questions/1507496/ocaml-permutation-of-every-value-in-two-sets-how-to-translate-this-from-java
+ *)
+let cartesian (l1 : 'a list) (l2 : 'b list) : ('a * 'b) list =
+  List.concat (List.map (fun a -> List.map (fun b -> (a, b)) l2) l1)
+
+(*
+ * Combine all permutations of pairs of elements in lists l1 and l2 via f
+ *)
+let combine_cartesian (f : 'a -> 'b -> 'c) (l1 : 'a list) (l2 : 'b list) : 'c list =
+  List.map (fun (a, b) -> f a b) (cartesian l1 l2)
                
 (* Map f over a tuple *)
 let map_tuple (f : 'a -> 'b) ((a1, a2) : ('a * 'a)) : ('b * 'b) =

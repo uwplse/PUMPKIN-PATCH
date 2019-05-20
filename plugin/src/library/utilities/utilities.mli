@@ -40,7 +40,18 @@ val unique : ('a -> 'a -> bool) -> 'a list -> 'a list
 (*
  * Map a function over a list, then flatten the result
  *)
-val flat_map : ('a -> 'b list) -> 'a list -> 'b list    
+val flat_map : ('a -> 'b list) -> 'a list -> 'b list
+
+(*
+ * Cartesian product of two lists
+ *)
+val cartesian : 'a list -> 'b list -> ('a * 'b) list
+                                                
+(*
+ * Combine all permutations of pairs of elements in two lists
+ * Use some combinator function to combine them
+ *)
+val combine_cartesian : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 
 (*
  * [min, max)
