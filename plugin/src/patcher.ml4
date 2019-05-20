@@ -124,45 +124,6 @@ let do_desugar_constant ident const_ref =
     end
 
 (*
- * Convert a term into a global reference with universes (or raise Not_found)
- *
- * When we merge DEVOID into PUMPKIN, this will move to coqterms,
- * but this doesn't make sense to move yet.
- *)
-let pglobal_of_constr term =
-  match Constr.kind term with
-  | Const (const, univs) -> ConstRef const, univs
-  | Ind (ind, univs) -> IndRef ind, univs
-  | Construct (cons, univs) -> ConstructRef cons, univs
-  | Var id -> VarRef id, Univ.Instance.empty
-  | _ -> raise Not_found
-
-(* Convert a global reference with universes into a term *)
-let constr_of_pglobal (glob, univs) =
-  match glob with
-  | ConstRef const -> mkConstU (const, univs)
-  | IndRef ind -> mkIndU (ind, univs)
-  | ConstructRef cons -> mkConstructU (cons, univs)
-  | VarRef id -> mkVar id
-
-(*
- * Substitute global references throughout a term
- *
- * When we merge DEVOID into PUMPKIN, this will move to coqterms,
- * but this doesn't make sense to move yet.
- *)
-let subst_globals subst term =
-  let rec aux term =
-    try
-      pglobal_of_constr term |>
-      map_puniverses (flip Globmap.find subst) |>
-      constr_of_pglobal
-    with Not_found ->
-      Constr.map aux term
-  in
-  aux term
-
-(*
  * Translate fix and match expressions into eliminations, as in
  * do_desugar_constant, compositionally throughout a whole module.
  *
