@@ -436,8 +436,8 @@ let conv_ignoring_univ_inconsistency env evm (trm1 : types) (trm2 : types) : boo
     | _ -> false
 
 (* Checks whether two terms are convertible in env with no evars *)
-let convertible (env : env) (trm1 : types) (trm2 : types) : bool =
-  conv_ignoring_univ_inconsistency env Evd.empty trm1 trm2
+let convertible (env : env) (evd : evar_map) (trm1 : types) (trm2 : types) : bool =
+  conv_ignoring_univ_inconsistency env evd trm1 trm2
 
 (* Default reducer *)
 let reduce_term (env : env) (trm : types) : types =
@@ -485,7 +485,7 @@ let types_convertible (env : env) (evd : evar_map) (trm1 : types) (trm2 : types)
   try
     let typ1 = infer_type env evd trm1 in
     let typ2 = infer_type env evd trm2 in
-    convertible env typ1 typ2
+    convertible env evd typ1 typ2
   with _ -> false
 
 (* --- Environments --- *)

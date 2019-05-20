@@ -507,10 +507,8 @@ val e_infer_sort : env -> evar_map ref -> constr -> Sorts.family
 (* Safely instantiate a global reference, updating the evar map. *)
 val e_new_global : evar_map ref -> global_reference -> constr
 
-(*
- * Convertibility, ignoring universe constraints
- *)
-val convertible : env -> types -> types -> bool
+(* Convertibility *)
+val convertible : env -> evar_map -> types -> types -> bool
 
 (*
  * Reduction

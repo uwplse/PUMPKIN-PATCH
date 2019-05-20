@@ -1,20 +1,21 @@
 (* Substitution auxiliary functions *)
 
 open Environ
+open Evd
 open Constr
 open Coqterms
 open Hofs
 open Debruijn
 
 (* TODO clean up so retrieval is easier *)
-type ('a, 'b) substitution = env -> 'a -> types -> 'b
+type ('a, 'b) substitution = env -> evar_map -> 'a -> types -> 'b
 type 'a comb_substitution = ('a, types list) substitution
 type 'a type_substitution = ('a, types) substitution
 
 (* Map a substitution over a term *)
-let all_substs p env (src, dst) trm : types =
+let all_substs p env evd (src, dst) trm : types =
   map_term_env_if
-    (fun en (s, _) t -> p en s t)
+    (fun en (s, _) t -> p en evd s t)
     (fun _ (_, d) _ -> d)
     (fun (s, d) -> (shift s, shift d))
     env
@@ -22,9 +23,9 @@ let all_substs p env (src, dst) trm : types =
     trm
 
 (* Map all combinations of a substitution over a term *)
-let all_substs_combs p env (src, dst) trm : types list =
+let all_substs_combs p env evd (src, dst) trm : types list =
   map_subterms_env_if
-    (fun en (s, _) t -> p en s t)
+    (fun en (s, _) t -> p en evd s t)
     (fun _ (_, d) t -> [d; t])
     (fun (s, d) -> (shift s, shift d))
     env
@@ -43,12 +44,12 @@ let all_typ_substs : (types * types) type_substitution =
  * Check if a subterm matches applies a constructor function pat to
  * an argument with the type of itself
  *)
-let constructs_recursively env c trm : bool =
+let constructs_recursively env evd c trm : bool =
   if isApp trm then
     try
       let (f, args) = destApp trm in
-      let conv = convertible env in
-      let types_conv = types_convertible env in
+      let conv = convertible env evd in
+      let types_conv = types_convertible env evd in
       conv f c && List.exists (types_conv trm) (Array.to_list args)
     with _ ->
       false
@@ -64,12 +65,12 @@ let constructs_recursively env c trm : bool =
  *
  * Can generalize this further
  *)
-let all_constr_substs env c trm : types =
+let all_constr_substs env evd c trm : types =
   map_term_env_if
-    constructs_recursively
+    (fun env -> constructs_recursively env evd)
     (fun _ _ t ->
       let (_, args_t) = destApp t in
-      List.find (types_convertible env t) (Array.to_list args_t))
+      List.find (types_convertible env evd t) (Array.to_list args_t))
     shift
     env
     c

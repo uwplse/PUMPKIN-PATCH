@@ -2,9 +2,10 @@
 
 open Environ
 open Constr
+open Evd
 
 (* TODO clean up so retrieval is easier *)
-type ('a, 'b) substitution = env -> 'a -> types -> 'b
+type ('a, 'b) substitution = env -> evar_map -> 'a -> types -> 'b
 type 'a comb_substitution = ('a, types list) substitution
 type 'a type_substitution = ('a, types) substitution
 
