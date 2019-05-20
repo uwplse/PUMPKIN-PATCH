@@ -1,43 +1,111 @@
-(* Miscellaneous utility functions *)
-
-(* Constant ID *)
-let k_fresh = ref (1)
+open Util
 
 (*
- * Get a fresh constant identifier
+ * Basic utilities for collections, optionals, and so on
  *)
-let fid () : int =
-  let id = !k_fresh in
-  k_fresh := id + 1;
-  id
+
+(* This should be in the standard library, but isn't bound for some reason *)
+let map_default f default x =
+  if Option.has_some x then f (Option.get x) else default
+
+(* Get the last element of a list *)
+let last (l : 'a list) : 'a =
+  List.hd (List.rev l)
+
+(* Get all but the last element of a list *)
+let all_but_last (l : 'a list) : 'a list =
+  List.rev (List.tl (List.rev l))
+
+(* Snoc *)
+let snoc (a : 'a) (l : 'a list) : 'a list =
+  List.append l [a]
+
+(* Take n elements of a list *)
+let rec take (i : int) (l : 'a list) : 'a list =
+  if i = 0 then
+    []
+  else
+    match l with
+    | [] ->
+       []
+    | h :: tl ->
+       h :: (take (i - 1) tl)
+
+(* Take all but n elements of a list *)
+let take_except (i : int) (l : 'a list) : 'a list =
+  take (List.length l - i) l
+
+(* Like take, but return the remainder too *)
+let rec take_split (i : int) (l : 'a list) : ('a list * 'a list) =
+  if i = 0 then
+    ([], l)
+  else
+    match l with
+    | [] ->
+       ([], [])
+    | h :: tl ->
+       let (before, after) = take_split (i - 1) tl in
+       (h :: before, after)
 
 (*
- * The identity function
+ * Remove duplicates from a list
  *)
-let id (x : 'a) : 'a =
-  x
+let rec unique (eq : 'a -> 'a -> bool)  (l : 'a list) : 'a list =
+  match l with
+  | [] -> []
+  | h :: t -> h :: (List.filter (fun a -> not (eq h a)) (unique eq t))
+
+(* Map f over a tuple *)
+let map_tuple (f : 'a -> 'b) ((a1, a2) : ('a * 'a)) : ('b * 'b) =
+  (f a1, f a2)
+
+(* Apply a function twice with a directionality indicator *)
+let twice (f : 'a -> 'a -> bool -> 'b) (a1 : 'a) (a2 : 'a) : 'b * 'b  =
+  let forward = f a1 a2 true in
+  let backward = f a2 a1 false in
+  (forward, backward)
+
+(* Reverse a tuple *)
+let reverse ((a, b) : 'a * 'b) : 'b * 'a =
+  (b, a)
+
+(* Map3 *)
+let rec map3 (f : 'a -> 'b -> 'c -> 'd) l1 l2 l3 : 'd list =
+  match (l1, l2, l3) with
+  | ([], [], []) ->
+     []
+  | (h1 :: t1, h2 :: t2, h3 :: t3) ->
+     let r = f h1 h2 h3 in r :: map3 f t1 t2 t3
 
 (*
- * Always return b, given any a
+ * Creates a list of the range of min to max, excluding max
+ * This is an auxiliary function renamed from seq in template-coq
  *)
-let always (b : 'b) (_ : 'a) : 'b =
-  b
+let rec range (min : int) (max : int) : int list =
+  if min < max then
+    min :: range (min + 1) max
+  else
+    []
 
-(*
- * Test p on a
- * If it is true, apply f_true
- * Otherwise, apply f_false
- *)
-let map_if (p : 'a -> bool) (f_true : 'a -> 'b) (f_false : 'a -> 'b) (a : 'a) : 'b =
-  (if p a then f_true else f_false) a
+(* Creates a list from the index 1 to max, inclusive *)
+let from_one_to (max : int) : int list =
+  range 1 (max + 1)
 
-(* Join two predicates by and *)
-let and_p (p1 : 'a -> bool) (p2 : 'a -> bool) (a : 'a) : bool =
-  p1 a && p2 a
+(* Always true *)
+let always_true _ = true
 
-(* Join two predicates by or *)
-let or_p (p1 : 'a -> bool) (p2 : 'a -> bool) (a : 'a) : bool =
-  p1 a || p2 a
+(* Check that p a and p b are both true *)
+let and_p (p : 'a -> bool) (o : 'a) (n : 'a) : bool =
+  p o && p n
+
+(* Control structures *)
+let map_if_else f g b x = if b then f x else g x
+let map_if f b x = map_if_else f (fun a -> a) b x
 
 (* Flip the first and second parameters of a function. *)
 let flip f = fun x y -> f y x
+
+(* Look up the name referenced by a term and append a suffix to it. *)
+let suffix_term_name term suffix =
+  let base = Nametab.basename_of_global (Globnames.global_of_constr term) in
+  Nameops.add_suffix base (Names.Id.to_string suffix)

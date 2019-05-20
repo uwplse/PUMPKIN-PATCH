@@ -19,6 +19,10 @@ module Globset = Globnames.Refset
 
 module CRD = Context.Rel.Declaration
 
+(*
+ * TODO remove unused functions for now
+ *)
+               
 (* --- Constants --- *)
 
 let coq_init_specif =
