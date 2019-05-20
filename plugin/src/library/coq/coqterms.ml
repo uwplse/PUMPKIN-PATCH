@@ -446,6 +446,60 @@ let transform_constant ident tr_constr const_body =
   let term' = tr_constr env evm term in
   let type' = tr_constr env evm const_body.const_type in
   define_term ~typ:type' ident !evm term' true |> Globnames.destConstRef
+                                         
+(*
+ * Declare a new module structure under the given name with the compositionally
+ * transformed (i.e., forward-substituted) components from the given module
+ * structure. Names for the components remain the same.
+ *
+ * The optional initialization function is called immediately after the module
+ * structure begins, and its returned subsitution is applied to all other module
+ * elements.
+ *
+ * NOTE: Does not support functors or nested modules.
+ * NOTE: Global side effects.
+ *)
+let transform_module_structure ?(init=const Globmap.empty) ident tr_constr mod_body =
+  let mod_path = mod_body.mod_mp in
+  let mod_arity, mod_elems = decompose_module_signature mod_body.mod_type in
+  assert (List.is_empty mod_arity); (* Functors are not yet supported *)
+  let transform_module_element subst (label, body) =
+    let ident = Label.to_id label in
+    let tr_constr env evm = subst_globals subst %> tr_constr env evm in
+    match body with
+    | SFBconst const_body ->
+      let const = Constant.make2 mod_path label in
+      if Globmap.mem (ConstRef const) subst then
+        subst (* Do not transform schematic definitions. *)
+      else
+        let const' = transform_constant ident tr_constr const_body in
+        Globmap.add (ConstRef const) (ConstRef const') subst
+    | SFBmind mind_body ->
+      check_inductive_supported mind_body;
+      let ind = (MutInd.make2 mod_path label, 0) in
+      let ind_body = mind_body.mind_packets.(0) in
+      let ind' = transform_inductive ident tr_constr (mind_body, ind_body) in
+      let ncons = Array.length ind_body.mind_consnames in
+      let list_cons ind = List.init ncons (fun i -> ConstructRef (ind, i + 1)) in
+      let sorts = ind_body.mind_kelim in
+      let list_elim ind = List.map (Indrec.lookup_eliminator ind) sorts in
+      Globmap.add (IndRef ind) (IndRef ind') subst |>
+      List.fold_right2 Globmap.add (list_cons ind) (list_cons ind') |>
+      List.fold_right2 Globmap.add (list_elim ind) (list_elim ind')
+    | SFBmodule mod_body ->
+      Feedback.msg_warning
+        Pp.(str "Skipping nested module structure " ++ Label.print label);
+      subst
+    | SFBmodtype sig_body ->
+      Feedback.msg_warning
+        Pp.(str "Skipping nested module signature " ++ Label.print label);
+      subst
+  in
+  declare_module_structure
+    ident
+    (fun () ->
+       ignore (List.fold_left transform_module_element (init ()) mod_elems))
+
 
 (* --- Types --- *)
 
