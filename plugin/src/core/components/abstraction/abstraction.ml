@@ -4,10 +4,11 @@ open Proofcatterms
 open Abstracters
 open Abstractionconfig
 open Environ
+open Evd
 open Constr
 open Debruijn
 open Coqterms
-open Collections
+open Utilities
 open Reducers
 open Specialization
 open Candidates
@@ -15,6 +16,7 @@ open Proofdiff
 open Searchopts
 open Cutlemma
 open Filters
+open Zooming
 
 module CRD = Context.Rel.Declaration
 
@@ -33,11 +35,11 @@ type abstraction_options =
  * Wrap each candidate in a lambda from anonymous terms with the types of args
  * Assumes all arguments are bound in env
  *)
-let generalize (env : env) (num_to_abstract : int) (cs : candidates) : candidates =
+let generalize (env : env) (evd : evar_map) (num_to_abstract : int) (cs : candidates) : candidates =
   snd
     (List.fold_right
        (fun _ (en, l) ->
-         let typ = unshift (infer_type en (mkRel 1)) in
+         let typ = unshift (infer_type en evd (mkRel 1)) in
          let env_pop = Environ.pop_rel_context 1 en in
          (env_pop, List.map (fun b -> mkLambda (Names.Name.Anonymous, typ, b)) l))
        (range 1 (num_to_abstract + 1))
@@ -53,7 +55,7 @@ let get_prop_abstract_goal_type (config : abstraction_config) =
   let base = mkApp (prop, Array.of_list config.args_base) in
   let goal = mkApp (prop, Array.of_list config.args_goal) in
   let goal_type_env = mkProd (Names.Name.Anonymous, base, shift goal) in
-  reconstruct_prod env goal_type_env
+  reconstruct_product env goal_type_env
 
 (*
  * From a common environment, source type, destination type,
