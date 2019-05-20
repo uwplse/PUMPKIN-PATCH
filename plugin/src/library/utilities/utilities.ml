@@ -175,8 +175,21 @@ let suffix_term_name term suffix =
   let base = Nametab.basename_of_global (Globnames.global_of_constr term) in
   Nameops.add_suffix base (Names.Id.to_string suffix)
 
+(* --- Common helper functions --- *)
+                     
 (*
  * The identity function
  *)
 let id (a : 'a) =
   a
+
+(* Constant ID *)
+let k_fresh = ref (1)
+
+(*
+ * Get a fresh constant identifier
+ *)
+let fid () : int =
+  let id = !k_fresh in
+  k_fresh := id + 1;
+  id

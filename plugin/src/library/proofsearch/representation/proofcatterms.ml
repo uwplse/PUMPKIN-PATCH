@@ -7,7 +7,6 @@ open Names
 open Debruijn
 open Assumptions
 open Utilities
-open Collections
 
 module CRD = Context.Rel.Declaration
 
