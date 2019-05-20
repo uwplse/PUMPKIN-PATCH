@@ -13,6 +13,9 @@ open Declarations
 open Decl_kinds
 open Constrextern
 
+module Globmap = Globnames.Refmap
+module Globset = Globnames.Refset
+
 module CRD = Context.Rel.Declaration
 
 (* Auxiliary types *)

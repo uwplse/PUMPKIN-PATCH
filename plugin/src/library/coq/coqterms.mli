@@ -6,6 +6,11 @@ open Constr
 open Declarations
 open Names
 
+module Globmap = Globnames.Refmap
+module Globset = Globnames.Refset
+
+module CRD = Context.Rel.Declaration
+
 (* Auxiliary types *)
 
 type closure = env * (types list)
@@ -156,7 +161,7 @@ val transform_constant : Id.t -> constr_transformer -> constant_body -> Constant
  * NOTE: Does not support functors or nested modules.
  * NOTE: Global side effects.
  *)
-val transform_module_structure : ?init:(unit -> global_substitution) -> Id.t -> constr_transformer -> module_body -> ModPath.t
+val transform_module_structure : ?init:(unit -> global_reference Globmap.t) -> Id.t -> constr_transformer -> module_body -> ModPath.t
 
 (* --- Convertibility of terms --- *)
 
