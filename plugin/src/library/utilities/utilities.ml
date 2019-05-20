@@ -156,6 +156,21 @@ let rec range (min : int) (max : int) : int list =
 let from_one_to (max : int) : int list =
   range 1 (max + 1)
 
+(*
+ * This is an auxiliary function from StackOverflow
+ * Splits a list at an index
+ *)
+let rec split_at (n : int) (l : 'a list) : (('a list) * ('a list)) =
+  if n = 0 then
+    ([], l)
+  else
+    match l with
+      h :: t ->
+        let (l1, l2) = split_at (n - 1) t in
+        (h :: l1, l2)
+    | [] ->
+       ([], [])
+        
 (* Always true *)
 let always_true _ = true
 

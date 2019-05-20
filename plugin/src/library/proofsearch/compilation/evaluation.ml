@@ -2,16 +2,21 @@
 
 open Constr
 open Environ
+open Evd
 open Proofcat
 open Proofcatterms
 open Coqterms
 open Utilities
 open Names
 open Debruijn
-open Collections
 open Declarations
 
 module CRD = Context.Rel.Declaration
+
+(*
+ * Note: Evar discipline is not good yet, but should wait until after
+ * the major refactor, since this will change a lot.
+ *)
 
 (*
  * Evaluate typ one step in env
@@ -28,7 +33,7 @@ let eval_theorem (env : env) (typ : types) : proof_cat =
 
 (* Evaluate a proof trm one step *)
 let eval_proof (env : env) (trm : types) : proof_cat =
-  let typ = infer_type env trm in
+  let typ = infer_type env Evd.empty trm in
   eval_theorem_bind (ext_of_term env trm) env typ
 
 (* Evaluate an arrow as a proof *)

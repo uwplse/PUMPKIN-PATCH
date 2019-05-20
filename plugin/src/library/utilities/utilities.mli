@@ -85,6 +85,11 @@ val range : int -> int -> int list
  *)
 val from_one_to : int -> int list
 
+(*
+ * Splits a list at an index into two lists
+ *)
+val split_at : int -> 'a list -> (('a list) * ('a list))
+
 (* --- Tuples --- *)
 
 val map_tuple : ('a -> 'b) -> ('a * 'a) -> ('b * 'b)
