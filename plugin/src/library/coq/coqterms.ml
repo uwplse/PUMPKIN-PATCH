@@ -121,6 +121,15 @@ let is_rewrite (trm : types) : bool =
   let eq_term = equal trm in
   eq_term eq_ind_r || eq_term eq_ind || eq_term eq_rec_r || eq_term eq_rec
 
+(* --- Convenient applications of constants --- *)
+                                                
+(* Get the Coq identity term for typ *)
+let identity_term (env : env) (typ : types) : types =
+  let id = mkApp (id_prop, Array.make 1 typ) in
+  try
+    let _ = Typeops.infer env id in id
+  with _ -> mkApp (id_typ, Array.make 1 typ)
+                                                                    
 (* --- Representations --- *)
 
 (** Construct the external expression for a definition. *)

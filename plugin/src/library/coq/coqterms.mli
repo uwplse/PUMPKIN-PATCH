@@ -49,7 +49,14 @@ val applies_identity : types -> bool
  * For efficiency, don't consider convertible terms
  *)
 val is_rewrite : types -> bool
-               
+
+(* --- Convenient applications of constants --- *)
+
+(*
+ * Get the Coq identity function instantiated at a given type
+ *)
+val identity_term : env -> types -> types
+                            
 (* --- Representations --- *)
 
 (** Construct the external expression for a definition. *)
