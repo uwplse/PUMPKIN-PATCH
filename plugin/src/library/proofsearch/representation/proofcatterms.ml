@@ -338,9 +338,9 @@ let rec substitute_ext_env (env : env) (e : extension) : extension =
  * (This would be cleaner with a proper opposite category)
  *)
 let partition_initial_terminal (c : proof_cat) (is_initial : bool) : (context_object list) * arrow * (arrow list) =
-  let i_or_t = map_if (always is_initial) initial terminal c in
+  let i_or_t = map_if_else initial terminal is_initial c in
   let os = all_objects_except i_or_t (objects c) in
-  let maps = map_if (always is_initial) (maps_from i_or_t) (maps_to i_or_t) in
+  let maps = map_if_else (maps_from i_or_t) (maps_to i_or_t) is_initial in
   let (c_or_a, as_or_cs) = List.partition maps (morphisms c) in
   (os, List.hd c_or_a, as_or_cs)
 
@@ -377,7 +377,7 @@ let substitute_categories (sc : proof_cat) (dc : proof_cat) : proof_cat =
     i
     (apply_functor
       id
-      (fun (src, e, dst) -> (map_if (objects_equal i) (always t) id src, e, dst))
+      (fun (src, e, dst) -> (map_if (fun _ -> t) (objects_equal i src) src, e, dst))
       (combine (initial_opt sc) (terminal_opt dcf) sc dcf))
 
 (*
@@ -416,7 +416,7 @@ let merge_first_n (n : int) (c1 : proof_cat) (c2 : proof_cat) : proof_cat =
   let end2 = context_at_index c2 (n - 1) in
   let path2 = arrows_from c2 end2 in
   let os2 = conclusions path2 in
-  let ms2 = List.map (map_source_arrow (map_if (objects_equal end2) (always end1) id)) path2 in
+  let ms2 = List.map (map_source_arrow (fun o -> map_if (fun _ -> end1) (objects_equal end2 o) o)) path2 in
   let os = List.append (objects c1) os2 in
   let ms = List.append (morphisms c1) ms2 in
   make_category os ms (initial_opt c1) None
@@ -449,7 +449,7 @@ let merge_conclusions_nonrec (c : proof_cat) : proof_cat =
   match conclusions non_assums with
   | h :: t ->
      let os = all_objects_except_those_in t (objects c) in
-     let merge_h_t = map_if (fun o -> contains_object o t) (always h) id in
+     let merge_h_t o = map_if (fun _ -> h) (contains_object o t) o in
      let ms = map_arrows (List.map (map_dest_arrow merge_h_t)) c in
      make_category os ms (initial_opt c) (Some h)
   | [] -> c
@@ -475,19 +475,22 @@ let merge_inductive (is_rec : bool) (n : int) (c : proof_cat) : proof_cat =
  *)
 let bind (c : proof_cat) (m : arrow) : proof_cat =
   let (src, e, dst) = m in
-  let t = map_if (is_terminal c) (always (Some dst)) (always (terminal_opt c)) src in
-  let i = map_if (is_initial c) (always (Some src)) (always (initial_opt c)) dst in
-  map_if
-    (category_contains_arrow m)
-    id
-    (fun c' -> set_initial_terminal i t (add_arrow m c'))
-    (apply_functor
+  let t = if is_terminal c src then Some dst else terminal_opt c in
+  let i = if is_initial c dst then Some src else initial_opt c in
+  let c' =
+    apply_functor
       id
-      (map_if
-         (arrows_equal (src, AnonymousBinding, dst))
-         (always m)
-         id)
-      c)
+      (fun m' ->
+        if arrows_equal (src, AnonymousBinding, dst) m' then
+          m
+        else
+          m')
+      c
+  in map_if
+    (fun c' -> set_initial_terminal i t (add_arrow m c'))
+    (not (category_contains_arrow m c'))
+    c'
+   
 
 (*
  * Build a function application for the last extension in c
@@ -499,10 +502,11 @@ let bind_apply_function (e : extension) (n : int) (c : proof_cat) : proof_cat =
   let binding = List.fold_left (fun b r -> AppBinding (b, r)) e args in
   apply_functor
     id
-    (map_if
-      (maps_to (terminal c))
-      (fun (src, _, dst) -> (src, binding, dst))
-      id)
+    (fun m ->
+      map_if
+        (fun (src, _, dst) -> (src, binding, dst))
+        (maps_to (terminal c) m)
+        m)
     c
 
 (* Bind an inductive argument arg to the end of c *)
@@ -511,10 +515,11 @@ let bind_inductive_arg (arg : types) (c : proof_cat) : proof_cat =
   let bound = ext_of_term (context_env t) arg in
   apply_functor
     id
-    (map_if
-       (maps_to t)
-       (map_ext_arrow (always bound))
-       id)
+    (fun m ->
+      map_if
+        (map_ext_arrow (fun _ -> bound))
+        (maps_to t m)
+        m)
     c
 
 (* Bind an array of inductive arguments args to each category in cs *)
