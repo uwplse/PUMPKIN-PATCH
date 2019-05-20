@@ -12,6 +12,7 @@ open Cutlemma
 type abstraction_config =
   {
     env : env;
+    evd : evar_map;
     args_base : types list;
     args_goal : types list;
     cs : candidates;
@@ -27,7 +28,7 @@ type abstraction_config =
  * configure the default configuration for abstraction of arguments
  *)
 val configure_args :
-  env -> types proof_diff -> candidates -> abstraction_config
+  env -> evar_map -> types proof_diff -> candidates -> abstraction_config
 
 (*
  * Given an environment, a list of differences between fixpoint cases,

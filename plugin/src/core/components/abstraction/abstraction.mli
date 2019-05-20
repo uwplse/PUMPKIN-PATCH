@@ -1,6 +1,7 @@
 (* --- Abstraction Component --- *)
 
 open Constr
+open Evd
 open Candidates
 open Abstractionconfig
 open Proofdiff
@@ -22,7 +23,7 @@ val abstract_with_strategies : abstraction_config -> types list
  * If there is nothing to abstract or if we cannot determine what to
  * abstract, then return the original list.
  *)
-val abstract_case : (goal_case_diff -> candidates -> candidates) configurable
+val abstract_case : (evar_map -> goal_case_diff -> candidates -> candidates) configurable
 
 (* 
  * Replace all occurrences of the first term in the second term with Rel 1,

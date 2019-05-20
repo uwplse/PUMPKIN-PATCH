@@ -1,4 +1,5 @@
 open Environ
+open Evd
 open Constr
 open Abstracters
 open Candidates
@@ -20,6 +21,7 @@ module CRD = Context.Rel.Declaration
 type abstraction_config =
   {
     env : env;
+    evd : evar_map;
     args_base : types list;
     args_goal : types list;
     cs : candidates;
@@ -59,14 +61,14 @@ let rec configure_goal_body env evd goal c : abstraction_config =
 	   let args_goal = args_base in
 	   let f_goal = unwrap_definition env f_goal in
 	   let strategies = default_arg_strategies in
-	   {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+	   {env; evd; args_base; args_goal; cs; f_base; f_goal; strategies}
 	 else
 	   failwith "Cannot infer argument to abstract"
        else (* function *)
 	 let f_base = unwrap_definition env (fst (destApp (unshift ctb))) in
 	 let f_goal = f_base in
 	 let strategies = default_fun_strategies in
-	 {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+	 {env; evd; args_base; args_goal; cs; f_base; f_goal; strategies}
      else
        failwith "Cannot infer function or argument to abstract"
   | _ ->
@@ -78,7 +80,7 @@ let rec configure_goal_body env evd goal c : abstraction_config =
  * Default configuration for abstracting arguments for a list of candidates,
  * given the difference in goals d_type in a common environment env
  *)
-let configure_args env (d_type : types proof_diff) cs =
+let configure_args env evd (d_type : types proof_diff) cs =
   let new_goal_type = new_proof d_type in
   let old_goal_type = old_proof d_type in
   let (f_base, args_n) = destApp new_goal_type in
@@ -86,7 +88,7 @@ let configure_args env (d_type : types proof_diff) cs =
   let args_base = Array.to_list args_n in
   let args_goal = args_base in
   let strategies = default_arg_strategies in
-  {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+  {env; evd; args_base; args_goal; cs; f_base; f_goal; strategies}
 
 (*
  * Apply a dependent proposition at an index to the goal
@@ -159,7 +161,7 @@ let rec configure_args_cut_app env evd (app : types) cs : abstraction_config =
      let args_base = Array.to_list args in
      let args_goal = args_base in
      let strategies = no_reduce_strategies in
-     {env; args_base; args_goal; cs; f_base; f_goal; strategies}
+     {env; evd; args_base; args_goal; cs; f_base; f_goal; strategies}
   | _ ->
      failwith "Ill-formed cut lemma"
 
