@@ -54,6 +54,12 @@ val cartesian : 'a list -> 'b list -> ('a * 'b) list
 val combine_cartesian : ('a -> 'b -> 'c) -> 'a list -> 'b list -> 'c list
 
 (*
+ * Turns an array of lists [[t11, t12] [t21, t22] ..] into a list
+ * of arrays [[t11 t21 ..] .. [t11 t22 ..] .. [t12 t21 ..] .. [t12 t22 ..] ..]
+ *)
+val combine_cartesian_append : 'a list array -> 'a array list
+                                                                     
+(*
  * [min, max)
  *)
 val range : int -> int -> int list

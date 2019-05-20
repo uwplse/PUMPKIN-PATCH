@@ -77,7 +77,17 @@ let cartesian (l1 : 'a list) (l2 : 'b list) : ('a * 'b) list =
  *)
 let combine_cartesian (f : 'a -> 'b -> 'c) (l1 : 'a list) (l2 : 'b list) : 'c list =
   List.map (fun (a, b) -> f a b) (cartesian l1 l2)
-               
+
+(*
+ * Turns an array of lists into a list of arrays
+ *)
+let combine_cartesian_append (al : 'a list array) : 'a array list =
+  let al' = Array.to_list (Array.map (List.map (fun a -> [a])) al) in
+  if (Array.length al) <= 1 then
+    List.map Array.of_list (List.concat al')
+  else
+    List.map Array.of_list (List.fold_left (combine_cartesian List.append) (List.hd al') (List.tl al'))
+           
 (* Map f over a tuple *)
 let map_tuple (f : 'a -> 'b) ((a1, a2) : ('a * 'a)) : ('b * 'b) =
   (f a1, f a2)
