@@ -99,6 +99,10 @@ let combine_cartesian_append (al : 'a list array) : 'a array list =
 (* Map f over a tuple *)
 let map_tuple (f : 'a -> 'b) ((a1, a2) : ('a * 'a)) : ('b * 'b) =
   (f a1, f a2)
+    
+(* Fold f over a tuple *)
+let fold_tuple (f : 'a -> 'b -> 'c) ((a, b) : ('a * 'b)) : 'c =
+  f a b
 
 (* Apply a function twice with a directionality indicator *)
 let twice (f : 'a -> 'a -> bool -> 'b) (a1 : 'a) (a2 : 'a) : 'b * 'b  =
