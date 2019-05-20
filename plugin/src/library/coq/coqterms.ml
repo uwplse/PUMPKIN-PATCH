@@ -21,7 +21,6 @@ module CRD = Context.Rel.Declaration
 
 (*
  * TODO remove unused functions for now
- * TODO evar discipline is not perfect; fix
  *)
 
 (* --- Auxiliary types --- *)

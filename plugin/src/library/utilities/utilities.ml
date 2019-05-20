@@ -64,6 +64,12 @@ let rec unique (eq : 'a -> 'a -> bool)  (l : 'a list) : 'a list =
  *)
 let flat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
   List.flatten (List.map f l)
+               
+(*
+ * Return true if a list has length > 0
+ *)
+let non_empty (l : 'a list) : bool =
+  List.length l > 0
 
 (*
  * All combinations of elements in a list

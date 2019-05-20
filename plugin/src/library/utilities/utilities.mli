@@ -43,6 +43,11 @@ val unique : ('a -> 'a -> bool) -> 'a list -> 'a list
 val flat_map : ('a -> 'b list) -> 'a list -> 'b list
 
 (*
+ * Return true if a list has length > 0
+ *)
+val non_empty : 'a list -> bool
+
+(*
  * All combinations of elements in a list
  *)
 val combinations : 'a list -> ('a * 'a) list

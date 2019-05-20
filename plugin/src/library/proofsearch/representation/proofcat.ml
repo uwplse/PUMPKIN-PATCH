@@ -3,13 +3,18 @@
 open Category
 open Constr
 open Environ
+open Evd
 open Printing
 open Coqterms
 open Assumptions
 open Utilities
-open Collections
 open Merging
 
+(*
+ * Note: Evar discipline is currently very bad here. But, we will eventually
+ * get rid of this representation, so it is not worth fixing in the meantime.
+ *)
+       
 (* --- Type definitions --- *)
 
 (* TODO don't need envs in extensions when we have bindings [except for printing right now] *)
@@ -67,10 +72,10 @@ struct
     match (e1, e2) with
     | (LazyBinding(trm1, env1), LazyBinding(trm2, env2)) ->
        if env1 == env2 then
-         convertible env1 trm1 trm2
+         convertible env1 Evd.empty trm1 trm2
        else
          let (env, trm1s, trm2s) = merge_closures (env1, [trm1]) (env2, [trm2]) no_assumptions in
-         convertible env (List.hd trm1s) (List.hd trm2s)
+         convertible env Evd.empty (List.hd trm1s) (List.hd trm2s)
     | (AppBinding (e11, e21), AppBinding (e12, e22)) ->
        equal e11 e12 && equal e12 e22 (* imperfect *)
     | _ ->
@@ -142,10 +147,10 @@ let rec extensions_equal_assums (e1 : extension) (e2 : extension) (assums : equa
   match (e1, e2) with
   | (LazyBinding(trm1, env1), LazyBinding(trm2, env2)) ->
      if env1 == env2 then
-       convertible env1 trm1 trm2
+       convertible env1 Evd.empty trm1 trm2
      else
        let (env, trm1s, trm2s) = merge_closures (env1, [trm1]) (env2, [trm2]) assums in
-       convertible env (List.hd trm1s) (List.hd trm2s)
+       convertible env Evd.empty (List.hd trm1s) (List.hd trm2s)
   | (AppBinding (e11, e21), AppBinding (e12, e22)) ->
      extensions_equal_assums e11 e12 assums
      && extensions_equal_assums e12 e22 assums (* imperfect *)
@@ -441,14 +446,14 @@ let is_not_hypothesis (c : proof_cat) (o : context_object) : bool =
  * Check if src reaches dst via some explicit path in c
  *)
 let has_path (c : proof_cat) (src : context_object) (dst : context_object) : bool =
-  let rec reaches ms s d =
-    map_if
-      (objects_equal s)
-      (always true)
+  let rec reaches ms (s : context_object) (d : context_object) =
+    map_if_else
+      (always_true)
       (fun d' ->
         let reaches_rec = fun s' -> reaches ms s' d' in
         let adj = arrows_with_source s ms in
         non_empty adj && List.exists id (List.map (map_dest reaches_rec) adj))
+      (objects_equal s d)
       d
   in reaches (morphisms c) src dst
 
