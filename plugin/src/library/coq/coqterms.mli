@@ -17,6 +17,10 @@ module Globset = Globnames.Refset
 
 module CRD = Context.Rel.Declaration
 
+(* --- Auxiliary types --- *)
+               
+type closure = env * (types list)
+
 (* --- Constants --- *)
 
 val sigT : types
