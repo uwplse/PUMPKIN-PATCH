@@ -33,6 +33,10 @@ let coq_init_logic =
   ModPath.MPfile
     (DirPath.make (List.map Id.of_string ["Logic"; "Init"; "Coq"]))
 
+let coq_init_datatypes =
+  ModPath.MPfile
+    (DirPath.make (List.map Id.of_string ["Datatypes"; "Init"; "Coq"]))
+
 (* sigma types *)
 let sigT : types =
   mkInd (MutInd.make1 (KerName.make2 coq_init_specif (Label.make "sigT")), 0)
@@ -68,6 +72,24 @@ let eq_ind : types =
 (* Symmetry *)
 let eq_sym : types =
   mkConst (Constant.make2 coq_init_logic (Label.make "eq_sym"))
+
+(* The identity proposition *)
+let id_prop : types =
+  mkConst (Constant.make2 coq_init_datatypes (Label.make "idProp"))
+
+(* The identity type *)
+let id_typ : types =
+  mkConst (Constant.make2 coq_init_datatypes (Label.make "id"))
+
+(* --- Questions about constants --- *)
+
+(* Determine if a term applies an identity term *)
+let applies_identity (trm : types) : bool =
+  match kind trm with
+  | App (f, _) ->
+     equal f id_prop || equal f id_typ
+  | _ ->
+     false
 
 (* --- Representations --- *)
 

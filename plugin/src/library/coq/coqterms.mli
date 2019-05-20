@@ -29,6 +29,14 @@ val eq_refl : types
 val eq_ind : types
 val eq_sym : types
 
+(* --- Questions about constants --- *)
+
+(*
+ * Determine if a term applies an identity term
+ * For efficiency, don't consider convertible terms
+ *)
+val applies_identity : types -> bool
+               
 (* --- Representations --- *)
 
 (** Construct the external expression for a definition. *)
