@@ -2,8 +2,9 @@
 
 open Constr
 open Environ
+open Evd
 
-type 'a filter_strategy = env -> types -> 'a list -> 'a list
+type 'a filter_strategy = env -> evar_map -> types -> 'a list -> 'a list
 
 (* Filter a list of terms to those that have the goal type *)
 val filter_by_type : types filter_strategy
