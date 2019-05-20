@@ -4,6 +4,10 @@ open Util
  * Basic utilities for collections, optionals, and so on
  *)
 
+(*
+ * TODO remove unused functions from DEVOID 
+ *)
+
 (* This should be in the standard library, but isn't bound for some reason *)
 let map_default f default x =
   if Option.has_some x then f (Option.get x) else default
@@ -55,6 +59,12 @@ let rec unique (eq : 'a -> 'a -> bool)  (l : 'a list) : 'a list =
   | [] -> []
   | h :: t -> h :: (List.filter (fun a -> not (eq h a)) (unique eq t))
 
+(*
+ * Map a function over a list, then flatten the result
+ *)
+let flat_map (f : 'a -> 'b list) (l : 'a list) : 'b list =
+  List.flatten (List.map f l)
+               
 (* Map f over a tuple *)
 let map_tuple (f : 'a -> 'b) ((a1, a2) : ('a * 'a)) : ('b * 'b) =
   (f a1, f a2)

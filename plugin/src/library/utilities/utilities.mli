@@ -36,6 +36,11 @@ val take_split : int -> 'a list -> ('a list * 'a list)
  * Remove duplicates from a list
  *)
 val unique : ('a -> 'a -> bool) -> 'a list -> 'a list
+                                             
+(*
+ * Map a function over a list, then flatten the result
+ *)
+val flat_map : ('a -> 'b list) -> 'a list -> 'b list    
 
 (*
  * [min, max)

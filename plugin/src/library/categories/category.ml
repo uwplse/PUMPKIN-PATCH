@@ -1,6 +1,6 @@
 (* A super simple representation for small categories. *)
 
-open Collections
+open Utilities
 
 module type Opaque =
 sig
