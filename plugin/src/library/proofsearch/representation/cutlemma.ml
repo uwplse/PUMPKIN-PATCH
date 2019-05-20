@@ -2,10 +2,11 @@
 
 open Constr
 open Environ
+open Evd
 open Reducers
 open Coqterms
 open Debruijn
-open Collections
+open Utilities
 
 module CRD = Context.Rel.Declaration
 
@@ -27,17 +28,16 @@ let get_app (cut : cut_lemma) =
   cut.app
 
 (* Test if a type is exactly the type of the lemma to cut by *)
-let is_cut_strict env lemma typ =
+let is_cut_strict env evd lemma typ =
   try
-    concls_convertible env (reduce_term env lemma) (reduce_term env typ)
+    concls_convertible env evd (reduce_term env lemma) (reduce_term env typ)
   with _ ->
     false
 
 (* Test if a term has exactly the type of the lemma to cut by *)
-let has_cut_type_strict env cut trm =
+let has_cut_type_strict env evd cut trm =
   try
-    let typ = reduce_term env (infer_type env trm) in
-    is_cut_strict env (get_lemma cut) typ
+    on_type (is_cut_strict env evd (get_lemma cut)) env evd trm 
   with _ ->
     false
 
@@ -58,57 +58,55 @@ let rec flip_concls lemma =
  * Determine which one to use based on search goals, direction, options,
  * and candidates.
  *)
-let has_cut_type_strict_rev env cut trm =
+let has_cut_type_strict_rev env evd cut trm =
   try
-    let typ = reduce_term env (infer_type env trm) in
-    is_cut_strict env (flip_concls (get_lemma cut)) typ
+    on_type (is_cut_strict env evd (flip_concls (get_lemma cut))) env evd trm
   with _ ->
     false
 
 (* Test if a term has the type of the lemma or its reverse *)
-let has_cut_type_strict_sym env cut trm =
-  has_cut_type_strict env cut trm || has_cut_type_strict_rev env cut trm
+let has_cut_type_strict_sym env evd cut trm =
+  has_cut_type_strict env evd cut trm || has_cut_type_strict_rev env evd cut trm
 
 (* Check if a type is loosely the cut lemma (can have extra hypotheses) *)
-let rec is_cut env lemma typ =
-  match kinds_of_terms (lemma, typ) with
+let rec is_cut env evd lemma typ =
+  match map_tuple kind (lemma, typ) with
   | (Prod (nl, tl, bl), Prod (nt, tt, bt)) ->
      if not (isProd bl || isProd bt) then
-       is_cut_strict env lemma typ
+       is_cut_strict env evd lemma typ
      else
-       if convertible env tl tt then
-         is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) bl bt
+       if convertible env evd tl tt then
+         is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) evd bl bt
        else
-         let cut_l = is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) bl (shift typ) in
-         let cut_r = is_cut (push_rel CRD.(LocalAssum(nt, tt)) env) (shift lemma) bt in
+         let cut_l = is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) evd bl (shift typ) in
+         let cut_r = is_cut (push_rel CRD.(LocalAssum(nt, tt)) env) evd (shift lemma) bt in
          cut_l || cut_r
   | _  ->
      false
 
 (* Check if a term has loosely the cut lemma type (can have extra hypotheses) *)
-let has_cut_type env cut trm =
+let has_cut_type env evd cut trm =
   try
-    let typ = reduce_term env (infer_type env trm) in
-    is_cut env (get_lemma cut) typ
+    on_type (is_cut env evd (get_lemma cut)) env evd trm
   with _ ->
     false
 
 (* Check if a term is loosely an application of the lemma to cut by *)
-let has_cut_type_app env cut trm =
+let has_cut_type_app env evd cut trm =
   try
-    let typ = shift (reduce_term env (infer_type env trm)) in
+    let typ = shift (reduce_type env evd trm) in
     let env_cut = push_rel CRD.(LocalAssum(Names.Name.Anonymous, get_lemma cut)) env in
     let app = get_app cut in
-    let app_app = reduce_term env_cut (mkApp (app, singleton_array (mkRel 1))) in
-    let app_app_typ = infer_type env_cut app_app in
-    is_cut env_cut app_app_typ typ
+    let app_app = reduce_term env_cut (mkApp (app, Array.make 1 (mkRel 1))) in
+    let app_app_typ = infer_type env_cut evd app_app in
+    is_cut env_cut evd app_app_typ typ
   with _ ->
     false
 
 (* Check if a term is consistent with the cut type *)
 let consistent_with_cut env cut trm =
   let rec consistent en c t =
-    match kinds_of_terms (c, t) with
+    match map_tuple kind (c, t) with
     | (Prod (n, t, cb), Lambda (_, _, b)) when isProd cb && isLambda b ->
        consistent (push_rel CRD.(LocalAssum(n, t)) en) cb b
     | (Prod (_, ct, cb), Lambda (_, _, _)) ->
@@ -118,12 +116,12 @@ let consistent_with_cut env cut trm =
   in consistent env (get_lemma cut) trm
 
 (* Filter a list of terms to those with the (loose) cut lemma type *)
-let filter_cut env cut trms =
-  List.filter (has_cut_type env cut) trms
+let filter_cut env evd cut trms =
+  List.filter (has_cut_type env evd cut) trms
 
 (* Filter a list of terms to those that apply the (loose) cut lemma type *)
-let filter_applies_cut env cut trms =
-  List.filter (has_cut_type_app env cut) trms
+let filter_applies_cut env evd cut trms =
+  List.filter (has_cut_type_app env evd cut) trms
 
 (*
  * Filter a list of terms to those that are consistent with the cut type
@@ -131,7 +129,7 @@ let filter_applies_cut env cut trms =
  *)
 let filter_consistent_cut env cut trms =
   let rec make_consistent en c t =
-    match kinds_of_terms (c, t) with
+    match map_tuple kind (c, t) with
     | (Prod (n, t, cb), Lambda (_, _, b)) when isProd cb && isLambda b ->
        make_consistent (push_rel CRD.(LocalAssum(n, t)) en) cb b
     | _ ->
@@ -142,5 +140,5 @@ let filter_consistent_cut env cut trms =
     (List.filter (consistent_with_cut env cut) trms)
 
 (* This returns true when the candidates we have patch the lemma we cut by *)
-let are_cut env cut cs =
-  List.length (filter_cut env cut cs) = List.length cs
+let are_cut env evd cut cs =
+  List.length (filter_cut env evd cut cs) = List.length cs
