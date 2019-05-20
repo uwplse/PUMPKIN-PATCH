@@ -48,6 +48,12 @@ val flat_map : ('a -> 'b list) -> 'a list -> 'b list
 val non_empty : 'a list -> bool
 
 (*
+ * Return the offset of an element that satisfies p in a
+ * Fail if the element is not in the list
+ *)
+val find_off : 'a list -> ('a -> bool) -> int 
+
+(*
  * All combinations of elements in a list
  *)
 val combinations : 'a list -> ('a * 'a) list

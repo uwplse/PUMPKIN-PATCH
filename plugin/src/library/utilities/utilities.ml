@@ -72,6 +72,20 @@ let non_empty (l : 'a list) : bool =
   List.length l > 0
 
 (*
+ * Returns the offset of an element that satisfies p in a
+ *)
+let find_off (a : 'a list) (p : 'a -> bool) : int =
+  let rec find_rec a p n =
+    match a with
+    | [] -> failwith "not found"
+    | h :: tl ->
+       if p h then
+         n
+       else
+         find_rec tl p (n + 1)
+  in find_rec a p 0
+
+(*
  * All combinations of elements in a list
  *)
 let rec combinations (l : 'a list) =

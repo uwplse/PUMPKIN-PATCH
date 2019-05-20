@@ -473,13 +473,13 @@ let arrows_from (c : proof_cat) (o : context_object) : arrow list =
  *)
 let arrows_between (c : proof_cat) (src : context_object) (dst : context_object) : arrow list =
   let rec between ms s d =
-    map_if
-      (objects_equal s)
-      (always [])
+    map_if_else
+      (fun _ -> [])
       (fun d' ->
         let between_rec = fun s' -> between ms s' d' in
         let adj = arrows_with_source s ms in
         List.append adj (flat_map (map_dest between_rec) adj))
+      (objects_equal s d)
       d
   in
   let ms = morphisms c in
@@ -517,18 +517,17 @@ let shortest_path_length (c : proof_cat) (o : context_object) : int =
   assert (has_path c i o);
   let is_o = objects_equal o in
   let contains_o = contains_object o in
-  map_if
-    is_o
-    (always 0)
+  map_if_else
+    (fun _ -> 0)
     (fun s ->
       let pdsts = List.map conclusions (paths_from c s) in
       let pdsts_with_o = List.filter contains_o pdsts in
       let lengths_to_o =
         List.map
-          (fun path ->
-            (find (Array.of_list path) is_o 0) + 1)
+          (fun path -> find_off path is_o + 1)
           pdsts_with_o
       in List.hd (List.sort Pervasives.compare lengths_to_o))
+    (is_o i)
     i
 
 (* --- Functors --- *)
