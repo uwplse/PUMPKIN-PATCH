@@ -2,13 +2,12 @@
 
 open Names
 open Environ
+open Evd
 open Constr
 open Coqterms
-open Coqenvs
 open Proofcat
 open Proofcatterms
 open Evaluation
-open Collections
 open Utilities
 open Debruijn
 open Declarations
@@ -38,10 +37,10 @@ let expand_lambda (env : env) ((n, t, b) : Name.t * types * types) : proof_cat =
  * This is unfinished, and currently unused for any benchmarks
 *)
 let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
-  let mbody = lookup_mutind_body i env in
+  let mbody = lookup_mind i env in
   check_inductive_supported mbody;
   let bodies = mbody.mind_packets in
-  let env_ind = push_rel_context (bindings_for_inductive env mbody (Array.to_list bodies)) env in
+  let env_ind = push_rel_context (bindings_for_inductive env mbody bodies) env in
   let body = bodies.(ii) in
   let constrs =
     List.map
@@ -64,7 +63,7 @@ let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
 let expand_app (env : env) ((f, args) : types * types array) =
   assert (Array.length args > 0);
   let arg = args.(0) in
-  let f' = eval_proof env (mkApp (f, singleton_array arg)) in
+  let f' = eval_proof env (mkApp (f, Array.make 1 arg)) in
   let arg' = substitute_categories (eval_proof env arg) f' in
   bind_apply_function (LazyBinding (f, env)) 1 arg'
 
@@ -143,7 +142,7 @@ let expand_terminal (c : proof_cat) : proof_cat =
  *)
 let partition_expandable (c : proof_cat) : (arrow list * arrow list) =
   List.partition
-    (map_dest (and_p context_is_product (is_not_hypothesis c)))
+    (map_dest (fun o -> context_is_product o && is_not_hypothesis c o))
     (morphisms c)
 
 (*
@@ -154,7 +153,7 @@ let expand_inductive_conclusions (ms : arrow list) : proof_cat list =
   List.map
     (fun (s, e, d) ->
       let dc = expand_product_fully d in
-      let map_i_to_src = map_if (objects_equal (initial dc)) (always s) id in
+      let map_i_to_src m = if (objects_equal (initial dc) m) then s else m in
       let arity = (List.length (morphisms dc)) - 1 in
       bind_apply_function
         (shift_ext_by arity (substitute_ext_env (context_env (terminal dc)) e))
@@ -193,13 +192,10 @@ let expand_inductive_params (n : int) (c : proof_cat) : proof_cat =
   in expand n c
 
 (* Check if an o is the type of an applied inductive hypothesis in c *)
-let applies_ih (en : env) (p : types) (c : proof_cat) : context_object -> bool =
-  and_p
-    (and_p context_is_app (is_hypothesis c))
-    (fun o ->
-      let (f, _) = context_as_app o in
-      let offset = shortest_path_length c o in
-      has_type en p (unshift_by offset f))
+let applies_ih (env : env) (evd : evar_map) (p : types) (c : proof_cat) (o : context_object) : bool =
+  let (f, _) = context_as_app o in
+  let f = unshift_by (shortest_path_length c o) f in
+  (context_is_app o) && (is_hypothesis c o) && has_type env evd p f
 
 (*
  * Bind the inductive hypotheses in an expanded constructor with parameters
@@ -214,10 +210,11 @@ let bind_ihs (c : proof_cat) : proof_cat =
   let env = pop_rel_context 1 env_with_p in
   apply_functor
     id
-    (map_if
-       (map_dest (applies_ih env p c))
-       (map_ext_arrow (always (fresh_ih ())))
-       id)
+    (fun m ->
+      if map_dest (applies_ih env Evd.empty p c) m then
+        map_ext_arrow (fun _ -> fresh_ih ()) m
+      else
+        m)
     c
 
 (*
@@ -240,7 +237,7 @@ let expand_constr (c : proof_cat) : proof_cat =
 let expand_const_app env (c, u) (f, args) default =
   match inductive_of_elim env (c, u) with
   | Some mutind ->
-     let mutind_body = lookup_mutind_body mutind env in
+     let mutind_body = lookup_mind mutind env in
      let f_c = eval_proof env f in
      let f_exp = expand_inductive_params mutind_body.mind_nparams f_c in
      eval_induction mutind_body f_exp args
