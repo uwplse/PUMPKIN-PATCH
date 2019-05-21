@@ -164,19 +164,21 @@ Qed.
 
 (** ** Properties of the coercions between [Z] and [int] *)
 
-Theorem unsigned_range':
+Theorem unsigned_range:
   forall i, 0 <= unsigned i < modulus.
 Proof.
   intros i. destruct i. simpl. abstract omega.
 Qed.
-Preprocess unsigned_range' as unsigned_range.
 Hint Resolve unsigned_range: ints.
 
 (* Now get the patch from the changed proof *)
 Module IntOld := IntegersOld.Make(WS).
 
+Preprocess unsigned_range as unsigned_range_new.
 Preprocess IntOld.unsigned_range as unsigned_range_old.
-Patch Proof unsigned_range_old unsigned_range as patch.
+Patch Proof unsigned_range_old unsigned_range_new as patch.
+
+Print patch.
 
 (* Use the patch to prove repr_unsigned *)
 Hint Resolve patch.
