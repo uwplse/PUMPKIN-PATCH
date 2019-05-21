@@ -2,7 +2,6 @@
 -I src/library/categories
 -I src/library/coq
 -I src/library/proofsearch/representation
--I src/library/proofsearch/preprocessing
 -I src/library/proofsearch/compilation
 -I src/core/configuration
 -I src/core/components/abstraction
@@ -50,9 +49,6 @@ src/library/proofsearch/representation/cutlemma.mli
 src/library/proofsearch/representation/cutlemma.ml
 src/library/proofsearch/representation/kindofchange.mli
 src/library/proofsearch/representation/kindofchange.ml
-
-src/library/proofsearch/preprocessing/desugar.mli
-src/library/proofsearch/preprocessing/desugar.ml
 
 src/library/proofsearch/compilation/evaluation.mli
 src/library/proofsearch/compilation/evaluation.ml
@@ -103,6 +99,8 @@ src/core/procedures/search.mli
 src/core/procedures/search.ml
 src/core/procedures/theorem.mli
 src/core/procedures/theorem.ml
+src/core/procedures/desugar.mli
+src/core/procedures/desugar.ml
 
 src/patcher.ml4
 src/patch.mlpack
