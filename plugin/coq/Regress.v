@@ -153,5 +153,47 @@ Proof.
   reflexivity.
 Qed.
 
-(* --------------------- *)
+(* 9 *)
 
+(*
+ * This regression test ensures that we can preprocess a proof and then
+ * patch it, even when PUMPKIN isn't smart enough yet to operate directly
+ * over match statements and fixpoints. If we implement direct match/fix
+ * support at some point, the first Fail command will succeed (thereby failing), 
+ * and we should then remove the test. If the second command breaks, then it
+ * is a problem with PUMPKIN (either Preprocess of Patch Proof). 
+ *)
+
+(* A partially reduced version of old1: *)
+Definition old9 (n m p : nat) (H : n <= m) (H0 : m <= p) :=
+  (fix F (n0 : nat) (l : m <= n0) {struct l} : n <= n0 + 1 :=
+     match l in (_ <= n1) return (n <= n1 + 1) with
+     | le_n _ => 
+         le_plus_trans n m 1 H
+     | le_S _ m0 l0 =>
+         le_S n (m0 + 1) (F m0 l0)
+     end)
+   p
+   H0.
+
+(* A partially reduced version of new1: *)
+Definition new9 (n m p : nat) (H : n <= m) (H0 : m <= p) :=
+  (fix F (n0 : nat) (l : m <= n0) {struct l} : n <= n0 :=
+     match l in (_ <= n1) return (n <= n1) with
+     | le_n _ => 
+         H
+     | le_S _ m0 l0 => 
+         le_S n m0 (F m0 l0)
+     end) 
+   p 
+   H0.
+
+(* We can't handle this directly yet *)
+Patch Proof old9 new9 as patch9_bad.
+Fail Lemma testPatch9_bad: patch9_bad = expectedPatch1.
+
+(* But we can after we Preprocess *)
+Preprocess old9 as old9'.
+Preprocess new9 as new9'.
+Patch Proof old9' new9' as patch9.
+Lemma testPatch9 : patch9 = expectedPatch1. Proof. reflexivity. Qed.
