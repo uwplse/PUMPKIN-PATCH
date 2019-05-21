@@ -213,7 +213,7 @@ proofs that apply constructors).
 PUMPKIN does not yet support structural changes like adding new hypotheses,
 adding constructors or parameters to an inductive type, or adding cases to a fixpoint.
 PUMPKIN has very limited support for proofs using logic specific to decidable domains
-(such as proofs that use `omega`), and nested induction.
+(such as proofs that use `omega`) and nested induction.
 Supporting all of these features is on our roadmap.
 
 For now, if PUMPKIN fails to find a patch, it's likely due to features that are not yet implemented.
