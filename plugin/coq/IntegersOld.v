@@ -161,14 +161,14 @@ Qed.
 Theorem unsigned_range:
   forall i, 0 <= unsigned i < modulus.
 Proof.
-  intros i. induction i using int_ind; auto.
+  intros i. destruct i; auto.
 Qed.
 Hint Resolve unsigned_range: ints.
 
 Theorem repr_unsigned:
   forall i, repr (unsigned i) = i.
 Proof.
-  intros i. induction i using int_ind; simpl. unfold repr. apply mkint_eq.
+  intros i. destruct i; simpl. unfold repr. apply mkint_eq.
   rewrite Z_mod_two_p_eq. apply Zmod_small; auto.
 Qed.
 Hint Resolve repr_unsigned : ints.
