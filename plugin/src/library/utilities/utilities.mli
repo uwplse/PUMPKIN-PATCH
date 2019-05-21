@@ -94,7 +94,6 @@ val split_at : int -> 'a list -> (('a list) * ('a list))
 
 val map_tuple : ('a -> 'b) -> ('a * 'a) -> ('b * 'b)
 val fold_tuple : ('a -> 'b -> 'c) -> ('a * 'b) -> 'c
-val twice : ('a -> 'a -> bool -> 'b) -> 'a -> 'a -> ('b * 'b)
 
 (* --- Propositions --- *)
 
@@ -112,9 +111,6 @@ val map_if : ('a -> 'a) -> bool -> 'a -> 'a
  * Flip the first and second parameters of a function.
  *)
 val flip : ('a -> 'b -> 'c) -> ('b -> 'a -> 'c)
-
-(* Look up the name referenced by a term and append a suffix to it. *)
-val suffix_term_name : Constr.t -> Names.Id.t -> Names.Id.t
 
 (* --- Common helper functions --- *)
                                                    

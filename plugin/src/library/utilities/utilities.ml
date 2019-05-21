@@ -4,13 +4,13 @@ open Util
  * Basic utilities for collections, optionals, and so on
  *)
 
-(*
- * TODO remove unused functions from DEVOID and organize
- *)
-
+(* --- Optionals --- *)
+       
 (* This should be in the standard library, but isn't bound for some reason *)
 let map_default f default x =
   if Option.has_some x then f (Option.get x) else default
+
+(* --- Lists --- *)
 
 (* Get the last element of a list *)
 let last (l : 'a list) : 'a =
@@ -91,7 +91,7 @@ let find_off (a : 'a list) (p : 'a -> bool) : int =
 let rec combinations (l : 'a list) =
   match l with
   | [] -> []
-| h :: t -> List.append (List.map (fun e -> (h, e)) t) (combinations t)
+  | h :: t -> List.append (List.map (fun e -> (h, e)) t) (combinations t)
 
 (*
  * Cartesian product of two lists
@@ -115,21 +115,8 @@ let combine_cartesian_append (al : 'a list array) : 'a array list =
     List.map Array.of_list (List.concat al')
   else
     List.map Array.of_list (List.fold_left (combine_cartesian List.append) (List.hd al') (List.tl al'))
-           
-(* Map f over a tuple *)
-let map_tuple (f : 'a -> 'b) ((a1, a2) : ('a * 'a)) : ('b * 'b) =
-  (f a1, f a2)
-    
-(* Fold f over a tuple *)
-let fold_tuple (f : 'a -> 'b -> 'c) ((a, b) : ('a * 'b)) : 'c =
-  f a b
 
-(* Apply a function twice with a directionality indicator *)
-let twice (f : 'a -> 'a -> bool -> 'b) (a1 : 'a) (a2 : 'a) : 'b * 'b  =
-  let forward = f a1 a2 true in
-  let backward = f a2 a1 false in
-  (forward, backward)
-
+             
 (* Map3 *)
 let rec map3 (f : 'a -> 'b -> 'c -> 'd) l1 l2 l3 : 'd list =
   match (l1, l2, l3) with
@@ -166,6 +153,18 @@ let rec split_at (n : int) (l : 'a list) : (('a list) * ('a list)) =
         (h :: l1, l2)
     | [] ->
        ([], [])
+
+(* --- Tuples --- *)
+             
+(* Map f over a tuple *)
+let map_tuple (f : 'a -> 'b) ((a1, a2) : ('a * 'a)) : ('b * 'b) =
+  (f a1, f a2)
+    
+(* Fold f over a tuple *)
+let fold_tuple (f : 'a -> 'b -> 'c) ((a, b) : ('a * 'b)) : 'c =
+  f a b
+
+(* --- Propositions --- *)
         
 (* Always true *)
 let always_true _ = true
@@ -174,17 +173,15 @@ let always_true _ = true
 let and_p (p : 'a -> bool) (o : 'a) (n : 'a) : bool =
   p o && p n
 
-(* Control structures *)
+(* --- Control structures --- *)
+
 let map_if_else f g b x = if b then f x else g x
 let map_if f b x = map_if_else f (fun a -> a) b x
 
+(* --- Functions --- *)
+
 (* Flip the first and second parameters of a function. *)
 let flip f = fun x y -> f y x
-
-(* Look up the name referenced by a term and append a suffix to it. *)
-let suffix_term_name term suffix =
-  let base = Nametab.basename_of_global (Globnames.global_of_constr term) in
-  Nameops.add_suffix base (Names.Id.to_string suffix)
 
 (* --- Common helper functions --- *)
                      
