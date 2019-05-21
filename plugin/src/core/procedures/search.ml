@@ -94,7 +94,7 @@ let search_for_patch evd (default : types) (opts : options) (d : goal_proof_diff
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
     let inverted = invert_terms invert_factor env evd rev_patches in
     if non_empty inverted then
-      return_patch opts env inverted
+      return_patch opts env evd inverted
     else
       match change with
       | Conclusion | (Hypothesis (_, _)) ->
