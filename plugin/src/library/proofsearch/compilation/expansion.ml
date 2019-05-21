@@ -193,9 +193,12 @@ let expand_inductive_params (n : int) (c : proof_cat) : proof_cat =
 
 (* Check if an o is the type of an applied inductive hypothesis in c *)
 let applies_ih (env : env) (evd : evar_map) (p : types) (c : proof_cat) (o : context_object) : bool =
-  let (f, _) = context_as_app o in
-  let f = unshift_by (shortest_path_length c o) f in
-  (context_is_app o) && (is_hypothesis c o) && has_type env evd p f
+  if context_is_app o then
+    let (f, _) = context_as_app o in
+    let f = unshift_by (shortest_path_length c o) f in
+    is_hypothesis c o && has_type env evd p f
+  else
+    false
 
 (*
  * Bind the inductive hypotheses in an expanded constructor with parameters
