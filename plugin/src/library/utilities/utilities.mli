@@ -98,7 +98,6 @@ val fold_tuple : ('a -> 'b -> 'c) -> ('a * 'b) -> 'c
 (* --- Propositions --- *)
 
 val always_true : 'a -> bool
-val and_p : ('a -> bool) -> 'a -> 'a -> bool
 
 (* --- Control structures --- *)
 

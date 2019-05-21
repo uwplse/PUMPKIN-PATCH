@@ -181,28 +181,6 @@ val recompose_lam_assum : Rel.t -> types -> types
 
 (* --- Basic questions about terms --- *)
 
-(*
- * Get the arity of a function or function type
- *)
-val arity : types -> int
-
-(*
- * Check whether a term (second argument) applies a function (first argument)
- * Don't consider terms convertible to the function
- *
- * In the plural version, check for both the second and third terms
- *)
-val applies : types -> types -> bool
-val apply : types -> types -> types -> bool
-
-(*
- * Check whether a term either is exactly a function or applies it
- *
- * In the plural version, check for both the second and the third terms
- *)
-val is_or_applies : types  -> types -> bool
-val are_or_apply : types -> types -> types -> bool
-
 (* Is the first term equal to a "head" (application prefix) of the second?
  * The notion of term equality is syntactic, by default modulo alpha, casts,
  * application grouping, and universes. The result of this function is an
@@ -236,7 +214,7 @@ val e_infer_sort : env -> evar_map ref -> constr -> Sorts.family
 (* Safely instantiate a global reference, updating the evar map. *)
 val e_new_global : evar_map ref -> global_reference -> constr
 
-(* Convertibility *)
+(* Convertibility, ignoring universe inconsistency for now *)
 val convertible : env -> evar_map -> types -> types -> bool
                                                          
 (*
@@ -284,47 +262,7 @@ val on_type : (types -> 'a) -> env -> evar_map -> types -> 'a
  *)
 val types_convertible : env -> evar_map -> types -> types -> bool
 
-(* --- Basic mapping --- *)
-
-val map_rec_env_fix :
-  (env -> 'a -> 'b) ->
-  ('a -> 'a) ->
-  env ->
-  'a ->
-  name array ->
-  types array ->
-  'b
-
-val map_term_env :
-  (env -> 'a -> types -> types) ->
-  ('a -> 'a) ->
-  env ->
-  'a ->
-  types ->
-  types
-
-val map_term :
-  ('a -> types -> types) ->
-  ('a -> 'a) ->
-  'a ->
-  types ->
-  types
-
 (* --- Names --- *)
-
-(*
- * Add a string suffix to a name identifier
- *)
-val with_suffix : Id.t -> string -> Id.t
-
-(* Turn a name into an optional identifier *)
-val ident_of_name : Name.t -> Id.t option
-
-(* Turn an identifier into an external (i.e., surface-level) reference *)
-val reference_of_ident : Id.t -> Libnames.reference
-
-(* Turn a name into an optional external (i.e., surface-level) reference *)
-val reference_of_name : Name.t -> Libnames.reference option
 
 (* Convert an external reference into a qualid *)
 val qualid_of_reference : Libnames.reference -> Libnames.qualid
@@ -341,22 +279,6 @@ type global_substitution = global_reference Globmap.t
 val subst_globals : global_substitution -> constr -> constr
 
 (* --- Modules --- *)
-
-(*
- * Pull any functor parameters off the module signature, returning the list of
- * functor parameters and the list of module elements (i.e., fields).
- *)
-val decompose_module_signature : module_signature -> (Names.MBId.t * module_type_body) list * structure_body
-
-(*
- * Declare an interactive (i.e., elementwise) module structure, with the
- * functional argument called to populate the module elements by declaration.
- *
- * The optional argument specifies functor parameters.
- *)
-val declare_module_structure :
-  ?params:(Constrexpr.module_ast Declaremods.module_params) ->
-  Names.Id.t -> (unit -> unit) -> ModPath.t
 
 (* Type-sensitive transformation of terms *)
 type constr_transformer = env -> evar_map ref -> constr -> constr
