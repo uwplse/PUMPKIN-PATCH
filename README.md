@@ -143,6 +143,30 @@ The [PUMPKIN-git](http://github.com/uwplse/PUMPKIN-git) interface searches for p
 Git revisions. It also automatically removes the reference to the old definition.
 Please see the repository for more details.
 
+### Pattern Matching and Fixpoints
+
+By default, PUMPKIN has very limited support for proofs that use pattern matching and fixpoints.
+However, the `Preprocess` command by Nate Yazdani automatically converts simple pattern matching and fixpoints
+into induction principles, which PUMPKIN does support. You can `Preprocess` individual proofs:
+
+```
+Preprocess old as old'.
+Preprocess new as new'.
+Patch Proof old' new' as patch.
+```
+
+Or you can preprocess entire modules:
+
+```
+Preprocess Module Old as Old'.
+Preprocess Module New as New'.
+Patch Proof Old'.old New'.new as patch.
+```
+
+See [Preprocess.v](/plugin/coq/Preprocess.v) and [PreprocessModule.v](/plugin/coq/PreprocessModule.v) for examples
+of how to use these commands. There are also proofs in [Regress.v](/plugin/coq/Regress.v) and [IntegersNew.v](/plugin/coq/IntegersNew.v) 
+that demonstrate its use with `Patch Proof`.
+
 ### Cutting Lemmas
 
 For some kinds of proofs, PUMPKIN needs extra guidance to search for a patch.
@@ -186,10 +210,9 @@ of an inductive type that a proof inducts over, or changes in a case of a fixpoi
 and some other styles of proofs (for example, simple applicative proofs, or
 proofs that apply constructors).
 
-
 PUMPKIN does not yet support structural changes like adding new hypotheses,
 adding constructors or parameters to an inductive type, or adding cases to a fixpoint.
-PUMPKIN has very limited support for pattern matching, proofs using logic specific to decidable domains
+PUMPKIN has very limited support for proofs using logic specific to decidable domains
 (such as proofs that use `omega`), and nested induction.
 Supporting all of these features is on our roadmap.
 
