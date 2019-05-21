@@ -39,14 +39,6 @@ let coq_init_datatypes =
   ModPath.MPfile
     (DirPath.make (List.map Id.of_string ["Datatypes"; "Init"; "Coq"]))
 
-(* equality *)
-let eq : types =
-  mkInd (MutInd.make1 (KerName.make2 coq_init_logic (Label.make "eq")), 0)
-
-(* Constructor for quality *)
-let eq_refl : types =
-  mkConstruct (fst (destInd eq), 1)
-
 (* Symmetric eliminator for equality *)
 let eq_ind_r : types =
   mkConst (Constant.make2 coq_init_logic (Label.make "eq_ind_r"))

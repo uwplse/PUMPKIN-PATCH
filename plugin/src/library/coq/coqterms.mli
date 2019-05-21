@@ -23,8 +23,6 @@ type closure = env * (types list)
 
 (* --- Constants --- *)
 
-val eq : types
-val eq_refl : types
 val eq_ind_r : types
 val eq_ind : types
 val eq_rec_r : types
