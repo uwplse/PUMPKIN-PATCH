@@ -15,7 +15,7 @@ open Factoring
 
 module CRD = Context.Rel.Declaration
 
-type inverter = (env * types) -> (env * types) option
+type inverter = evar_map -> (env * types) -> (env * types) option
 
 (* --- Inverting type paths --- *)
 
@@ -27,14 +27,14 @@ type inverter = (env * types) -> (env * types) option
  *
  * If inverting any term along the way fails, produce the empty list.
  *)
-let invert_factors (invert : inverter) (fs : factors) : factors =
+let invert_factors evd (invert : inverter) (fs : factors) : factors =
   let get_all_or_none (l : 'a option list) : 'a list =
     if List.for_all Option.has_some l then
       List.map Option.get l
     else
       []
   in
-  let inverse_options = List.map invert fs in
+  let inverse_options = List.map (invert evd) fs in
   let inverted = List.rev (get_all_or_none inverse_options) in
   match inverted with (* swap final hypothesis *)
   | (env_inv, trm_inv) :: t when List.length t > 0 ->
@@ -168,7 +168,7 @@ let invert_factor evd (env, rp) : (env * types) option =
  *)
 let invert_using (invert : inverter) env evd (trm : types) : types option =
   let fs = factor_term env evd trm in
-  let inv_fs = invert_factors invert fs in
+  let inv_fs = invert_factors evd invert fs in
   if List.length inv_fs > 0 then
     Some (apply_factors evd inv_fs)
   else

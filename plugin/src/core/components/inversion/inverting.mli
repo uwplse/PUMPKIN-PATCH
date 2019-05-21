@@ -11,7 +11,7 @@ type inverter
  * Try both exploiting type symmetry (as in eq_ind), and also
  * strategically swapping arguments with convertible types
  *)
-val invert_factor : evar_map -> inverter
+val invert_factor : inverter
 
 (*
  * Try to invert a list of terms in an environment
