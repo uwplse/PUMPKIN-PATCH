@@ -21,11 +21,8 @@ module CRD = Context.Rel.Declaration
 
 (*
  * Note: This will clean up significantly when we merge DEVOID and PUMPKIN,
- * and split back into multiple files.
- *)
-
-(*
- * TODO remove unused functions for now
+ * and split back into multiple files. We'll also use better evar map and
+ * universe hygiene at that point.
  *)
 
 (* --- Auxiliary types --- *)
@@ -34,10 +31,6 @@ type closure = env * (types list)
                
 (* --- Constants --- *)
 
-let coq_init_specif =
-  ModPath.MPfile
-    (DirPath.make (List.map Id.of_string ["Specif"; "Init"; "Coq"]))
-
 let coq_init_logic =
   ModPath.MPfile
     (DirPath.make (List.map Id.of_string ["Logic"; "Init"; "Coq"]))
@@ -45,26 +38,6 @@ let coq_init_logic =
 let coq_init_datatypes =
   ModPath.MPfile
     (DirPath.make (List.map Id.of_string ["Datatypes"; "Init"; "Coq"]))
-
-(* sigma types *)
-let sigT : types =
-  mkInd (MutInd.make1 (KerName.make2 coq_init_specif (Label.make "sigT")), 0)
-
-(* Introduction for sigma types *)
-let existT : types =
-  mkConstruct (fst (destInd sigT), 1)
-
-(* Elimination for sigma types *)
-let sigT_rect : types =
-  mkConst (Constant.make2 coq_init_specif (Label.make "sigT_rect"))
-
-(* Left projection *)
-let projT1 : types =
-  mkConst (Constant.make2 coq_init_specif (Label.make "projT1"))
-
-(* Right projection *)
-let projT2 : types =
-  mkConst (Constant.make2 coq_init_specif (Label.make "projT2"))
 
 (* equality *)
 let eq : types =
@@ -266,205 +239,6 @@ let rec lambda_to_prod trm =
      mkProd (n, t, lambda_to_prod b)
   | _ ->
      trm
-
-(*
- * An application of eq
- *)
-type eq_app =
-  {
-    at_type : types;
-    trm1 : types;
-    trm2 : types;
-  }
-
-(*
- * Make an eq type
- *)
-let apply_eq (app : eq_app) : types =
-  mkAppl (eq, [app.at_type; app.trm1; app.trm2])
-
-(*
- * Deconstruct an eq type
- *)
-let dest_eq (trm : types) : eq_app =
-  let [at_type; trm1; trm2] = unfold_args trm in
-  { at_type; trm1; trm2 }
-
-(*
- * An application of eq_sym
- *)
-type eq_sym_app =
-  {
-    eq_typ : eq_app;
-    eq_proof : types;
-  }
-
-(*
- * Make an eq type
- *)
-let apply_eq_sym (app : eq_sym_app) : types =
-  let eq_typ = app.eq_typ in
-  mkAppl (eq_sym, [eq_typ.at_type; eq_typ.trm1; eq_typ.trm2; app.eq_proof])
-
-(*
- * Deconstruct an eq type
- *)
-let dest_eq_sym (trm : types) : eq_sym_app =
-  let [at_type; trm1; trm2; eq_proof] = unfold_args trm in
-  let eq_typ = { at_type; trm1; trm2 } in
-  { eq_typ; eq_proof }
-    
-(*
- * An application of eq_ind
- *)
-type eq_ind_app =
-  {
-    at_type : types;
-    p : types;
-    trm1 : types;
-    trm2 : types;
-    h : types;
-    b : types;
-  }
-
-(*
- * Apply an eq_ind
- *)
-let apply_eq_ind (app : eq_ind_app) : types =
-  mkAppl (eq_ind, [app.at_type; app.trm1; app.p; app.b; app.trm2; app.h])
-
-(* 
- * Deconstruct an eq_ind
- *)
-let dest_eq_ind (trm : types) : eq_ind_app =
-  let [at_type; trm1; p; b; trm2; h] = unfold_args trm in
-  { at_type; trm1; p; b; trm2; h }
-
-(*
- * An application of eq_refl
- *)
-type eq_refl_app =
-  {
-    typ : types;
-    trm : types;
-  }
-
-(*
- * Apply an eq_refl
- *)
-let apply_eq_refl (app : eq_refl_app) : types =
-  mkAppl (eq_refl, [app.typ; app.trm])
-
-(* 
- * Deconstruct an eq_refl
- *)
-let dest_eq_refl (trm : types) : eq_refl_app =
-  let [typ; trm] = unfold_args trm in
-  { typ; trm }
-
-(*
- * An application of existT
- *)
-type existT_app =
-  {
-    index_type : types;
-    packer : types;
-    index : types;
-    unpacked : types;
-  }
-
-(*
- * Pack an existT term from an index type, packer, index, and unpacked version
- *)
-let pack_existT (app : existT_app) : types =
-  mkAppl (existT, [app.index_type; app.packer; app.index; app.unpacked])
-
-(*
- * Deconstruct an existT term
- *)
-let dest_existT (trm : types) : existT_app =
-  let [index_type; packer; index; unpacked] = unfold_args trm in
-  { index_type; packer; index; unpacked }
-
-(*
- * An application of sigT
- *)
-type sigT_app =
-  {
-    index_type : types;
-    packer : types;
-  }
-
-(*
- * Pack a sigT type from an index type and a packer
- *)
-let pack_sigT (app : sigT_app) =
-  mkAppl (sigT, [app.index_type; app.packer])
-
-(*
- * Deconsruct a sigT type from a type
- *)
-let dest_sigT (typ : types) =
-  let [index_type; packer] = unfold_args typ in
-  { index_type; packer }
-
-(*
- * Build the eta-expansion of a term known to have a sigma type.
- *)
-let eta_sigT (term : constr) (typ : types) =
-  let { index_type; packer } = dest_sigT typ in
-  let fst = mkApp (projT1, [|index_type; packer; term|]) in
-  let snd = mkApp (projT2, [|index_type; packer; term|]) in
-  mkApp (existT, [|index_type; packer; fst; snd|])
-
-(*
- * An application of sigT_rect
- *)
-type sigT_elim =
-  {
-    to_elim : sigT_app;
-    packed_type : types;
-    unpacked : types;
-    arg : types;
-  }
-
-(*
- * Eliminate a sigT given an index type, packer, packed type, unpacked term,
- * and the term itself
- *)
-let elim_sigT (app : sigT_elim) =
-  let index_type = app.to_elim.index_type in
-  let packer = app.to_elim.packer in
-  let packed_type = app.packed_type in
-  let unpacked = app.unpacked in
-  let arg = app.arg in
-  mkAppl (sigT_rect, [index_type; packer; packed_type; unpacked; arg])
-
-(*
- * Deconstruct an application of sigT_rect
- *)
-let dest_sigT_elim (trm : types) =
-  let [index_type; packer; packed_type; unpacked; arg] = unfold_args trm in
-  let to_elim = { index_type ; packer } in
-  { to_elim; packed_type; unpacked; arg }
-
-(*
- * Left projection of a sigma type
- *)
-let project_index (app : sigT_app) trm =
-  mkAppl (projT1, [app.index_type; app.packer; trm])
-
-(*
- * Right projection of a sigma type
- *)
-let project_value (app : sigT_app) trm =
-  mkAppl (projT2, [app.index_type; app.packer; trm])
-
-(*
- * Both projections of a sigma type
- *)
-let projections (app : sigT_app) trm =
-  (project_index app trm, project_value app trm)
 
 (* --- Convertibility, reduction, and types --- *)
 
