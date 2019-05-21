@@ -97,11 +97,6 @@ let identity_term (env : env) (typ : types) : types =
                                                                     
 (* --- Representations --- *)
 
-(** Construct the external expression for a definition. *)
-let expr_of_global (g : global_reference) : constr_expr =
-  let r = extern_reference Id.Set.empty g in
-  CAst.make @@ (CAppExpl ((None, r, None), []))
-
 (* Intern a term (for now, ignore the resulting evar_map) *)
 let intern env evd t : types =
   let (trm, _) = Constrintern.interp_constr env evd t in
@@ -158,14 +153,6 @@ let define_term ?typ (n : Id.t) (evm : evar_map) (trm : types) (refresh : bool) 
   let etyp = Option.map EConstr.of_constr typ in
   edeclare n k ~opaque:false evm udecl etrm etyp [] nohook refresh
 
-(* Safely extract the body of a constant, instantiating any universe variables. *)
-let open_constant env const =
-  let (Some (term, auctx)) = Global.body_of_constant const in
-  let uctx = Universes.fresh_instance_from_context auctx |> Univ.UContext.make in
-  let term = Vars.subst_instance_constr (Univ.UContext.instance uctx) term in
-  let env = Environ.push_context uctx env in
-  env, term
-
 (* --- Application and arguments --- *)
 
 (* Get a list of all arguments, fully unfolded at the head *)
@@ -211,10 +198,6 @@ let get_arg i trm =
 
 (* mkApp with a list *)
 let mkAppl (f, args) = mkApp (f, Array.of_list args)
-
-(* Define a constant from an ID in the current path *)
-let make_constant id =
-  mkConst (Constant.make1 (Lib.make_kn id))
 
 (* Recursively turn a product into a function *)
 let rec prod_to_lambda trm =
@@ -360,22 +343,6 @@ let all_rel_indexes (env : env) : int list =
 let lookup_all_rels (env : env) : CRD.t list =
   lookup_rels (all_rel_indexes env) env
 
-(*
- * Push something to the highest position in an environment.
- *
- * Note: We need pop_rel_conext (nb_rel env) env rather than empty_env
- * because empty_env does not contain global definitions like nat.
- *)
-let push_last (decl : CRD.t) (env : env) : env =
-  List.fold_left
-    (fun en decl -> push_rel decl en)
-    (pop_rel_context (nb_rel env) env)
-    (decl :: (List.rev (lookup_all_rels env)))
-
-(* Make n relative indices, from highest to lowest *)
-let mk_n_rels n =
-  List.map mkRel (List.rev (from_one_to n))
-
 (* Push a local binding to an environment *)
 let push_local (n, t) = push_rel CRD.(LocalAssum (n, t))
 
@@ -483,41 +450,6 @@ let decompose_lam_n_zeta n term =
   in
   aux n Rel.empty term
 
-(* Is the named declaration an assumption? *)
-let is_named_assum = Named.Declaration.is_local_assum
-
-(* Is the named declaration a definition? *)
-let is_named_defin = Named.Declaration.is_local_def
-
-(* Make the named declaration for a local assumption *)
-let named_assum (id, typ) =
-  Named.Declaration.LocalAssum (id, typ)
-
-(* Make the named declaration for a local definition *)
-let named_defin (id, def, typ) =
-  Named.Declaration.LocalDef (id, def, typ)
-
-(* Get the name of a named declaration *)
-let named_ident decl =
-  Named.Declaration.get_id decl
-
-(* Get the optional value of a named declaration *)
-let named_value decl =
-  Named.Declaration.get_value decl
-
-(* Get the type of a named declaration *)
-let named_type decl =
-  Named.Declaration.get_type decl
-
-(* Map over a named context with environment kept in synch *)
-let map_named_context env make ctxt =
-  Named.fold_outside
-    (fun decl (env, res) ->
-       push_named decl env, (make env decl) :: res)
-    ctxt
-    ~init:(env, []) |>
-  snd
-
 (* Lookup n rels and remove then *)
 let lookup_pop (n : int) (env : env) =
   let rels = List.map (fun i -> lookup_rel i env) (from_one_to n) in
@@ -577,18 +509,6 @@ let bindings_for_fix (names : name array) (typs : types array) : CRD.t list =
     (CArray.map2_i
        (fun i name typ -> CRD.LocalAssum (name, Vars.lift i typ))
        names typs)
-
-(* Find the offset of some environment from some number of parameters *)
-let new_rels env npm = nb_rel env - npm
-
-(* Find the offset between two environments *)
-let new_rels2 env1 env2 = nb_rel env1 - nb_rel env2
-
-(* Append two contexts (inner first, outer second), shifting internal indices. *)
-let context_app inner outer =
-  List.append
-    (Termops.lift_rel_context (Rel.length outer) inner)
-    outer
 
 (* Bind the declarations of a local context as product/let-in bindings *)
 let recompose_prod_assum decls term =
@@ -694,12 +614,6 @@ let inductive_of_elim (env : env) (pc : pconstant) : mutual_inductive option =
       else
         None
   in try_find_ind false
-                  
-(*
- * Boolean version of above that doesn't care about the term type
- *)
-let is_elim (env : env) (trm : types) =
-  isConst trm && Option.has_some (inductive_of_elim env (destConst trm))
                                  
 (*
  * Get the number of constructors for an inductive type
@@ -713,60 +627,6 @@ let num_constrs (mutind_body : mutual_inductive_body) : int =
       n + (Array.length i.mind_consnames))
     0
     mutind_body.mind_packets
-
-(* Lookup the eliminator over the type sort *)
-let type_eliminator (env : env) (ind : inductive) =
-  Universes.constr_of_global (Indrec.lookup_eliminator ind InType)
-
-(* Applications of eliminators *)
-type elim_app =
-  {
-    elim : types;
-    pms : types list;
-    p : types;
-    cs : types list;
-    final_args : types list;
-  }
-
-(* Apply an eliminator *)
-let apply_eliminator (ea : elim_app) : types =
-  let args = List.append ea.pms (ea.p :: ea.cs) in
-  mkAppl (mkAppl (ea.elim, args), ea.final_args)
-
-(* Deconstruct an eliminator application *)
-let deconstruct_eliminator env evd app : elim_app =
-  let elim = first_fun app in
-  let ip_args = unfold_args app in
-  let ip_typ = reduce_type env evd elim in
-  let from_i = Option.get (inductive_of_elim env (destConst elim)) in
-  let from_m = lookup_mind from_i env in
-  let npms = from_m.mind_nparams in
-  let from_arity = arity (type_of_inductive env 0 from_m) in
-  let num_indices = from_arity - npms in
-  let num_props = 1 in
-  let num_constrs = arity ip_typ - npms - num_props - num_indices - 1 in
-  let (pms, pmd_args) = take_split npms ip_args in
-  match pmd_args with
-  | p :: cs_and_args ->
-     let (cs, final_args) = take_split num_constrs cs_and_args in
-     { elim; pms; p; cs; final_args }
-  | _ ->
-     failwith "can't deconstruct eliminator; no final arguments"
-
-(*
- * Given the type of a case of an eliminator,
- * determine the number of inductive hypotheses
- *)
-let rec num_ihs env rec_typ typ =
-  match kind typ with
-  | Prod (n, t, b) ->
-     if is_or_applies rec_typ (reduce_term env t) then
-       let (n_b_t, b_t, b_b) = destProd b in
-       1 + num_ihs (push_local (n, t) (push_local (n_b_t, b_t) env)) rec_typ b_b
-     else
-       num_ihs (push_local (n, t) env) rec_typ b
-  | _ ->
-     0
 
 (* Determine whether template polymorphism is used for a one_inductive_body *)
 let is_ind_body_template ind_body =
