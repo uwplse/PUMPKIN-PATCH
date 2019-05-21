@@ -63,14 +63,14 @@ let intern_defs d1 d2 : types * types =
   (unwrap_definition env d1, unwrap_definition env d2)
 
 (* Initialize diff & search configuration *)
-let configure evd trm1 trm2 cut : goal_proof_diff * options =
+let configure trm1 trm2 cut : goal_proof_diff * options =
   let (evm, env) = Pfedit.get_current_context() in
   let cut_term = Option.map (intern env evm) cut in
   let lemma = Option.map (build_cut_lemma env) cut_term in
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
   let d = add_goals (difference c1 c2 no_assumptions) in
-  let change = find_kind_of_change evd lemma d in
+  let change = find_kind_of_change evm lemma d in
   (d, configure_search d change lemma)
 
 (* Common inversion functionality *)
@@ -157,14 +157,13 @@ let do_desugar_module ?(incl=[]) ident mod_ref =
  * The latter two just pass extra guidance for now
  *)
 let patch_proof n d_old d_new cut =
-  let (evd, _) = Pfedit.get_current_context () in
   let (old_term, new_term) = intern_defs d_old d_new in
-  let (d, opts) = configure evd old_term new_term cut in
+  let (d, opts) = configure old_term new_term cut in
   let change = get_change opts in
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   patch n old_term new_term try_invert ()
     (fun env evm _ ->
-      search_for_patch evd old_term opts d)
+      search_for_patch evm old_term opts d)
 
 (*
  * The Patch Theorem command functionality
