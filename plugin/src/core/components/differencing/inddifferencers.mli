@@ -18,6 +18,6 @@ open Evd
  * to update the goals for the next iteration.
  *)
 val diff_inductive :
-  proof_differencer configurable ->
+  (evar_map -> proof_differencer) configurable ->
   goal_proof_diff ->
   (evar_map -> ind_proof_differencer) configurable

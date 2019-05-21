@@ -25,7 +25,7 @@ val diff_app :
  *)
 val diff_app_ind :
   evar_map ->
-  ind_proof_differencer configurable -> (* diff f *)
-  proof_differencer configurable -> (* diff each arg *)
+  (evar_map -> ind_proof_differencer) configurable -> (* diff f *)
+  (evar_map -> proof_differencer) configurable -> (* diff each arg *)
   proof_differencer configurable
 

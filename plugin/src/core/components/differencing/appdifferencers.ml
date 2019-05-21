@@ -129,7 +129,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
     let assums = assumptions d_zoom in
     let (o, npms_old, args_o) = old_proof d_zoom in
     let (n, npms_new, args_n) = new_proof d_zoom in
-    let f = diff_ind opts (difference (o, npms_old) (n, npms_new) assums) in
+    let f = diff_ind opts evd (difference (o, npms_old) (n, npms_new) assums) in
     match get_change opts with
     | (Kindofchange.InductiveType (_, _)) | (Kindofchange.Hypothesis (_, _)) ->
        f
@@ -139,7 +139,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
        if non_empty f then
          f
        else
-	 let diff_rec diff opts = diff_terms (diff opts) d opts in
+	 let diff_rec diff opts = diff_terms (diff opts evd) d opts in
 	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
          let d_args_rev = reverse d_args in
          filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
@@ -172,7 +172,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
                      let arg_n = new_proof d_a in
                      let apply p = specialize p (Array.make 1 arg_n) in
                      let diff_apply = filter_diff (List.map apply) in
-                     diff_terms (diff_apply (diff_arg opts)) d opts d_a)
+                     diff_terms (diff_apply (diff_arg opts evd)) d opts d_a)
                    d_args)))
        else
          f

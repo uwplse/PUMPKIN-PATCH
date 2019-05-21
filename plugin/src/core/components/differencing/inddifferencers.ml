@@ -29,7 +29,7 @@ open Evd
  * To improve this, we need benchmarks for which the head is not the patch,
  * but another arrow is.
  *)
-let rec diff_case abstract diff (d : goal_case_diff) : candidates =
+let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
   let d_goal = erase_proofs d in
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
@@ -37,13 +37,13 @@ let rec diff_case abstract diff (d : goal_case_diff) : candidates =
      (try
         let c1 = eval_proof_arrow h1 in
         let c2 = eval_proof_arrow h2 in
-        let cs = abstract (diff (add_to_diff d_goal c1 c2)) in
+        let cs = abstract (diff evd (add_to_diff d_goal c1 c2)) in
         if non_empty cs then
           cs
         else
-          diff_case abstract diff d_t
+          diff_case abstract diff evd d_t
       with _ ->
-        diff_case abstract diff d_t)
+        diff_case abstract diff evd d_t)
   | _ ->
      give_up
 
@@ -63,7 +63,7 @@ let rec diff_case abstract diff (d : goal_case_diff) : candidates =
  * principle for the constructor version to get a more general patch.
  *)
 let diff_ind_case opts evd diff (d : goal_case_diff) : candidates =
-  diff_case (abstract_case opts evd d) diff d
+  diff_case (abstract_case opts evd d) diff evd d
 
 (*
  * Search a case of a difference in proof categories.
