@@ -1,29 +1,110 @@
-(* Simple auxiliary functions for Coq terms *)
+(*
+ * Coq term and environment management
+ *)
 
+open Util
+open Context
 open Environ
-open Evd
 open Constr
-open Decl_kinds
 open Names
-open Collections
+open Constrexpr
+open Evd
+open Utilities
 open Declarations
+open Decl_kinds
+open Constrextern
+
+module Globmap = Globnames.Refmap
+module Globset = Globnames.Refset
 
 module CRD = Context.Rel.Declaration
 
-(* Auxiliary types *)
+(*
+ * Note: This will clean up significantly when we merge DEVOID and PUMPKIN,
+ * and split back into multiple files. We'll also use better evar map and
+ * universe hygiene at that point.
+ *)
 
+(* --- Auxiliary types --- *)
+               
 type closure = env * (types list)
+               
+(* --- Constants --- *)
 
+let coq_init_logic =
+  ModPath.MPfile
+    (DirPath.make (List.map Id.of_string ["Logic"; "Init"; "Coq"]))
+
+let coq_init_datatypes =
+  ModPath.MPfile
+    (DirPath.make (List.map Id.of_string ["Datatypes"; "Init"; "Coq"]))
+
+(* Symmetric eliminator for equality *)
+let eq_ind_r : types =
+  mkConst (Constant.make2 coq_init_logic (Label.make "eq_ind_r"))
+
+(* Eliminator for equality *)
+let eq_ind : types =
+  mkConst (Constant.make2 coq_init_logic (Label.make "eq_ind"))
+
+(* Symmetric eleiminator for equality into type *)
+let eq_rec_r : types =
+  mkConst (Constant.make2 coq_init_logic (Label.make "eq_rec_r"))
+
+(* Eliminator for equality into type *)
+let eq_rec : types =
+  mkConst (Constant.make2 coq_init_logic (Label.make "eq_rec"))
+
+(* Symmetry *)
+let eq_sym : types =
+  mkConst (Constant.make2 coq_init_logic (Label.make "eq_sym"))
+
+(* The identity proposition *)
+let id_prop : types =
+  mkConst (Constant.make2 coq_init_datatypes (Label.make "idProp"))
+
+(* The identity type *)
+let id_typ : types =
+  mkConst (Constant.make2 coq_init_datatypes (Label.make "id"))
+
+(* --- Questions about constants --- *)
+
+(* Determine if a term applies an identity term *)
+let applies_identity (trm : types) : bool =
+  match kind trm with
+  | App (f, _) ->
+     equal f id_prop || equal f id_typ
+  | _ ->
+     false
+
+(*
+ * Check if a term is a rewrite via eq_ind or eq_ind_r
+ * For efficiency, just check syntactic equality
+ * Don't consider convertible terms for now
+ *)
+let is_rewrite (trm : types) : bool =
+  let eq_term = equal trm in
+  eq_term eq_ind_r || eq_term eq_ind || eq_term eq_rec_r || eq_term eq_rec
+
+(* --- Convenient applications of constants --- *)
+                                                
+(* Get the Coq identity term for typ *)
+let identity_term (env : env) (typ : types) : types =
+  let id = mkApp (id_prop, Array.make 1 typ) in
+  try
+    let _ = Typeops.infer env id in id
+  with _ -> mkApp (id_typ, Array.make 1 typ)
+                                                                    
 (* --- Representations --- *)
 
-let intern (env : env) (evm : evar_map) (t : Constrexpr.constr_expr) : types =
-  let (trm, _) = Constrintern.interp_constr env evm t in
-  EConstr.to_constr evm trm
+(* Intern a term (for now, ignore the resulting evar_map) *)
+let intern env evd t : types =
+  let (trm, _) = Constrintern.interp_constr env evd t in
+  EConstr.to_constr evd trm
 
-let extern (env : env) (evm : evar_map) (trm : types) : Constrexpr.constr_expr =
-  Constrextern.extern_constr true env evm (EConstr.of_constr trm)
-
-(* --- Terms --- *)
+(* Extern a term *)
+let extern env evd t : constr_expr =
+  Constrextern.extern_constr true env evd (EConstr.of_constr t)
 
 (* https://github.com/ybertot/plugin_tutorials/blob/master/tuto1/src/simple_declare.ml *)
 let edeclare ident (_, poly, _ as k) ~opaque sigma udecl body tyopt imps hook refresh =
@@ -31,12 +112,15 @@ let edeclare ident (_, poly, _ as k) ~opaque sigma udecl body tyopt imps hook re
   (* XXX: "Standard" term construction combinators such as `mkApp`
      don't add any universe constraints that may be needed later for
      the kernel to check that the term is correct.
+
      We could manually call `Evd.add_universe_constraints`
      [high-level] or `Evd.add_constraints` [low-level]; however, that
      turns out to be a bit heavyweight.
+
      Instead, we call type inference on the manually-built term which
      will happily infer the constraint for us, even if that's way more
      costly in term of CPU cycles.
+
      Beware that `type_of` will perform full type inference including
      canonical structure resolution and what not.
    *)
@@ -61,116 +145,332 @@ let edeclare ident (_, poly, _ as k) ~opaque sigma udecl body tyopt imps hook re
   DeclareDef.declare_definition ident k ce ubinders imps hook
 
 (* Define a new Coq term *)
-let define_term (n : Id.t) (evm : evar_map) (trm : types) (refresh : bool) =
+let define_term ?typ (n : Id.t) (evm : evar_map) (trm : types) (refresh : bool) =
   let k = (Global, Flags.is_universe_polymorphism(), Definition) in
   let udecl = Univdecls.default_univ_decl in
   let nohook = Lemmas.mk_hook (fun _ x -> x) in
   let etrm = EConstr.of_constr trm in
-  edeclare n k ~opaque:false evm udecl etrm None [] nohook refresh
+  let etyp = Option.map EConstr.of_constr typ in
+  edeclare n k ~opaque:false evm udecl etrm etyp [] nohook refresh
 
-(* The identity proposition *)
-let id_prop : types =
-  mkConst
-    (Constant.make2
-       (ModPath.MPfile
-          (DirPath.make (List.map Id.of_string ["Datatypes"; "Init"; "Coq"])))
-       (Label.make "idProp"))
+(* --- Application and arguments --- *)
 
-(* The identity type *)
-let id_typ : types =
-  mkConst
-    (Constant.make2
-       (ModPath.MPfile
-          (DirPath.make (List.map Id.of_string ["Datatypes"; "Init"; "Coq"])))
-       (Label.make "id"))
+(* Get a list of all arguments, fully unfolded at the head *)
+let unfold_args_app trm =
+  let (f, args) = destApp trm in
+  let rec unfold trm =
+    match kind trm with
+    | App (f, args) ->
+       List.append (unfold f) (Array.to_list args)
+    | _ ->
+       [trm]
+  in List.append (List.tl (unfold f)) (Array.to_list args)
 
-(* Get the Coq identity term for typ *)
-let identity_term (env : env) (typ : types) : types =
-  let id = mkApp (id_prop, singleton_array typ) in
+(* Like unfold_args_app, but return empty if it's not an application *)
+let unfold_args trm =
+  if isApp trm then unfold_args_app trm else []
+
+(* Get the last argument of an application *)
+let last_arg trm =
+  if isApp trm then last (unfold_args trm) else failwith "not an application"
+
+(* Get the first function of an application *)
+let rec first_fun t =
+  match kind t with
+  | App (f, args) ->
+     first_fun f
+  | _ ->
+     t
+
+(*
+ * Get the argument to an application of a property at argument position i
+ * This unfolds all arguments first
+ *)
+let get_arg i trm =
+  match kind trm with
+  | App (_, _) ->
+     let args = Array.of_list (unfold_args trm) in
+     Array.get args i
+  | _ ->
+     failwith "not an application"
+
+(* --- Constructing terms --- *)
+
+(* mkApp with a list *)
+let mkAppl (f, args) = mkApp (f, Array.of_list args)
+
+(* Recursively turn a product into a function *)
+let rec prod_to_lambda trm =
+  match kind trm with
+  | Prod (n, t, b) ->
+     mkLambda (n, t, prod_to_lambda b)
+  | _ ->
+     trm
+
+(* Recursively turn a function into a product *)
+let rec lambda_to_prod trm =
+  match kind trm with
+  | Lambda (n, t, b) ->
+     mkProd (n, t, lambda_to_prod b)
+  | _ ->
+     trm
+
+(* --- Convertibility, reduction, and types --- *)
+
+(*
+ * Infer the type of trm in env
+ * Note: This does not yet use good evar map hygeine; will fix that
+ * during the refactor.
+ *)
+let infer_type (env : env) (evd : evar_map) (trm : types) : types =
+  let jmt = Typeops.infer env trm in
+  j_type jmt
+                    
+(* Safely infer the WHNF type of a term, updating the evar map *)
+let e_infer_type env evm term =
+  EConstr.of_constr term |> Typing.e_type_of ~refresh:true env evm |>
+  Reductionops.whd_all env !evm |> EConstr.to_constr !evm
+
+(* Safely infer the sort of a type, updating the evar map *)
+let e_infer_sort env evm term =
+  EConstr.of_constr term |> Typing.e_sort_of env evm |> Sorts.family
+
+(* Safely instantiate a global reference, with proper universe handling *)
+let e_new_global evm gref =
+  Evarutil.e_new_global evm gref |> EConstr.to_constr !evm
+
+(* Check whether two terms are convertible, ignoring universe inconsistency *)
+let conv_ignoring_univ_inconsistency env evm (trm1 : types) (trm2 : types) : bool =
+  match map_tuple kind (trm1, trm2) with
+  | (Sort (Type u1), Sort (Type u2)) ->
+     (* PUMPKIN assumes universe consistency for now *)
+     true
+  | _ ->
+     let etrm1 = EConstr.of_constr trm1 in
+     let etrm2 = EConstr.of_constr trm2 in
+     try
+       Reductionops.is_conv env evm etrm1 etrm2
+     with _ ->
+       false
+
+(* Checks whether two terms are convertible in env with no evars *)
+let convertible (env : env) (evd : evar_map) (trm1 : types) (trm2 : types) : bool =
+  conv_ignoring_univ_inconsistency env evd trm1 trm2
+
+(*
+ * Checks whether the conclusions of two dependent types are convertible,
+ * modulo the assumption that every argument we encounter is equal when
+ * the types of those arguments are convertible. Expect exactly the same
+ * number of arguments in the same order.
+ *)
+let rec concls_convertible (env : env) (evd : evar_map) (typ1 : types) (typ2 : types) : bool =
+  match (kind typ1, kind typ2) with
+  | (Prod (n1, t1, b1), Prod (n2, t2, b2)) ->
+     if convertible env evd t1 t2 then
+       concls_convertible (push_rel CRD.(LocalAssum(n1, t1)) env) evd b1 b2
+     else
+       false
+  | _ ->
+     convertible env evd typ1 typ2
+                                   
+(* Check whether a term has a given type *)
+let has_type (env : env) (evd : evar_map) (typ : types) (trm : types) : bool =
   try
-    let _ = Typeops.infer env id in id
-  with _ -> mkApp (id_typ, singleton_array typ)
+    let trm_typ = infer_type env evd trm in
+    convertible env evd trm_typ typ
+  with _ -> false
 
-(* Determine if a term applies an identity term *)
-let applies_identity (trm : types) : bool =
-  match kind trm with
-  | App (f, _) ->
-     equal f id_prop || equal f id_typ
-  | _ ->
-     false
+(* Default reducer *)
+let reduce_term (env : env) (trm : types) : types =
+  EConstr.to_constr
+    Evd.empty
+    (Reductionops.nf_betaiotazeta env Evd.empty (EConstr.of_constr trm))
 
-(* eq_ind_r *)
-let eq_ind_r : types =
-  mkConst
-    (Constant.make2
-       (ModPath.MPfile
-          (DirPath.make (List.map Id.of_string ["Logic"; "Init"; "Coq"])))
-       (Label.make "eq_ind_r"))
-
-(* eq_ind *)
-let eq_ind : types =
-  mkConst
-    (Constant.make2
-       (ModPath.MPfile
-          (DirPath.make (List.map Id.of_string ["Logic"; "Init"; "Coq"])))
-       (Label.make "eq_ind"))
-
-(* eq_rec_r *)
-let eq_rec_r : types =
-  mkConst
-    (Constant.make2
-       (ModPath.MPfile
-          (DirPath.make (List.map Id.of_string ["Logic"; "Init"; "Coq"])))
-       (Label.make "eq_rec_r"))
-
-(* eq_rec *)
-let eq_rec : types =
-  mkConst
-    (Constant.make2
-       (ModPath.MPfile
-          (DirPath.make (List.map Id.of_string ["Logic"; "Init"; "Coq"])))
-       (Label.make "eq_rec"))
-
-(* eq_sym *)
-let eq_sym : types =
-  mkConst
-    (Constant.make2
-       (ModPath.MPfile
-          (DirPath.make (List.map Id.of_string ["Logic"; "Init"; "Coq"])))
-       (Label.make "eq_sym"))
+(* Delta reduction *)
+let delta (env : env) (trm : types) =
+  EConstr.to_constr
+    Evd.empty
+    (Reductionops.whd_delta env Evd.empty (EConstr.of_constr trm))
 
 (*
- * Check if a term is prop
+ * There's a part of the env that has opacity info,
+ * so if you want to make some things opaque, can add them
+ * get env, store it, call set_strategy w/ opaque,
+ * then revert later
+ *
+ * See environ.mli
+ * set_oracle
+ * set_strategy
  *)
-let is_prop (trm : types) : bool =
-  match kind trm with
-  | Sort s ->
-     s = Sorts.prop
-  | _ ->
-     false
+
+(* nf_all *)
+let reduce_nf (env : env) (trm : types) : types =
+  EConstr.to_constr
+    Evd.empty
+    (Reductionops.nf_all env Evd.empty (EConstr.of_constr trm))
+
+(* Reduce the type *)
+let reduce_type (env : env) evd (trm : types) : types =
+  reduce_term env (infer_type env evd trm)
+
+(* Chain reduction *)
+let chain_reduce rg rf (env : env) (trm : types) : types =
+  rg env (rf env trm)
+
+(* Apply on types instead of on terms *)
+let on_type f env evd trm =
+  f (reduce_type env evd trm)
+
+(* Checks whether the types of two terms are convertible *)
+let types_convertible (env : env) (evd : evar_map) (trm1 : types) (trm2 : types) : bool =
+  try
+    let typ1 = infer_type env evd trm1 in
+    let typ2 = infer_type env evd trm2 in
+    convertible env evd typ1 typ2
+  with _ -> false
+
+(* --- Environments --- *)
+
+(* Look up all indexes from is in env *)
+let lookup_rels (is : int list) (env : env) : CRD.t list =
+ List.map (fun i -> lookup_rel i env) is
+
+(* Return a list of all indexes in env, starting with 1 *)
+let all_rel_indexes (env : env) : int list =
+  from_one_to (nb_rel env)
+
+(* Return a list of all bindings in env, starting with the closest *)
+let lookup_all_rels (env : env) : CRD.t list =
+  lookup_rels (all_rel_indexes env) env
+
+(* Push a local binding to an environment *)
+let push_local (n, t) = push_rel CRD.(LocalAssum (n, t))
+
+(* Push a let-in definition to an environment *)
+let push_let_in (n, e, t) = push_rel CRD.(LocalDef(n, e, t))
+
+(* Is the rel declaration a local assumption? *)
+let is_rel_assum = Rel.Declaration.is_local_assum
+
+(* Is the rel declaration a local definition? *)
+let is_rel_defin = Rel.Declaration.is_local_def
+
+(* Make the rel declaration for a local assumption *)
+let rel_assum (name, typ) =
+  Rel.Declaration.LocalAssum (name, typ)
+
+(* Make the rel declaration for a local definition *)
+let rel_defin (name, def, typ) =
+  Rel.Declaration.LocalDef (name, def, typ)
+
+(* Get the name of a rel declaration *)
+let rel_name decl =
+  Rel.Declaration.get_name decl
+
+(* Get the optional value of a rel declaration *)
+let rel_value decl =
+  Rel.Declaration.get_value decl
+
+(* Get the type of a rel declaration *)
+let rel_type decl =
+  Rel.Declaration.get_type decl
+
+(* Map over a rel context with environment kept in synch *)
+let map_rel_context env make ctxt =
+  Rel.fold_outside
+    (fun decl (env, res) ->
+       push_rel decl env, (make env decl) :: res)
+    ctxt
+    ~init:(env, []) |>
+  snd
 
 (*
- * Check if a term is a rewrite via eq_ind or eq_ind_r
- * For efficiency, just check eq_constr
- * Don't consider convertible terms for now
+ * Bind all local declarations in the relative context onto the body term as
+ * products, substituting away (i.e., zeta-reducing) any local definitions.
  *)
-let is_rewrite (trm : types) : bool =
-  equal trm eq_ind_r ||
-  equal trm eq_ind ||
-  equal trm eq_rec_r ||
-  equal trm eq_rec
+let smash_prod_assum ctxt body =
+  Rel.fold_inside
+    (fun body decl ->
+       match rel_value decl with
+       | Some defn -> Vars.subst1 defn body
+       | None -> mkProd (rel_name decl, rel_type decl, body))
+    ~init:body
+    ctxt
 
-(* Lookup a def in env *)
+(*
+ * Bind all local declarations in the relative context onto the body term as
+ * lambdas, substituting away (i.e., zeta-reducing) any local definitions.
+ *)
+let smash_lam_assum ctxt body =
+  Rel.fold_inside
+    (fun body decl ->
+       match rel_value decl with
+       | Some defn -> Vars.subst1 defn body
+       | None -> mkLambda (rel_name decl, rel_type decl, body))
+    ~init:body
+    ctxt
+
+(*
+ * Decompose the first n product bindings, zeta-reducing let bindings to reveal
+ * further product bindings when necessary.
+ *)
+let decompose_prod_n_zeta n term =
+  assert (n >= 0);
+  let rec aux n ctxt body =
+    if n > 0 then
+      match Constr.kind body with
+      | Prod (name, param, body) ->
+        aux (n - 1) (Rel.add (rel_assum (name, param)) ctxt) body
+      | LetIn (name, def_term, def_type, body) ->
+        aux n ctxt (Vars.subst1 def_term body)
+      | _ ->
+        invalid_arg "decompose_prod_n_zeta: not enough products"
+    else
+      ctxt, body
+  in
+  aux n Rel.empty term
+
+(*
+ * Decompose the first n lambda bindings, zeta-reducing let bindings to reveal
+ * further lambda bindings when necessary.
+ *)
+let decompose_lam_n_zeta n term =
+  assert (n >= 0);
+  let rec aux n ctxt body =
+    if n > 0 then
+      match Constr.kind body with
+      | Lambda (name, param, body) ->
+        aux (n - 1) (Rel.add (rel_assum (name, param)) ctxt) body
+      | LetIn (name, def_term, def_type, body) ->
+        Vars.subst1 def_term body |> aux n ctxt
+      | _ ->
+        invalid_arg "decompose_lam_n_zeta: not enough lambdas"
+    else
+      ctxt, body
+  in
+  aux n Rel.empty term
+
+(* Lookup n rels and remove then *)
+let lookup_pop (n : int) (env : env) =
+  let rels = List.map (fun i -> lookup_rel i env) (from_one_to n) in
+  (pop_rel_context n env, rels)
+
+let force_constant_body const_body =
+  match const_body.const_body with
+  | Def const_def ->
+    Mod_subst.force_constr const_def
+  | OpaqueDef opaq ->
+    Opaqueproof.force_proof (Global.opaque_tables ()) opaq
+  | _ ->
+    CErrors.user_err ~hdr:"force_constant_body"
+      (Pp.str "An axiom has no defining term")
+
+(* Lookup a definition *)
 let lookup_definition (env : env) (def : types) : types =
   match kind def with
-  | Const (c, u) ->
-     let c_body = (lookup_constant c env).const_body in
-     (match c_body with
-      | Def cs -> Mod_subst.force_constr cs
-      | OpaqueDef o -> Opaqueproof.force_proof (Global.opaque_tables ()) o
-      | _ -> failwith "an axiom has no definition")
+  | Const (c, u) -> force_constant_body (lookup_constant c env)
   | Ind _ -> def
-  | _ ->  failwith "not a definition"
+  | _ -> failwith "not a definition"
 
 (* Fully lookup a def in env, but return the term if it is not a definition *)
 let rec unwrap_definition (env : env) (trm : types) : types =
@@ -179,69 +479,86 @@ let rec unwrap_definition (env : env) (trm : types) : types =
   with _ ->
     trm
 
-(* Zoom all the way into a lambda term *)
-let rec zoom_lambda_term (env : env) (trm : types) : env * types =
-  match kind trm with
-  | Lambda (n, t, b) ->
-     zoom_lambda_term (push_rel CRD.(LocalAssum(n, t)) env) b
-  | _ ->
-     (env, trm)
-
-(*
- * Reconstruct a lambda from an environment
- *)
-let rec reconstruct_lambda (env : env) (b : types) : types =
-  if nb_rel env = 0 then
-    b
-  else
-    let (n, _, t) = CRD.to_tuple @@ lookup_rel 1 env in
-    let env' = pop_rel_context 1 env in
-    reconstruct_lambda env' (mkLambda (n, t, b))
-
-(*
- * Reconstruct a product from an environment
- *)
-let rec reconstruct_prod (env : env) (b : types) : types =
-  if nb_rel env = 0 then
-    b
-  else
-    let (n, _, t) = CRD.to_tuple @@ lookup_rel 1 env in
-    let env' = pop_rel_context 1 env in
-    reconstruct_prod env' (mkProd (n, t, b))
-
-(* --- Inductive types --- *)
-
-(* Get the body of a mutually inductive type *)
-let lookup_mutind_body i (env : env) : mutual_inductive_body =
-  lookup_mind i env
-
-(* Get the type of a mutually inductive type *)
-let type_of_inductive (env : env) (mutind_body : mutual_inductive_body) (ind_body : one_inductive_body) : types =
+(* Get the type of an inductive type *)
+let type_of_inductive env index mutind_body : types =
+  let ind_bodies = mutind_body.mind_packets in
+  let ind_body = Array.get ind_bodies index in
   let univs = Declareops.inductive_polymorphic_context mutind_body in
   let univ_instance = Univ.make_abstract_instance univs in
   let mutind_spec = (mutind_body, ind_body) in
   Inductive.type_of_inductive env (mutind_spec, univ_instance)
 
-(* Don't support mutually inductive or coinductive types yet (TODO) *)
-let check_inductive_supported (mutind_body : mutual_inductive_body) : unit =
-  let ind_bodies = mutind_body.mind_packets in
-  if not (Array.length ind_bodies = 1) then
-    failwith "mutually inductive types not yet supported"
+(*
+ * Inductive types create bindings that we need to push to the environment
+ * This function gets those bindings
+ *)
+let bindings_for_inductive env mutind_body ind_bodies : CRD.t list =
+  Array.to_list
+    (Array.mapi
+       (fun i ind_body ->
+         let name_id = ind_body.mind_typename in
+         let typ = type_of_inductive env i mutind_body in
+         CRD.LocalAssum (Name name_id, typ))
+       ind_bodies)
+
+(*
+ * Similarly but for fixpoints
+ *)
+let bindings_for_fix (names : name array) (typs : types array) : CRD.t list =
+  Array.to_list
+    (CArray.map2_i
+       (fun i name typ -> CRD.LocalAssum (name, Vars.lift i typ))
+       names typs)
+
+(* Bind the declarations of a local context as product/let-in bindings *)
+let recompose_prod_assum decls term =
+  let bind term decl = Term.mkProd_or_LetIn decl term in
+  Rel.fold_inside bind ~init:term decls
+
+(* Bind the declarations of a local context as lambda/let-in bindings *)
+let recompose_lam_assum decls term =
+  let bind term decl = Term.mkLambda_or_LetIn decl term in
+  Rel.fold_inside bind ~init:term decls
+
+(* Instantiate an abstract universe context *)
+let inst_abs_univ_ctx abs_univ_ctx =
+  (* Note that we're creating *globally* fresh universe levels. *)
+  Universes.fresh_instance_from_context abs_univ_ctx |> Univ.UContext.make
+
+(* --- Basic questions about terms --- *)
+
+(* Is the first term equal to a "head" (application prefix) of the second?
+ * The notion of term equality is syntactic (i.e., no environment) and defaults
+ * to syntactic equality modulo alpha, casts, grouping, and universes. The
+ * result of this function is an informative boolean: an optional array, with
+ * None meaning false and Some meaning true and giving the trailing arguments.
+ *
+ * This function is similar to is_or_applies, except for term equality and the
+ * informative boolean result.
+ *)
+let eq_constr_head ?(eq_constr=eq_constr_nounivs) term term' =
+  let head, args = decompose_app term in
+  let head', args' = decompose_app term' in
+  if eq_constr head head' && List.prefix_of eq_constr args args' then
+    Some (List.skipn (List.length args) args' |> Array.of_list)
   else
-    if (mutind_body.mind_finite = CoFinite) then
-      failwith "coinductive types not yet supported"
-    else
-      ()
+    None
+ 
+(* --- Inductive types and their eliminators --- *)
+
+(* Don't support mutually inductive or coinductive types yet *)
+let check_inductive_supported mutind_body : unit =
+  let ind_bodies = mutind_body.mind_packets in
+  if Array.length ind_bodies > 1 then
+    CErrors.user_err (Pp.str "Mutually inductive types are not supported")
+  else if (mutind_body.mind_finite = Declarations.CoFinite) then
+    CErrors.user_err (Pp.str "Coinductive types are not supported")
 
 (*
  * Check if a constant is an inductive elminator
  * If so, return the inductive type
- * Currently uses naming scheme, eventually should use structure
- * (Check how the "induction using" tactic detects this)
- *
- * TODO clean me after changes
  *)
-let inductive_of_elim (env : env) (pc : pconstant) =
+let inductive_of_elim (env : env) (pc : pconstant) : mutual_inductive option =
   let (c, u) = pc in
   let kn = Constant.canonical c in
   let (modpath, dirpath, label) = KerName.repr kn in
@@ -256,7 +573,7 @@ let inductive_of_elim (env : env) (pc : pconstant) =
         let ind_label_string = String.sub label_string 0 split_index in
         let ind_label = Label.of_id (Id.of_string_soft ind_label_string) in
         let ind_name = MutInd.make1 (KerName.make modpath dirpath ind_label) in
-        ignore (lookup_mutind_body ind_name env);
+        lookup_mind ind_name env;
         Some ind_name
       else
         if not is_rev then
@@ -269,7 +586,7 @@ let inductive_of_elim (env : env) (pc : pconstant) =
       else
         None
   in try_find_ind false
-
+                                 
 (*
  * Get the number of constructors for an inductive type
  *
@@ -283,103 +600,249 @@ let num_constrs (mutind_body : mutual_inductive_body) : int =
     0
     mutind_body.mind_packets
 
-(* --- Convertibility of terms --- *)
+(* Determine whether template polymorphism is used for a one_inductive_body *)
+let is_ind_body_template ind_body =
+  match ind_body.mind_arity with
+  | RegularArity _ -> false
+  | TemplateArity _ -> true
+
+(* Construct the arity of an inductive type from a one_inductive_body *)
+let arity_of_ind_body ind_body =
+  match ind_body.mind_arity with
+  | RegularArity { mind_user_arity; mind_sort } ->
+    mind_user_arity
+  | TemplateArity { template_param_levels; template_level } ->
+    let sort = Constr.mkType template_level in
+    recompose_prod_assum ind_body.mind_arity_ctxt sort
+
+(* Create an Entries.local_entry from a Rel.Declaration.t *)
+let make_ind_local_entry decl =
+  let entry =
+    match decl with
+    | CRD.LocalAssum (_, typ) -> Entries.LocalAssumEntry typ
+    | CRD.LocalDef (_, term, _) -> Entries.LocalDefEntry term
+  in
+  match CRD.get_name decl with
+  | Name.Name id -> (id, entry)
+  | Name.Anonymous -> failwith "Parameters to an inductive type may not be anonymous"
+
+(* Instantiate an abstract_inductive_universes into an Entries.inductive_universes with Univ.UContext.t *)
+let make_ind_univs_entry = function
+  | Monomorphic_ind univ_ctx_set ->
+    let univ_ctx = Univ.UContext.empty in
+    (Entries.Monomorphic_ind_entry univ_ctx_set, univ_ctx)
+  | Polymorphic_ind abs_univ_ctx ->
+    let univ_ctx = inst_abs_univ_ctx abs_univ_ctx in
+    (Entries.Polymorphic_ind_entry univ_ctx, univ_ctx)
+  | Cumulative_ind abs_univ_cumul ->
+    let abs_univ_ctx = Univ.ACumulativityInfo.univ_context abs_univ_cumul in
+    let univ_ctx = inst_abs_univ_ctx abs_univ_ctx in
+    let univ_var = Univ.ACumulativityInfo.variance abs_univ_cumul in
+    let univ_cumul = Univ.CumulativityInfo.make (univ_ctx, univ_var) in
+    (Entries.Cumulative_ind_entry univ_cumul, univ_ctx)
+
+let open_inductive ?(global=false) env (mind_body, ind_body) =
+  let univs, univ_ctx = make_ind_univs_entry mind_body.mind_universes in
+  let subst_univs = Vars.subst_instance_constr (Univ.UContext.instance univ_ctx) in
+  let env = Environ.push_context univ_ctx env in
+  if global then
+    Global.push_context false univ_ctx;
+  let arity = arity_of_ind_body ind_body in
+  let arity_ctx = [CRD.LocalAssum (Name.Anonymous, arity)] in
+  let ctors_typ = Array.map (recompose_prod_assum arity_ctx) ind_body.mind_user_lc in
+  env, univs, subst_univs arity, Array.map_to_list subst_univs ctors_typ
+
+let declare_inductive typename consnames template univs nparam arity constypes =
+  let open Entries in
+  let params, arity = Term.decompose_prod_n_assum nparam arity in
+  let constypes = List.map (Term.decompose_prod_n_assum (nparam + 1)) constypes in
+  let ind_entry =
+    { mind_entry_typename = typename;
+      mind_entry_arity = arity;
+      mind_entry_template = template;
+      mind_entry_consnames = consnames;
+      mind_entry_lc = List.map snd constypes }
+  in
+  let mind_entry =
+    { mind_entry_record = None;
+      mind_entry_finite = Declarations.Finite;
+      mind_entry_params = List.map make_ind_local_entry params;
+      mind_entry_inds = [ind_entry];
+      mind_entry_universes = univs;
+      mind_entry_private = None }
+  in
+  let ((_, ker_name), _) = Declare.declare_mind mind_entry in
+  let mind = MutInd.make1 ker_name in
+  let ind = (mind, 0) in
+  Indschemes.declare_default_schemes mind;
+  ind
+
+(* --- Names --- *)
+
+(* Convert an external reference into a qualid *)
+let qualid_of_reference =
+  Libnames.qualid_of_reference %> CAst.with_val identity
+
+(* Convert a term into a global reference with universes (or raise Not_found) *)
+let pglobal_of_constr term =
+  match Constr.kind term with
+  | Const (const, univs) -> ConstRef const, univs
+  | Ind (ind, univs) -> IndRef ind, univs
+  | Construct (cons, univs) -> ConstructRef cons, univs
+  | Var id -> VarRef id, Univ.Instance.empty
+  | _ -> raise Not_found
+
+(* Convert a global reference with universes into a term *)
+let constr_of_pglobal (glob, univs) =
+  match glob with
+  | ConstRef const -> mkConstU (const, univs)
+  | IndRef ind -> mkIndU (ind, univs)
+  | ConstructRef cons -> mkConstructU (cons, univs)
+  | VarRef id -> mkVar id
+
+type global_substitution = global_reference Globmap.t
+
+(* Substitute global references throughout a term *)
+let subst_globals subst term =
+  let rec aux term =
+    try
+      pglobal_of_constr term |>
+      map_puniverses (flip Globmap.find subst) |>
+      constr_of_pglobal
+    with Not_found ->
+      Constr.map aux term
+  in
+  aux term
+
+(* --- Modules --- *)
 
 (*
- * Check whether two terms are convertible, but ignore universe inconsistency
- * This is a workaround we should eventually fix
- * Though it doesn't seem to matter for patch-finding
+ * Pull any functor parameters off the module signature, returning the list of
+ * functor parameters and the list of module elements (i.e., fields).
  *)
-let conv_ignoring_univ_inconsistency env evm (trm1 : types) (trm2 : types) : bool =
-  let etrm1 = EConstr.of_constr trm1 in
-  let etrm2 = EConstr.of_constr trm2 in
-  try
-    Reductionops.is_conv env evm etrm1 etrm2
-  with _ ->
-    match map_tuple kind (trm1, trm2) with
-    | (Sort (Sorts.Type u1), Sort (Sorts.Type u2)) -> true
-    | _ -> false
-
-(* Checks whether two terms are convertible in env with the empty evar environment *)
-let convertible (env : env) (trm1 : types) (trm2 : types) : bool =
-  conv_ignoring_univ_inconsistency env empty trm1 trm2
-
-(* Checks whether two terms are convertible in env with evars *)
-let convertible_e (env : env) (evm : evar_map) (trm1 : types) (trm2 : types) : bool =
-  conv_ignoring_univ_inconsistency env evm trm1 trm2
+let decompose_module_signature mod_sign =
+  let rec aux mod_arity mod_sign =
+    match mod_sign with
+    | MoreFunctor (mod_name, mod_type, mod_sign) ->
+      aux ((mod_name, mod_type) :: mod_arity) mod_sign
+    | NoFunctor mod_fields ->
+      mod_arity, mod_fields
+  in
+  aux [] mod_sign
 
 (*
- * Like concls_convertible, but expect exactly the same number of arguments
- * in the same order
- *)
-let rec concls_convertible (env : env) (typ1 : types) (typ2 : types) : bool =
-  match (kind typ1, kind typ2) with
-  | (Prod (n1, t1, b1), Prod (n2, t2, b2)) ->
-     if convertible env t1 t2 then
-       concls_convertible (push_rel CRD.(LocalAssum(n1, t1)) env) b1 b2
-     else
-       false
-  | _ ->
-     convertible env typ1 typ2
-
-(*
- * Check whether all terms in l1 and l2 are convertible in env
- *)
-let all_convertible (env : env) (l1 : types list) (l2 : types list) : bool =
-  List.for_all2 (convertible env) l1 l2
-
-(*
- * Check if two arrays of arguments are all convertible with each other
- *)
-let args_convertible (env : env) (a1 : types array) (a2 : types array) : bool =
-  apply_to_arrays (all_convertible env) a1 a2
-
-(*
- * Check whether the arguments to two applied functions are all convertible
- * in an environment.
+ * Define an interactive (i.e., elementwise) module structure, with the
+ * functional argument called to populate the module elements.
  *
- * This fails with an error if the supplied terms are not applied functions.
+ * The optional argument specifies functor parameters.
  *)
-let fun_args_convertible (env : env) (t1 : types) (t2 : types) : bool =
-  if not (isApp t1 && isApp t2) then
-    failwith "Need an application to check if arguments are convertible"
-  else
-    let (_, args1) = destApp t1 in
-    let (_, args2) = destApp t2 in
-    args_convertible env args1 args2
+let declare_module_structure ?(params=[]) ident declare_elements =
+  let mod_sign = Vernacexpr.Check [] in
+  let mod_path =
+    Declaremods.start_module Modintern.interp_module_ast None ident params mod_sign
+  in
+  Dumpglob.dump_moddef mod_path "mod";
+  declare_elements ();
+  let mod_path = Declaremods.end_module () in
+  Dumpglob.dump_modref mod_path "mod";
+  Flags.if_verbose Feedback.msg_info
+    Pp.(str "\nModule " ++ Id.print ident ++ str " is defined");
+  mod_path
 
-(* --- Types --- *)
+(* Type-sensitive transformation of terms *)
+type constr_transformer = env -> evar_map ref -> constr -> constr
 
-(* Infer the type of trm in env, using the unsafe type judgment
- * The term we eventually produce is type-safe because real type-checking occurs later *)
-let infer_type (env : env) (trm : types) : types =
-  let jmt = Typeops.infer env trm in
-  j_type jmt
+(*
+ * Declare a new constant under the given name with the transformed term and
+ * type from the given constant.
+ *
+ * NOTE: Global side effects.
+ *)
+let transform_constant ident tr_constr const_body =
+  let env =
+    match const_body.const_universes with
+    | Monomorphic_const univs ->
+      Global.env () |> Environ.push_context_set univs
+    | Polymorphic_const univs ->
+      CErrors.user_err ~hdr:"transform_constant"
+        Pp.(str "Universe polymorphism is not supported")
+  in
+  let term = force_constant_body const_body in
+  let evm = ref (Evd.from_env env) in
+  let term' = tr_constr env evm term in
+  let type' = tr_constr env evm const_body.const_type in
+  define_term ~typ:type' ident !evm term' true |> Globnames.destConstRef
 
-(* Check whether a term has a given type *)
-let has_type (env : env) (typ : types) (trm : types) : bool =
-  try
-    let trm_typ = infer_type env trm in
-    convertible env trm_typ typ
-  with _ -> false
+(*
+ * Declare a new inductive family under the given name with the transformed type
+ * arity and constructor types from the given inductive definition. Names for
+ * the constructors remain the same.
+ *
+ * NOTE: Global side effects.
+ *)
+let transform_inductive ident tr_constr ((mind_body, ind_body) as ind_specif) =
+  (* TODO: Can we re-use this for ornamental lifting of inductive families? *)
+  let env = Global.env () in
+  let env, univs, arity, cons_types =
+    open_inductive ~global:true env ind_specif
+  in
+  let evm = ref (Evd.from_env env) in
+  let arity' = tr_constr env evm arity in
+  let cons_types' = List.map (tr_constr env evm) cons_types in
+  declare_inductive
+    ident (Array.to_list ind_body.mind_consnames)
+    (is_ind_body_template ind_body) univs
+    mind_body.mind_nparams arity' cons_types'
 
-(* --- Convertibility of types --- *)
-
-(* Checks whether the types of two terms are convertible *)
-let types_convertible (env : env) (trm1 : types) (trm2 : types) : bool =
-  try
-    let typ1 = infer_type env trm1 in
-    let typ2 = infer_type env trm2 in
-    convertible env typ1 typ2
-  with _ -> false
-
-(* --- Existential variables --- *)
-
-(* Terms with existential variables *)
-type eterm = evar_map * types
-type eterms = evar_map * (types array)
-
-(* --- Auxiliary functions for dealing with two terms at once --- *)
-
-let kinds_of_terms = map_tuple kind
-
+(*
+ * Declare a new module structure under the given name with the compositionally
+ * transformed (i.e., forward-substituted) components from the given module
+ * structure. Names for the components remain the same.
+ *
+ * The optional initialization function is called immediately after the module
+ * structure begins, and its returned subsitution is applied to all other module
+ * elements.
+ *
+ * NOTE: Does not support functors or nested modules.
+ * NOTE: Global side effects.
+ *)
+let transform_module_structure ?(init=const Globmap.empty) ident tr_constr mod_body =
+  let mod_path = mod_body.mod_mp in
+  let mod_arity, mod_elems = decompose_module_signature mod_body.mod_type in
+  assert (List.is_empty mod_arity); (* Functors are not yet supported *)
+  let transform_module_element subst (label, body) =
+    let ident = Label.to_id label in
+    let tr_constr env evm = subst_globals subst %> tr_constr env evm in
+    match body with
+    | SFBconst const_body ->
+      let const = Constant.make2 mod_path label in
+      if Globmap.mem (ConstRef const) subst then
+        subst (* Do not transform schematic definitions. *)
+      else
+        let const' = transform_constant ident tr_constr const_body in
+        Globmap.add (ConstRef const) (ConstRef const') subst
+    | SFBmind mind_body ->
+      check_inductive_supported mind_body;
+      let ind = (MutInd.make2 mod_path label, 0) in
+      let ind_body = mind_body.mind_packets.(0) in
+      let ind' = transform_inductive ident tr_constr (mind_body, ind_body) in
+      let ncons = Array.length ind_body.mind_consnames in
+      let list_cons ind = List.init ncons (fun i -> ConstructRef (ind, i + 1)) in
+      let sorts = ind_body.mind_kelim in
+      let list_elim ind = List.map (Indrec.lookup_eliminator ind) sorts in
+      Globmap.add (IndRef ind) (IndRef ind') subst |>
+      List.fold_right2 Globmap.add (list_cons ind) (list_cons ind') |>
+      List.fold_right2 Globmap.add (list_elim ind) (list_elim ind')
+    | SFBmodule mod_body ->
+      Feedback.msg_warning
+        Pp.(str "Skipping nested module structure " ++ Label.print label);
+      subst
+    | SFBmodtype sig_body ->
+      Feedback.msg_warning
+        Pp.(str "Skipping nested module signature " ++ Label.print label);
+      subst
+  in
+  declare_module_structure
+    ident
+    (fun () ->
+       ignore (List.fold_left transform_module_element (init ()) mod_elems))

@@ -1,6 +1,7 @@
 open Searchopts
 open Differencers
-
+open Evd
+       
 (* --- Recursive Differencers for Application --- *)
 
 (*
@@ -10,6 +11,7 @@ open Differencers
  * Use the options to determine how to combine the results.
  *)
 val diff_app :
+  evar_map ->
   proof_differencer configurable -> (* diff f *)
   proof_differencer configurable -> (* diff each arg *)
   proof_differencer configurable
@@ -22,7 +24,8 @@ val diff_app :
  * Use the options to determine how to combine the results.
  *)
 val diff_app_ind :
-  ind_proof_differencer configurable -> (* diff f *)
-  proof_differencer configurable -> (* diff each arg *)
+  evar_map ->
+  (evar_map -> ind_proof_differencer) configurable -> (* diff f *)
+  (evar_map -> proof_differencer) configurable -> (* diff each arg *)
   proof_differencer configurable
 

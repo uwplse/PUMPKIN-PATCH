@@ -3,6 +3,7 @@
 open Differencers
 open Searchopts
 open Proofdiff
+open Evd
 
 (*
  * Difference an inductive proof.
@@ -17,6 +18,6 @@ open Proofdiff
  * to update the goals for the next iteration.
  *)
 val diff_inductive :
-  proof_differencer configurable ->
+  (evar_map -> proof_differencer) configurable ->
   goal_proof_diff ->
-  ind_proof_differencer configurable
+  (evar_map -> ind_proof_differencer) configurable

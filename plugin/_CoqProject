@@ -16,16 +16,12 @@
 
 src/library/utilities/utilities.mli
 src/library/utilities/utilities.ml
-src/library/utilities/collections.mli
-src/library/utilities/collections.ml
 
 src/library/categories/category.mli
 src/library/categories/category.ml
 
 src/library/coq/coqterms.mli
 src/library/coq/coqterms.ml
-src/library/coq/coqenvs.mli
-src/library/coq/coqenvs.ml
 src/library/coq/printing.mli
 src/library/coq/printing.ml
 src/library/coq/hofs.mli
@@ -103,6 +99,8 @@ src/core/procedures/search.mli
 src/core/procedures/search.ml
 src/core/procedures/theorem.mli
 src/core/procedures/theorem.ml
+src/core/procedures/desugar.mli
+src/core/procedures/desugar.ml
 
 src/patcher.ml4
 src/patch.mlpack

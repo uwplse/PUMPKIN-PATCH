@@ -17,11 +17,15 @@ open Searchopts
 open Reducers
 open Specialization
 open Factoring
-open Collections
 open Cutlemma
 open Kindofchange
 open Changedetectors
 open Stdarg
+open Desugar
+open Utilities
+open Zooming
+
+module Globmap = Globnames.Refmap
 
 (*
  * Plugin for patching Coq proofs given a change.
@@ -66,15 +70,15 @@ let configure trm1 trm2 cut : goal_proof_diff * options =
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
   let d = add_goals (difference c1 c2 no_assumptions) in
-  let change = find_kind_of_change lemma d in
+  let change = find_kind_of_change evm lemma d in
   (d, configure_search d change lemma)
 
 (* Common inversion functionality *)
 let invert_patch n env evm patch =
-  let inverted = invert_terms invert_factor env [patch] in
+  let inverted = invert_terms invert_factor env evm [patch] in
   try
     let patch_inv = List.hd inverted in
-    let _ = infer_type env patch_inv in
+    let _ = infer_type env evm patch_inv in
     ignore (define_term n evm patch_inv false);
     let n_string = Id.to_string n in
     if !opt_printpatches then
@@ -88,7 +92,7 @@ let invert_patch n env evm patch =
 let patch n old_term new_term try_invert a search =
   let (evm, env) = Pfedit.get_current_context () in
   let reduce = try_reduce reduce_remove_identities in
-  let patch = reduce env (search env evm a) in
+  let patch = reduce env evm (search env evm a) in
   let prefix = Id.to_string n in
   ignore (define_term n evm patch false);
   (if !opt_printpatches then
@@ -105,6 +109,46 @@ let patch n old_term new_term try_invert a search =
   else
     ()
 
+(*
+ * Translate each fix or match subterm into an equivalent application of an
+ * eliminator, defining the new term with the given name.
+ *
+ * Mutual fix or cofix subterms are not supported.
+ * (By Nate Yazdani, from DEVOID)
+ *)
+let do_desugar_constant ident const_ref =
+  ignore
+    begin
+      qualid_of_reference const_ref |> Nametab.locate_constant |>
+      Global.lookup_constant |> transform_constant ident desugar_constr
+    end
+
+(*
+ * Translate fix and match expressions into eliminations, as in
+ * do_desugar_constant, compositionally throughout a whole module.
+ *
+ * The optional argument is a list of constants outside the module to include
+ * in the translated module as if they were components in the input module.
+ * (By Nate Yazdani, from DEVOID)
+ *)
+let do_desugar_module ?(incl=[]) ident mod_ref =
+  let open Util in
+  let consts = List.map (qualid_of_reference %> Nametab.locate_constant) incl in
+  let include_constant subst const =
+    let ident = Label.to_id (Constant.label const) in
+    let tr_constr env evm = subst_globals subst %> desugar_constr env evm in
+    let const' =
+      Global.lookup_constant const |> transform_constant ident tr_constr
+    in
+    Globmap.add (ConstRef const) (ConstRef const') subst
+  in
+  let init () = List.fold_left include_constant Globmap.empty consts in
+  ignore
+    begin
+      qualid_of_reference mod_ref |> Nametab.locate_module |>
+      Global.lookup_module |> transform_module_structure ~init ident desugar_constr
+    end
+
 (* --- Commands --- *)
 
 (*
@@ -119,7 +163,7 @@ let patch_proof n d_old d_new cut =
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   patch n old_term new_term try_invert ()
     (fun env evm _ ->
-      search_for_patch old_term opts d)
+      search_for_patch evm old_term opts d)
 
 (*
  * The Patch Theorem command functionality
@@ -135,7 +179,7 @@ let patch_theorem n d_old d_new t =
     (fun env evm t ->
       let theorem = intern env evm t in
       let t_trm = lookup_definition env theorem in
-      update_theorem env old_term new_term t_trm)
+      update_theorem env evm old_term new_term t_trm)
 
 (* Invert a term *)
 let invert n trm : unit =
@@ -147,7 +191,7 @@ let invert n trm : unit =
 let specialize n trm : unit =
   let (evm, env) = Pfedit.get_current_context() in
   let reducer = specialize_body specialize_term in
-  let specialized = reducer env (intern env evm trm) in
+  let specialized = reducer env evm (intern env evm trm) in
   ignore (define_term n evm specialized false)
 
 (* Abstract a term by a function or arguments *)
@@ -155,7 +199,7 @@ let abstract n trm goal : unit =
   let (evm, env) = Pfedit.get_current_context() in
   let c = lookup_definition env (intern env evm trm) in
   let goal_type = unwrap_definition env (intern env evm goal) in
-  let config = configure_from_goal env goal_type c in
+  let config = configure_from_goal env evm goal_type c in
   let abstracted = abstract_with_strategies config in
   if List.length abstracted > 0 then
     try
@@ -166,7 +210,7 @@ let abstract n trm goal : unit =
       let rels = List.map (fun i -> i + num_discard) (from_one_to num_args) in
       let args = Array.map (fun i -> mkRel i) (Array.of_list rels) in
       let app = mkApp (List.hd abstracted, args) in
-      let reduced = reduce_term config.env app in
+      let reduced = reduce_term config.env evm app in
       let reconstructed = reconstruct_lambda config.env reduced in
       ignore (define_term n evm reconstructed false)
   else
@@ -176,7 +220,7 @@ let abstract n trm goal : unit =
 let factor n trm : unit =
   let (evm, env) = Pfedit.get_current_context() in
   let body = lookup_definition env (intern env evm trm) in
-  let fs = reconstruct_factors (factor_term env body) in
+  let fs = reconstruct_factors (factor_term env evm body) in
   let prefix = Id.to_string n in
   try
     List.iteri
@@ -187,6 +231,8 @@ let factor n trm : unit =
         Printf.printf "Defined %s\n" lemma_id_string)
       fs
   with _ -> failwith "Could not find lemmas"
+
+(* --- Vernac syntax --- *)
 
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
@@ -220,4 +266,14 @@ END
 VERNAC COMMAND EXTEND FactorCandidate CLASSIFIED AS SIDEFF
 | [ "Factor" constr(trm) "using" "prefix" ident(n) ] ->
   [ factor n trm ]
+END
+
+(* Desugar any/all fix/match subterms into eliminator applications *)
+VERNAC COMMAND EXTEND TranslateMatch CLASSIFIED AS SIDEFF
+| [ "Preprocess" reference(const_ref) "as" ident(id) ] ->
+  [ do_desugar_constant id const_ref ]
+| [ "Preprocess" "Module" reference(mod_ref) "as" ident(id) ] ->
+  [ do_desugar_module id mod_ref ]
+| [ "Preprocess" "Module" reference(mod_ref) "as" ident(id) "{" "include" ne_reference_list_sep(incl_refs, ",") "}" ] ->
+  [ do_desugar_module ~incl:incl_refs id mod_ref ]
 END

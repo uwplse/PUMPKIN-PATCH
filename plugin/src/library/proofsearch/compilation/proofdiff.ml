@@ -2,6 +2,7 @@
 
 open Constr
 open Environ
+open Evd
 open Proofcat
 open Assumptions
 open Expansion
@@ -10,8 +11,13 @@ open Evaluation
 open Proofcatterms
 open Reducers
 open Declarations
-open Collections
+open Utilities
 open Merging
+
+(*
+ * Note: Evar discipline here is not good yet, but will change
+ * when we refactor later.
+ *)
 
 (* --- Types --- *)
 
@@ -224,7 +230,7 @@ let reduced_proof_terms (r : reducer) (d : goal_proof_diff) : env * types * type
   let (env, ns, os) = merge_diff_closures (dest_goals (proof_to_term d)) [] in
   let [new_goal_type; new_term] = ns in
   let [old_goal_type; old_term] = os in
-  (env, r env old_term, r env new_term)
+  (env, r env Evd.empty old_term, r env Evd.empty new_term)
 
 (* Get the goal types for a lift goal diff *)
 let goal_types (d : lift_goal_diff) : types * types =
@@ -242,11 +248,11 @@ let reduce_diff (r : reducer) (d : goal_proof_diff) : goal_proof_diff =
   let (goal_n, _) = new_proof d in
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
-  eval_with_terms (r env_o o) (r env_n n) d
+  eval_with_terms (r env_o Evd.empty o) (r env_n Evd.empty n) d
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
 let rec reduce_casts (d : goal_proof_diff) : goal_proof_diff =
-  match kinds_of_terms (proof_terms d) with
+  match map_tuple kind (proof_terms d) with
   | (Cast (t, _, _), _) ->
      reduce_casts (eval_with_old_term t d)
   | (_, Cast (t, _, _)) ->
@@ -265,8 +271,8 @@ let reduce_letin (d : goal_proof_diff) : goal_proof_diff =
       let d_dest = dest_goals d in
       let ((_, old_env), _) = old_proof d_dest in
       let ((_, new_env), _) = new_proof d_dest in
-      let o' = reduce_whd_if_let_in old_env o in
-      let n' = reduce_whd_if_let_in new_env n in
+      let o' = reduce_whd_if_let_in old_env Evd.empty o in
+      let n' = reduce_whd_if_let_in new_env Evd.empty n in
       eval_with_terms o' n' d
     else
       d
@@ -297,13 +303,13 @@ let update_case_assums (d_ms : (arrow list) proof_diff) : equal_assumptions =
     (fun assums dst_o dst_n ->
       let d = difference dst_o dst_n assums in
       let (env, d_goal, _) = merge_lift_diff_envs d [] in
-      if convertible env (old_proof d_goal) (new_proof d_goal) then
+      if convertible env Evd.empty (old_proof d_goal) (new_proof d_goal) then
         assume_local_equal assums
       else
         shift_assumptions assums)
     (assumptions d_ms)
-    (conclusions (remove_last (old_proof d_ms)))
-    (conclusions (remove_last (new_proof d_ms)))
+    (conclusions (all_but_last (old_proof d_ms)))
+    (conclusions (all_but_last (new_proof d_ms)))
 
 (* --- Questions about differences between proofs --- *)
 
@@ -330,8 +336,8 @@ let same_shape (env : env) (d : types proof_diff) : bool =
   let n = new_proof d in
   match map_tuple kind (o, n) with
   | (Ind ((i_o, ii_o), u_o), Ind ((i_n, ii_n), u_n)) ->
-     let ind_o = lookup_mutind_body i_o env in
-     let ind_n = lookup_mutind_body i_n env in
+     let ind_o = lookup_mind i_o env in
+     let ind_n = lookup_mind i_n env in
      if num_constrs ind_o = num_constrs ind_n then
        let neqs = changed_constrs env ind_o ind_n in
        List.length neqs = 1
@@ -354,8 +360,8 @@ let ind_type_diff (env : env) (d : types proof_diff) : types proof_diff =
   let o = old_proof d in
   let n = new_proof d in
   let (Ind ((i_o, _), _), Ind ((i_n, _), _)) = map_tuple kind (o, n) in
-  let ind_o = lookup_mutind_body i_o env in
-  let ind_n = lookup_mutind_body i_n env in
+  let ind_o = lookup_mind i_o env in
+  let ind_n = lookup_mind i_n env in
   let neqs = changed_constrs env ind_o ind_n in
   let rec remove_conclusion c =
     match kind c with

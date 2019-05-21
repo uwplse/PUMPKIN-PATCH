@@ -5,7 +5,6 @@ open Environ
 open Coqterms
 open Proofcat
 open Proofcatterms
-open Collections
 open Debruijn
 open Utilities
 open Proofdiff
@@ -16,10 +15,15 @@ open Zooming
 
 module CRD = Context.Rel.Declaration
 
+(*
+ * Note: Evar discipline is not good here yet, but will change when
+ * we merge PUMPKIN with DEVOID and refactor.
+ *)
+
 (* --- Auxiliary --- *)
 
-let terms_convertible env_o env_n src_o src_n dst_o dst_n =
-  convertible env_o src_o dst_o && convertible env_n src_n dst_n
+let terms_convertible env_o env_n evd src_o src_n dst_o dst_n =
+  convertible env_o evd src_o dst_o && convertible env_n evd src_n dst_n
 
 let context_envs = map_tuple context_env
 let context_terms = map_tuple context_term
@@ -92,8 +96,8 @@ let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
    let env_n' = push_rel rel_n env_n in
    let (_, _, t_o) = CRD.to_tuple @@ rel_o in
    let (_, _, t_n) = CRD.to_tuple @@ rel_n in
-   let trim = terms_convertible env_o' env_n' t_o t_n in
-   match kinds_of_terms (g_o, g_n) with
+   let trim = terms_convertible env_o' env_n' Evd.empty t_o t_n in
+   match map_tuple kind (g_o, g_n) with
    | (Prod (_, t_g_o, b_o), Prod (_, t_g_n, b_n)) when trim t_g_o t_g_n ->
       (Term (b_o, env_o'), Term (b_n, env_n'))
    | _ ->
@@ -118,7 +122,7 @@ let set_inductive_goals typ_o typ_n (d : 'a goal_diff) : 'a goal_diff =
 let update_goals_types d_old (d : proof_cat_diff) =
   let (old_goal, _) = old_proof d_old in
   let (new_goal, _) = new_proof d_old in
-  match kinds_of_terms (proof_terms d_old) with
+  match map_tuple kind (proof_terms d_old) with
   | (Lambda (n_o, t_o, _), Lambda (n_n, t_n, _)) ->
      let rel_o = CRD.LocalAssum(n_o, t_o) in
      let rel_n = CRD.LocalAssum(n_n, t_n) in
@@ -175,7 +179,7 @@ let configure_update_goals change d_old d =
  *    then check whether the old proof may apply the new proof.
  *)
 let configure_is_app change d =
-  match (kinds_of_terms (proof_terms d), change) with
+  match (map_tuple kind (proof_terms d), change) with
   | ((_, App (_, _)), InductiveType (_, _)) ->
      true
   | ((_, App (_, _)), Hypothesis (_, _)) ->
@@ -277,9 +281,9 @@ let to_search_function search opts d : search_function =
  * This is naive for now
  *)
 let applies_ih opts (d : goal_proof_diff) : bool =
-  match kinds_of_terms (proof_terms d) with
+  match map_tuple kind (proof_terms d) with
   | (App (f1, args1), App (f2, args2)) ->
-     is_ind opts && same_length args1 args2 && isLambda f1 && isLambda f2
+     is_ind opts && Array.length args1 = Array.length args2 && isLambda f1 && isLambda f2
   | _ ->
      false
 

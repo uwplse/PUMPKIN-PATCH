@@ -20,4 +20,4 @@ plugin/*.cmi
 *.vo
 *.a
 *.cmxa
-plugin/Makefile.coq
+*.conf

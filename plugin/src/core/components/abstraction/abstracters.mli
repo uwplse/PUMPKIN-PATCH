@@ -2,6 +2,7 @@
 
 open Constr
 open Environ
+open Evd
 open Candidates
 
 type abstraction_dimension = Arguments | Property
@@ -15,7 +16,7 @@ type abstraction_strategy
  * using a strategy to determine when to substitute.
  *)
 val substitute_using :
- abstraction_strategy -> env -> types list -> types list -> candidates ->
+ abstraction_strategy -> env -> evar_map -> types list -> types list -> candidates ->
  candidates
 
 (*
@@ -23,14 +24,14 @@ val substitute_using :
  * how to reduce
  *)
 val reduce_all_using :
-  abstraction_strategy -> env -> candidates -> candidates
+  abstraction_strategy -> env -> evar_map -> candidates -> candidates
 
 (*
  * Filter candidates, using the abstraction strategy to determine
  * how to filter
  *)
 val filter_using :
-  abstraction_strategy -> env -> types -> candidates -> candidates
+  abstraction_strategy -> env -> evar_map -> types -> candidates -> candidates
 
 (* --- Recover options from an abstraction strategy --- *)
 

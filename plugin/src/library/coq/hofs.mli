@@ -147,30 +147,3 @@ val map_subterms_env_if_combs : ('a, types) conditional_cartesian_mapper_with_en
  * Return all combinations of new terms
  *)
 val map_subterms_env_if_lazy : ('a, types) conditional_cartesian_mapper_with_env
-
-(* --- Terms with existential variables --- *)
-
-(*
- * Map a function over an eterm in an environment
- * Update the environment as you go
- * Update the argument of type 'a using the a supplied update function
- * Return a new eterm
- *)
-val map_eterm_env : ('a, eterm) mapper_with_env
-
-(*
- * Map a function over an eterm in where the environment doesn't matter
- * Update the argument of type 'a using the a supplied update function
- * Return a new eterm
- *)
-val map_eterm : ('a, eterm) mapper
-
-(*
- * Map a function over an term in an environment
- * Only apply the function when a proposition is true
- * Apply the function lazily, to the result
- * Update the environment as you go
- * Update the argument of type 'a using the a supplied update function
- * Return a new eterm
- *)
-val map_eterm_env_if_lazy : ('a, eterm) conditional_mapper_with_env

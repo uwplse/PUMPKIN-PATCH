@@ -11,6 +11,7 @@
 
 open Constr
 open Environ
+open Evd
 open Reducers
 
 (*
@@ -22,7 +23,7 @@ type specializer
 
 (* --- Top-level --- *)
 
-val specialize_using : specializer -> env -> types -> types array -> types
+val specialize_using : specializer -> env -> evar_map -> types -> types array -> types
 
 (* --- Defaults --- *)
 

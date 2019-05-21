@@ -2,8 +2,9 @@
 
 open Constr
 open Environ
+open Evd
 
-type 'a filter_strategy = env -> types -> 'a list -> 'a list
+type 'a filter_strategy = env -> evar_map -> types -> 'a list -> 'a list
 
 (* Filter a list of terms to those that have the goal type *)
 val filter_by_type : types filter_strategy
@@ -15,5 +16,5 @@ val find_by_type : types filter_strategy
 val filter_not_same : types filter_strategy
 
 (* Filter a list of reduced candidates to those that do not reference the IH *)
-val filter_ihs : env -> types list -> types list
+val filter_ihs : env -> evar_map -> types list -> types list
 

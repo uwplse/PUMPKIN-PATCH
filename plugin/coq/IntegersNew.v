@@ -167,14 +167,16 @@ Qed.
 Theorem unsigned_range:
   forall i, 0 <= unsigned i < modulus.
 Proof.
-  intros i. induction i using int_ind. simpl. abstract omega.
+  intros i. destruct i. simpl. abstract omega.
 Qed.
 Hint Resolve unsigned_range: ints.
 
 (* Now get the patch from the changed proof *)
 Module IntOld := IntegersOld.Make(WS).
 
-Patch Proof IntOld.unsigned_range unsigned_range as patch.
+Preprocess unsigned_range as unsigned_range_new.
+Preprocess IntOld.unsigned_range as unsigned_range_old.
+Patch Proof unsigned_range_old unsigned_range_new as patch.
 
 Print patch.
 
@@ -184,7 +186,7 @@ Hint Resolve patch.
 Theorem repr_unsigned:
   forall i, repr (unsigned i) = i.
 Proof.
-  intros i. induction i using int_ind; simpl; intros. unfold repr. apply mkint_eq.
+  intros i. destruct i; simpl; intros. unfold repr. apply mkint_eq.
   rewrite Z_mod_two_p_eq. apply Zmod_small; auto.
 Qed.
 Hint Resolve repr_unsigned : ints.

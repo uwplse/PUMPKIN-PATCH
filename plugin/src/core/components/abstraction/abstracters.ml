@@ -2,15 +2,16 @@
 
 open Constr
 open Environ
+open Evd
 open Coqterms
-open Collections
+open Utilities
 open Substitution
 open Reducers
 open Filters
 open Candidates
 
 type abstraction_dimension = Arguments | Property
-type abstracter = env -> types -> types -> candidates -> candidates
+type abstracter = env -> evar_map -> types -> types -> candidates -> candidates
 
 type abstraction_strategy =
   {
@@ -49,16 +50,16 @@ let sort_dependent args args_abstract =
  * Substitute actual args with abstract args in candidates,
  * using an abstracter to determine when to substitute.
  *)
-let substitute_using (strategy : abstraction_strategy) (env : env) (args : types list) (args_abstract : types list) (cs : candidates) : candidates =
+let substitute_using (strategy : abstraction_strategy) (env : env) (evd : evar_map) (args : types list) (args_abstract : types list) (cs : candidates) : candidates =
   let abs = strategy.abstracter in
   let num_args = List.length args_abstract in
   let (args_sorted, args_abstract_sorted) = sort_dependent args args_abstract in
   if num_args > 0 then
-    let cs_abs = abs env (last args_sorted) (last args_abstract_sorted) cs in
+    let cs_abs = abs env evd (last args_sorted) (last args_abstract_sorted) cs in
     List.fold_right2
-      (abs env)
-      (remove_last args_sorted)
-      (remove_last args_abstract_sorted)
+      (abs env evd)
+      (all_but_last args_sorted)
+      (all_but_last args_abstract_sorted)
       cs_abs
   else
     []
@@ -66,14 +67,14 @@ let substitute_using (strategy : abstraction_strategy) (env : env) (args : types
 (*
  * Reduce using the reducer in the abstraction strategy
  *)
-let reduce_all_using strategy (env : env) (cs : candidates) : candidates =
-  reduce_all strategy.reducer env cs
+let reduce_all_using strategy env evd (cs : candidates) : candidates =
+  reduce_all strategy.reducer env evd cs
 
 (*
  * Filter using the filter in the abstraction stragegy
  *)
-let filter_using strategy env (goal : types) (cs : candidates) : candidates =
-  strategy.filter env goal cs
+let filter_using strategy env evd (goal : types) (cs : candidates) : candidates =
+  strategy.filter env evd goal cs
 
 (* --- Recover options from an abstraction strategy --- *)
 
@@ -88,34 +89,34 @@ let kind_of_abstraction strategy = strategy.to_abstract
 (* TODO rename syntactic strategies, makes less sense given pattern *)
 
 (* Fully abstract each term, substituting every convertible subterm *)
-let syntactic_full (env : env) (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
+let syntactic_full env evd (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
   if equal arg_actual arg_abstract then
     trms
   else
-    List.map (all_conv_substs env (arg_actual, arg_abstract)) trms
+    List.map (all_conv_substs env evd (arg_actual, arg_abstract)) trms
 
 let syntactic_full_strategy : abstracter =
   syntactic_full
 
 (* Fully abstract each term, substituting every subterm w/ convertible types *)
-let types_full (env : env) (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
+let types_full env evd (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
   if equal arg_actual arg_abstract then
     trms
   else
-    List.map (all_typ_substs env (arg_actual, arg_abstract)) trms
+    List.map (all_typ_substs env evd (arg_actual, arg_abstract)) trms
 
 let types_full_strategy : abstracter =
   types_full
 
 (* A pattern-based full abstraction strategy for constructors *)
-let pattern_full (env : env) (arg_actual : types) (arg_abstract : types) (trms : types list) : types list =
-  let types_conv = types_convertible env arg_abstract in
+let pattern_full (env : env) (evd : evar_map) (arg_actual : types) (arg_abstract : types) (trms : types list) : types list =
+  let types_conv = types_convertible env evd arg_abstract in
   let exists_types_conv = List.exists types_conv in
   match map_tuple kind (arg_actual, arg_abstract) with
   | (App (f, args), _) when exists_types_conv (Array.to_list args) ->
      let arg = List.find types_conv (Array.to_list args) in
-     let sub = all_constr_substs env f in
-     syntactic_full env arg arg_abstract (List.map sub trms)
+     let sub = all_constr_substs env evd f in
+     syntactic_full env evd arg arg_abstract (List.map sub trms)
   | _ ->
      trms
 
@@ -123,11 +124,11 @@ let pattern_full_strategy : abstracter =
   pattern_full
 
 (* All combinations of abstractions of convertible subterms *)
-let syntactic_all_combinations (env : env) (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
+let syntactic_all_combinations env evd (arg_actual : types) (arg_abstract : types) (trms : candidates) : candidates =
   if equal arg_actual arg_abstract then
     trms
   else
-    flat_map (all_conv_substs_combs env (arg_actual, arg_abstract)) trms
+    flat_map (all_conv_substs_combs env evd (arg_actual, arg_abstract)) trms
 
 let syntactic_all_strategy : abstracter =
   syntactic_all_combinations

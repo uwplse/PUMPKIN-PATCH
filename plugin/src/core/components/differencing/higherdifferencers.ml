@@ -1,6 +1,6 @@
 open Constr
 open Proofdiff
-open Collections
+open Utilities
 open Candidates
 open Reducers
 open Differencers
@@ -52,10 +52,10 @@ let diff_terms (diff : proof_differencer) d opts d_t : candidates =
  *)
 let diff_map (diff : term_differencer) d_arr =
   let assums = assumptions d_arr in
-  apply_to_arrays
-    (List.map2 (fun t_o t_n -> diff (difference t_o t_n assums)))
-    (old_proof d_arr)
-    (new_proof d_arr)
+  List.map2
+    (fun t_o t_n -> diff (difference t_o t_n assums))
+    (Array.to_list (old_proof d_arr))
+    (Array.to_list (new_proof d_arr))
 
 (*
  * Recursively difference each term in a diff of arrays

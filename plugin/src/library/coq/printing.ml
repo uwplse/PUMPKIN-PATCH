@@ -11,12 +11,11 @@ open Names
 open Univ
 open Constr
 open Environ
-open Coqenvs
 open Printer
 open Utilities
 open Goptions
-open Collections
 open Declarations
+open Coqterms
 
 module CRD = Context.Rel.Declaration
 

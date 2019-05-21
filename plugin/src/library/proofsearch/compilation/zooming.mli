@@ -1,4 +1,5 @@
 open Proofdiff
+open Environ
 open Expansion
 open Proofcat
 open Candidates
@@ -125,3 +126,36 @@ val zoom_wrap_prod :
  * Zoom in, search, and unshift the result
  *)
 val zoom_unshift : search_function -> goal_proof_diff -> candidates
+
+(* --- Zooming into terms, rather than proof categories --- *)
+
+(*
+ * We will soon move away from the proof category representation, since
+ * it makes the code difficult to maintain and understand. These functions
+ * help with that transition by allowing is to zoom directly into terms.
+ *)
+
+(* Zoom n deep *)
+val zoom_n_prod : env -> int -> types -> (env * types)
+val zoom_n_lambda : env -> int -> types -> (env * types)
+
+(* Zoom all the way *)                                
+val zoom_lambda_term : env -> types -> (env * types)
+val zoom_product_type : env -> types -> (env * types)
+
+(* Projections of zooming *)
+val zoom_env : (env -> types -> (env * types)) -> env -> types -> env
+val zoom_term : (env -> types -> (env * types)) -> env -> types -> types                                        
+(* --- Reconstruction after zooming into terms --- *)
+
+(* Reconstruct until n are left *)                                      
+val reconstruct_lambda_n : env -> types -> int -> types
+val reconstruct_product_n : env -> types -> int -> types
+
+(* Reconstruct until n are left, skipping a given amount first *)
+val reconstruct_lambda_n_skip : env -> types -> int -> int -> types
+val reconstruct_product_n_skip : env -> types -> int -> int -> types
+
+(* Reconstruct fully *) 
+val reconstruct_lambda : env -> types -> types
+val reconstruct_product : env -> types -> types

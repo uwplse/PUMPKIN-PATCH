@@ -34,10 +34,10 @@ module CRD = Context.Rel.Declaration
  * are similar to the problems we encounter in general when
  * abstracting candidates.
  *)
-let sub_new_ih is_ind num_new_rels env (old_term : types) : types =
+let sub_new_ih is_ind num_new_rels env evd (old_term : types) : types =
   if is_ind then
     let ih_new = mkRel (1 + num_new_rels) in
-    all_typ_substs env (ih_new, ih_new) old_term
+    all_typ_substs env evd (ih_new, ih_new) old_term
   else
     old_term
 
@@ -45,12 +45,12 @@ let sub_new_ih is_ind num_new_rels env (old_term : types) : types =
  * Merge the environments in a diff and factor out the enviroment
  * Subtitute in the inductive hypothesis if in the inductive case
  *)
-let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
+let merge_diff_envs is_ind num_new_rels evd (d : goal_type_term_diff)  =
   let assums = assumptions d in
   let (env, ns, os) = merge_diff_closures d [] in
   let [new_goal_type; new_term] = ns in
   let [old_goal_type; old_term] = os in
-  let old_term_sub = sub_new_ih is_ind num_new_rels env old_term in
+  let old_term_sub = sub_new_ih is_ind num_new_rels env evd old_term in
   let n = (new_goal_type, new_term) in
   let o = (old_goal_type, old_term_sub) in
   (env, difference o n assums)
@@ -73,16 +73,16 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff)  =
  * 5. Wrap those in a lambda from (H : T_new)
  * 6. Return the list of candidates (don't check that they are patches yet)
  *)
-let build_app_candidates (env : env) (from_type : types) (old_term : types) (new_term : types) =
+let build_app_candidates env evd (from_type : types) (old_term : types) (new_term : types) =
   try
     let env_shift = push_rel CRD.(LocalAssum(Names.Name.Anonymous, from_type)) env in
     let old_term_shift = shift old_term in
     let new_term_shift = shift new_term in
-    let sub = all_conv_substs_combs env_shift (new_term_shift, (mkRel 1)) in
+    let sub = all_conv_substs_combs env_shift evd (new_term_shift, (mkRel 1)) in
     let bodies = sub old_term_shift in
     List.map
       (fun b -> mkLambda (Names.Name.Anonymous, from_type, b))
-      (filter_not_same env_shift old_term_shift bodies)
+      (filter_not_same env_shift evd old_term_shift bodies)
   with _ ->
     give_up
 
@@ -111,38 +111,38 @@ let build_app_candidates (env : env) (from_type : types) (old_term : types) (new
  *
  * Currently heuristics-driven, and does not work for all cases.
  *)
-let find_difference (opts : options) (d : goal_proof_diff) : candidates =
+let find_difference evd (opts : options) (d : goal_proof_diff) : candidates =
   let d = proof_to_term d in
   let d = swap_search_goals opts d in
   let d_dest = dest_goals d in
   let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
   let is_ind = is_ind opts in
-  let (env_merge, d_merge) = merge_diff_envs is_ind num_new_rels d_dest in
+  let (env_merge, d_merge) = merge_diff_envs is_ind num_new_rels evd d_dest in
   let (old_goal_type, old_term) = old_proof d_merge in
   let (new_goal_type, new_term) = new_proof d_merge in
   let from_type =
     if is_hypothesis (get_change opts) then
       new_goal_type
     else
-      infer_type env_merge new_term
+      infer_type env_merge evd new_term
   in
-  let candidates = build_app_candidates env_merge from_type old_term new_term in
+  let candidates = build_app_candidates env_merge evd from_type old_term new_term in
   let goal_type = mkProd (Names.Name.Anonymous, new_goal_type, shift old_goal_type) in
-  let reduced = reduce_all reduce_remove_identities env_merge candidates in
-  let filter = filter_by_type env_merge goal_type in
+  let reduced = reduce_all reduce_remove_identities env_merge evd candidates in
+  let filter = filter_by_type env_merge evd goal_type in
   List.map
     (unshift_local (num_new_rels - 1) num_new_rels)
-    (filter (if is_ind then filter_ihs env_merge reduced else reduced))
+    (filter (if is_ind then filter_ihs env_merge evd reduced else reduced))
 
 (* Determine if two diffs are identical (convertible). *)
-let no_diff opts (d : goal_proof_diff) : bool =
+let no_diff evd opts (d : goal_proof_diff) : bool =
   let d_term = proof_to_term d in
   let d_dest = dest_goals d_term in
   let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
-  let (env, d_merge) = merge_diff_envs false num_new_rels d_dest in
+  let (env, d_merge) = merge_diff_envs false num_new_rels evd d_dest in
   let (_, old_term) = old_proof d_merge in
   let (_, new_term) = new_proof d_merge in
-  let conv = convertible env old_term new_term in
+  let conv = convertible env evd old_term new_term in
   match get_change opts with
   | FixpointCase ((d_old, d_new), _) ->
      conv
