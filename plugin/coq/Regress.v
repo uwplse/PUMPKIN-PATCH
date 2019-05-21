@@ -123,8 +123,6 @@ Qed.
 
 Patch Proof old7 new7 as patch7.
 
-(* TODO broken!!! Need to find out where PUMPKIN PATCH is going wrong now 
-   Maybe look at where you used unfold_args *)
 Definition expectedPatch7 :=
   fun (A B : Type) (f : A -> B) (l : list A) (x : A) (H : In x l -> In (f x) (map f l)) =>
     Morphisms.Reflexive_partial_app_morphism
