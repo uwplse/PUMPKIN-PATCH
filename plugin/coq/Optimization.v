@@ -52,9 +52,9 @@ Proof.
 Qed. 
 
 Patch Proof opt_old0 cheat_for_now as patch.
-Print patch.
+Print patch. (* eliminate Set via nat and we're good *)
 
-(* --- A toy example proof (TODO broken) --- *)
+(* --- A toy example proof (TODO why does this work????) --- *)
 
 (*
  * Let's start with a deliberately easy proof (haha still needs nested induction support).
@@ -95,6 +95,48 @@ Print opt_patch1.
 Print opt_old1.
 
 (* --- TODO w/o a lemma --- *)
+
+(*
+ * Let's start with a deliberately easy proof (haha still needs nested induction support).
+ * Here's a version of add_0_r that does extra induction.
+ *)
+Theorem opt_old2 :
+  forall (n : nat),
+    n + 0 = n.
+Proof.
+  intros. induction n using nat_rect. (* see #14 *)
+  - reflexivity.
+  - induction n using nat_rect.
+    + reflexivity.
+    + simpl. rewrite <- IHn. reflexivity. 
+Qed.
+
+Patch Proof opt_old2 cheat_for_now as opt_patch2.
+Print opt_patch2.
+
+(* nah *)
+
+(* does this work *)
+
+Theorem cheat_for_now2:
+  forall (n : nat),
+    Set.
+Proof.
+  intros n. induction n using nat_rect.
+  - apply nat.
+  - induction n using nat_rect.
+    + apply nat.
+    + apply nat.
+Qed. 
+
+Patch Proof opt_old2 cheat_for_now2 as opt_patch2'.
+Print opt_patch2'.
+
+(* nah, needs nested induction since it's in inductive case *)
+
+(* TODO for next time: OK so we need to edit the algorithm to just check
+   if even without substituting we have the type we want just from hypo
+   to conclusion in itself. then this proof can just be unit, and we apply to tt *)
 
 (* --- TODO w/ a tactic --- *)
 
