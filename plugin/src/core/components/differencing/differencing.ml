@@ -85,17 +85,23 @@ let debug_search (d : goal_proof_diff) : unit =
  *)
 let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidates =
   let d = reduce_letin (reduce_casts d) in
+  debug_search d;
   if no_diff evd opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
+    let x = 0 in Printf.printf "%s\n\n" "induct over same h";
     try_chain_diffs
       [(diff_app_ind evd (diff_inductive diff d) diff opts); (* 2a *)
        (find_difference evd opts)]                           (* 2b *)
       d
   else if applies_ih opts d then
+    let x = 0 in
+    Printf.printf "%s\n\n" "applies IH";
     let diff opts = diff opts evd in
     (*3*) diff_app evd diff diff opts (reduce_trim_ihs d)
   else
+    let x = 0 in
+    Printf.printf "%s\n\n" "other";
     let diff opts = diff opts evd in
     match map_tuple kind (proof_terms d) with
     | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
@@ -104,11 +110,15 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
        if no_diff evd opts (eval_with_terms t_o t_n d) then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
        else if ind || not (is_conclusion change) then
+         let x = 0 in
+         Printf.printf "%s\n\n" "ind";
          (*5*) zoom_unshift (to_search_function diff opts d) d
        else
          give_up
     | _ ->
        if is_app opts d then
+         let x = 0 in
+         Printf.printf "%s\n\n" "is app";
          try_chain_diffs
            [(find_difference evd opts);     (* 6a *)
             (diff_app evd diff diff opts);  (* 6b *)
