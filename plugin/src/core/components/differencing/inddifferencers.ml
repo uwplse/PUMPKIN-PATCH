@@ -40,6 +40,8 @@ let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
         let c1 = eval_proof_arrow h1 in
         let c2 = eval_proof_arrow h2 in
         let cs = abstract (diff evd (add_to_diff d_goal c1 c2)) in
+	let open Printing in
+	debug_terms (context_env (fst (old_proof d))) cs "cs";
         if non_empty cs then
           cs
         else

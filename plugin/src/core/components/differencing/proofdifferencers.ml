@@ -80,11 +80,10 @@ let build_app_candidates env evd opts (from_type : types) (old_term : types) (ne
     let env_b = push_rel CRD.(LocalAssum(Name.Anonymous, from_type)) env in
     let old_term_shift = shift old_term in
     let bodies =
-      if is_identity (get_change opts) then
+      if is_identity (get_change opts) then (* TODO clean *)
 	(* the difference between a term and nothing is the term *)
 	[old_term_shift]
-      else
-	(* TODO explain *)
+      else (* TODO explain *)
 	let new_term_shift = shift new_term in
 	let sub = all_conv_substs_combs env_b evd (new_term_shift, (mkRel 1)) in
 	filter_not_same old_term_shift env_b evd (sub old_term_shift)

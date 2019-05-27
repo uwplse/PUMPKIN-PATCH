@@ -165,7 +165,12 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let bs = substitute_using strategy env_abs evd args_adj args_abs cs_adj in
   let lambdas = generalize env_abs evd opts.num_to_abstract bs in
   Printf.printf "%d abstracted candidates\n" (List.length lambdas);
-  filter_using strategy env evd opts.goal_type lambdas
+  let open Printing in
+  debug_terms env lambdas "lamdas";
+  debug_term env opts.goal_type "goal_type";
+  let filtered = filter_using strategy env evd opts.goal_type lambdas in
+  debug_terms env filtered "filtered";
+  filtered
 
 (*
  * Try to abstract candidates with an ordered list of abstraction strategies
@@ -237,7 +242,10 @@ let abstract_case (opts : options) evd (d : goal_case_diff) cs : candidates =
   | Kindofchange.FixpointCase ((_, _), cut) when are_cut env evd cut cs ->
      cs
   | _ ->
-     try_abstract_inductive evd d_goal cs
+     let abstracted = try_abstract_inductive evd d_goal cs in
+     let open Printing in
+     debug_terms env abstracted "abstracted";
+     abstracted
                             
 (* 
  * Replace all occurrences of the first term in the second term with Rel 1,
