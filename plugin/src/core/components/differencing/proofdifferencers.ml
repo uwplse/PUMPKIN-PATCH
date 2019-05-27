@@ -75,17 +75,21 @@ let merge_diff_envs is_ind num_new_rels evd (d : goal_type_term_diff)  =
  * 5. Wrap those in a lambda from (H : T_new)
  * 6. Return the list of candidates (don't check that they are patches yet)
  *)
-let build_app_candidates env evd (from_type : types) (old_term : types) (new_term : types) =
-  try
-    let env_b = push_rel CRD.(LocalAssum(Name.Anonymous, from_type)) env in
-    let old_term_shift = shift old_term in
-    let new_term_shift = shift new_term in
-    let sub = all_conv_substs_combs env_b evd (new_term_shift, (mkRel 1)) in
-    let bodies = sub old_term_shift in
-    let filtered = filter_not_same old_term_shift env_b evd bodies in
-    List.map (fun b -> reconstruct_lambda_n env_b b (nb_rel env)) filtered
-  with _ ->
-    give_up
+let build_app_candidates env evd opts (from_type : types) (old_term : types) (new_term : types) =
+  if is_identity (get_change opts) then
+    (* the difference between a term and nothing is the term *)
+    [old_term]
+  else
+    try
+      let env_b = push_rel CRD.(LocalAssum(Name.Anonymous, from_type)) env in
+      let old_term_shift = shift old_term in
+      let new_term_shift = shift new_term in
+      let sub = all_conv_substs_combs env_b evd (new_term_shift, (mkRel 1)) in
+      let bodies = sub old_term_shift in
+      let filtered = filter_not_same old_term_shift env_b evd bodies in
+      List.map (fun b -> reconstruct_lambda_n env_b b (nb_rel env)) filtered
+    with _ ->
+      give_up
 
 (*
  * Given two proof terms that apply functions, old and new,
@@ -127,7 +131,7 @@ let find_difference evd (opts : options) (d : goal_proof_diff) : candidates =
     else
       infer_type env_merge evd new_term
   in
-  let candidates = build_app_candidates env_merge evd from_type old_term new_term in
+  let candidates = build_app_candidates env_merge evd opts from_type old_term new_term in
   let goal_type = mkProd (Name.Anonymous, new_goal_type, shift old_goal_type) in
   let reduced = reduce_all reduce_remove_identities env_merge evd candidates in
   let filter = filter_by_type goal_type env_merge evd in
@@ -137,20 +141,25 @@ let find_difference evd (opts : options) (d : goal_proof_diff) : candidates =
 
 (* Determine if two diffs are identical (convertible). *)
 let no_diff evd opts (d : goal_proof_diff) : bool =
-  let d_term = proof_to_term d in
-  let d_dest = dest_goals d_term in
-  let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
-  let (env, d_merge) = merge_diff_envs false num_new_rels evd d_dest in
-  let (_, old_term) = old_proof d_merge in
-  let (_, new_term) = new_proof d_merge in
-  let conv = convertible env evd old_term new_term in
-  match get_change opts with
-  | FixpointCase ((d_old, d_new), _) ->
-     conv
-     || (equal d_old old_term && equal d_new new_term)
-     || (equal d_old new_term && equal d_new old_term)
-  | _ ->
-     conv
+  let change = get_change opts in
+  if is_identity change then
+    (* there is always a difference between "nothing" and the term *)
+    false (* TODO!!! rename kind of change, identity is confusing. consider "everything" ? "opti..."? etc. *)
+  else
+    let d_term = proof_to_term d in
+    let d_dest = dest_goals d_term in
+    let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
+    let (env, d_merge) = merge_diff_envs false num_new_rels evd d_dest in
+    let (_, old_term) = old_proof d_merge in
+    let (_, new_term) = new_proof d_merge in
+    let conv = convertible env evd old_term new_term in
+    match change with
+    | FixpointCase ((d_old, d_new), _) ->
+       conv
+       || (equal d_old old_term && equal d_new new_term)
+       || (equal d_old new_term && equal d_new old_term)
+    | _ ->
+       conv
 
 (*
  * Given a difference in proofs with contexts storing the goals,

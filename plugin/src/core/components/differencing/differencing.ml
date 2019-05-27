@@ -103,7 +103,7 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
        let ind = is_ind opts in
        if no_diff evd opts (eval_with_terms t_o t_n d) then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
-       else if ind || not (is_conclusion change) then
+       else if ind || not (is_conclusion change || is_identity change) then
          (*5*) zoom_unshift (to_search_function diff opts d) d
        else
          give_up

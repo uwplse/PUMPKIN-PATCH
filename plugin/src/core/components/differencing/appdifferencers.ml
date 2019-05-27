@@ -48,6 +48,7 @@ open Filters
  *    Ideally, we should search (f_o -> f_n) and
  *    (map2 (a_n -> a_o) args_o args_n) applied to each arg_o,
  *    but the latter hasn't been necessary ever, so we don't do it for now.
+ * 5. TODO
  *
  * This will still fail to find patches in many cases.
  * We need to improve semantic differencing for those cases,
@@ -106,6 +107,8 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
            combine_app fs (combine_cartesian_append args)
          else
            give_up
+      | Kindofchange.Identity ->
+         give_up (* TODO *)
       | _ ->
          give_up)
   | _ ->

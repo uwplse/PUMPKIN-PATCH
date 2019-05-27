@@ -181,6 +181,7 @@ let patch_proof n d_old d_new cut =
 let optimize_proof n d =
   let (evm, env) = Pfedit.get_current_context () in
   let trm = intern env evm d in
+let open Printing in debug_term env trm "trm";
   let (d, opts) = configure_optimize trm in
   patch n false ()
     (fun env evm _ ->
@@ -266,8 +267,8 @@ VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
 END
 
 (* Optimize command *)
-VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
-| [ "Optimize" constr(d) "as" ident(n)] ->
+VERNAC COMMAND EXTEND OptimizeProofTerm CLASSIFIED AS SIDEFF
+| [ "Optimize" "Proof" "Term" constr(d) "as" ident(n)] ->
   [ optimize_proof n d ]
 END
 

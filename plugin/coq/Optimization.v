@@ -11,6 +11,8 @@ Require Import Arith PeanoNat.
  * We will soon have automation to construct this identity proof automatically.
  * For now, and to make it easier to build test cases later on, let's walk through
  * this manually.
+ * 
+ * TODO update above
  *)
 
 (* --- A really really simple toy example proof --- *)
@@ -22,37 +24,13 @@ Theorem opt_old0 :
   forall (n : nat),
     n = n.
 Proof.
-  intros. induction n using nat_rect. (* see #14 *)
+  intros. induction n.
   - reflexivity.
   - reflexivity.
 Qed.
 
-(* When we patch this against identity, we get:
-   (fun (n : nat) => eq_refl nat n) : forall (n : nat), n = n
-   in the base case.
-
-   PUMPKIN looks for:
-   (fun (n : nat) => eq_refl nat 0) : forall (n : nat), 0 = 0
-   in the base case.
-
-   So in a sense, we actually just want to say 
-   "always try to abstract 0/IH" or whatever.
-   For now we cheat by including a term that's always a subterm, but in general
-   I think we need to tweak the algorithm that looks for these functions
-   to recognize the most obvious case.
-*)
-
-Theorem cheat_for_now:
-  forall (n : nat),
-    Set.
-Proof.
-  intros n. induction n using nat_rect.
-  - apply nat.
-  - apply nat.
-Qed. 
-
-Patch Proof opt_old0 cheat_for_now as patch.
-Print patch. (* eliminate Set via nat and we're good *)
+Optimize Proof Term opt_old0 as new0.
+Print new0. (* eliminate Set via nat and we're good *)
 
 (* --- A toy example proof (TODO why does this work????) --- *)
 
