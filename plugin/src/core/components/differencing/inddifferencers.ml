@@ -1,6 +1,7 @@
 (* --- Differencing of Inductive Proofs --- *)
 
 open Utilities
+open Constr
 open Proofcat
 open Proofcatterms
 open Proofdiff
@@ -14,6 +15,7 @@ open Abstraction
 open Expansion
 open Environ
 open Evd
+open Higherdifferencers
 
 (* --- Cases --- *)
 

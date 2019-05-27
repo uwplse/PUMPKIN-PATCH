@@ -90,7 +90,7 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
          let new_goal = fst (new_proof d) in
          let (g_o, g_n) = map_tuple context_term (old_goal, new_goal) in
          let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
-         let filter_goal = filter_by_type env evd goal_type in
+         let filter_goal = filter_by_type goal_type env evd in
          let filter_diff_h diff = filter_diff filter_goal diff in
          let fs = filter_diff_h (diff_rec diff_f opts) d_f in
          if non_empty fs then

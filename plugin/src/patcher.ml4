@@ -1,3 +1,4 @@
+
 DECLARE PLUGIN "patch"
 
 open Constr
@@ -73,6 +74,14 @@ let configure trm1 trm2 cut : goal_proof_diff * options =
   let change = find_kind_of_change evm lemma d in
   (d, configure_search d change lemma)
 
+(* Initialize diff & search configuration for optimization *)
+let configure_optimize trm : goal_proof_diff * options =
+  let (evm, env) = Pfedit.get_current_context () in
+  let c = eval_proof env trm in
+  let d = add_goals (difference c c no_assumptions) in
+  let change = Identity in
+  (d, configure_search d change None)
+
 (* Common inversion functionality *)
 let invert_patch n env evm patch =
   let inverted = invert_terms invert_factor env evm [patch] in
@@ -89,7 +98,7 @@ let invert_patch n env evm patch =
     failwith "Could not find a well-typed inverted term"
 
 (* Common patch command functionality *)
-let patch n old_term new_term try_invert a search =
+let patch n try_invert a search =
   let (evm, env) = Pfedit.get_current_context () in
   let reduce = try_reduce reduce_remove_identities in
   let patch = reduce env evm (search env evm a) in
@@ -161,9 +170,21 @@ let patch_proof n d_old d_new cut =
   let (d, opts) = configure old_term new_term cut in
   let change = get_change opts in
   let try_invert = not (is_conclusion change || is_hypothesis change) in
-  patch n old_term new_term try_invert ()
+  patch n try_invert ()
     (fun env evm _ ->
       search_for_patch evm old_term opts d)
+
+(*
+ * Command functionality for optimizing proofs
+ * TODO explain
+ *)
+let optimize_proof n d =
+  let (evm, env) = Pfedit.get_current_context () in
+  let trm = intern env evm d in
+  let (d, opts) = configure_optimize trm in
+  patch n false ()
+    (fun env evm _ ->
+      search_for_patch evm trm opts d)
 
 (*
  * The Patch Theorem command functionality
@@ -175,7 +196,7 @@ let patch_proof n d_old d_new cut =
 let patch_theorem n d_old d_new t =
   let (evm, env) = Pfedit.get_current_context() in
   let (old_term, new_term) = (intern env evm d_old, intern env evm d_new) in
-  patch n old_term new_term false t
+  patch n false t
     (fun env evm t ->
       let theorem = intern env evm t in
       let t_trm = lookup_definition env theorem in
@@ -242,6 +263,12 @@ VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
   [ patch_proof n d_old d_new (Some cut) ]
 | [ "Patch" "Theorem" constr(d_old) constr(d_new) constr(t) "as" ident(n)] ->
   [ patch_theorem n d_old d_new t ]
+END
+
+(* Optimize command *)
+VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
+| [ "Optimize" constr(d) "as" ident(n)] ->
+  [ optimize_proof n d ]
 END
 
 (* Invert a term *)

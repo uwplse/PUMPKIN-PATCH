@@ -12,6 +12,8 @@ open Filters
 open Candidates
 open Reducers
 open Kindofchange
+open Names
+open Zooming
 
 module CRD = Context.Rel.Declaration
 
@@ -69,20 +71,19 @@ let merge_diff_envs is_ind num_new_rels evd (d : goal_type_term_diff)  =
  * 1. Push some (H : T_new) into the common environment (and adjust indexes)
  * 2. Look for all subterms of (t1 t2) that are convertible to t
  * 3. Substitute all combinations of those subterms with H
- * 4. Filter out the original term, which isn't substituted at all
+ * 4. Remove the original term from the list (check this seperately)
  * 5. Wrap those in a lambda from (H : T_new)
  * 6. Return the list of candidates (don't check that they are patches yet)
  *)
 let build_app_candidates env evd (from_type : types) (old_term : types) (new_term : types) =
   try
-    let env_shift = push_rel CRD.(LocalAssum(Names.Name.Anonymous, from_type)) env in
+    let env_b = push_rel CRD.(LocalAssum(Name.Anonymous, from_type)) env in
     let old_term_shift = shift old_term in
     let new_term_shift = shift new_term in
-    let sub = all_conv_substs_combs env_shift evd (new_term_shift, (mkRel 1)) in
+    let sub = all_conv_substs_combs env_b evd (new_term_shift, (mkRel 1)) in
     let bodies = sub old_term_shift in
-    List.map
-      (fun b -> mkLambda (Names.Name.Anonymous, from_type, b))
-      (filter_not_same env_shift evd old_term_shift bodies)
+    let filtered = filter_not_same old_term_shift env_b evd bodies in
+    List.map (fun b -> reconstruct_lambda_n env_b b (nb_rel env)) filtered
   with _ ->
     give_up
 
@@ -120,9 +121,6 @@ let find_difference evd (opts : options) (d : goal_proof_diff) : candidates =
   let (env_merge, d_merge) = merge_diff_envs is_ind num_new_rels evd d_dest in
   let (old_goal_type, old_term) = old_proof d_merge in
   let (new_goal_type, new_term) = new_proof d_merge in
-  let open Printing in
-  debug_term env_merge old_term "old_term";
-  debug_term env_merge new_term "new_term";
   let from_type =
     if is_hypothesis (get_change opts) then
       new_goal_type
@@ -130,15 +128,9 @@ let find_difference evd (opts : options) (d : goal_proof_diff) : candidates =
       infer_type env_merge evd new_term
   in
   let candidates = build_app_candidates env_merge evd from_type old_term new_term in
-  debug_terms env_merge candidates "candidates";
-  let goal_type = mkProd (Names.Name.Anonymous, new_goal_type, shift old_goal_type) in
-  debug_term env_merge goal_type "goal_type";
+  let goal_type = mkProd (Name.Anonymous, new_goal_type, shift old_goal_type) in
   let reduced = reduce_all reduce_remove_identities env_merge evd candidates in
-  debug_terms env_merge reduced "reduced";
-  let filter = filter_by_type env_merge evd goal_type in
-  debug_term env_merge (reduce_term env_merge evd goal_type) "goal_type reduced";
-  (* debug_terms env_merge (List.map (on_type (reduce_term env_merge evd) env_merge evd) candidates) "candidate types reduced"; *)
-  debug_terms env_merge (filter reduced) "filtered";
+  let filter = filter_by_type goal_type env_merge evd in
   List.map
     (unshift_local (num_new_rels - 1) num_new_rels)
     (filter (if is_ind then filter_ihs env_merge evd reduced else reduced))

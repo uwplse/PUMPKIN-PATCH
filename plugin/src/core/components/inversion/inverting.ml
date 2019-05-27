@@ -147,13 +147,13 @@ let invert_factor evd (env, rp) : (env * types) option =
      let rp_goal = all_conv_substs env evd (old_goal_type, new_goal_type) rp in
      let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
      let flipped = exploit_type_symmetry env evd rp_goal in
-     let flipped_wt = filter_by_type env evd goal_type flipped in
+     let flipped_wt = filter_by_type goal_type env evd flipped in
      if List.length flipped_wt > 0 then
        Some (env, List.hd flipped_wt)
      else
        let swap_map = build_swap_map env evd old_goal_type new_goal_type in
        let swapped = all_conv_swaps_combs env evd swap_map rp_goal in
-       let swapped_wt = filter_by_type env evd goal_type swapped in
+       let swapped_wt = filter_by_type goal_type env evd swapped in
        if List.length swapped_wt > 0 then
 	 Some (env, List.hd swapped_wt)
        else
