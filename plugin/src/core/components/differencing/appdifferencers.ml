@@ -146,9 +146,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
 	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
          let d_args_rev = reverse d_args in
          filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
-    | Kindofchange.Identity -> (* TODO fix this *)
-       f
-    | _ ->
+     | _ ->
        if non_empty args_o then
          let env_o = context_env (fst (old_proof d)) in
          let (_, prop_trm_ext, _) = prop o npms_old in
@@ -165,20 +163,28 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
          let arity = prop_arity prop_trm in
          let specialize = specialize_using specialize_no_reduce env_o evd in
          let final_args_o = Array.of_list (fst (split_at arity args_o)) in
-         let final_args_n = Array.of_list (fst (split_at arity args_n)) in
-         let d_args = difference final_args_n final_args_o no_assumptions in
-         combine_cartesian
-           specialize
-           f
-           (combine_cartesian_append
-             (Array.of_list
-                (diff_map
-                   (fun d_a ->
-                     let arg_n = new_proof d_a in
-                     let apply p = specialize p (Array.make 1 arg_n) in
-                     let diff_apply = filter_diff (List.map apply) in
-                     diff_terms (diff_apply (diff_arg opts evd)) d opts d_a)
-                   d_args)))
+	 if Kindofchange.is_identity (get_change opts) then (* TODO explain *)
+	   let open Printing in
+	   debug_terms env_o (Array.to_list final_args_o) "final_args_o";
+	   debug_terms env_o f "f";
+	   List.map 
+	     (fun f -> 
+	       let dummy_arg = mkRel 1 in
+	       specialize (specialize f final_args_o) (Array.make 1 dummy_arg)) 
+	     f
+	 else
+           let final_args_n = Array.of_list (fst (split_at arity args_n)) in
+           let d_args = difference final_args_n final_args_o no_assumptions in
+	   let args =
+	     Array.of_list
+               (diff_map
+		  (fun d_a ->
+                    let arg_n = new_proof d_a in
+                    let apply p = specialize p (Array.make 1 arg_n) in
+                    let diff_apply = filter_diff (List.map apply) in
+                    diff_terms (diff_apply (diff_arg opts evd)) d opts d_a)
+                  d_args)
+	   in combine_cartesian specialize f (combine_cartesian_append args)
        else
          f
   else
