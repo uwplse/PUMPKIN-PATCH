@@ -70,6 +70,8 @@ type 'a configurable = options -> 'a
  * 2) Otherwise, two types we induct over are "the same" if they are identical.
  *
  * POST-DEADLINE: No need for goals here, just need environments
+ *
+ * TODO update
  *)
 let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
   match change with

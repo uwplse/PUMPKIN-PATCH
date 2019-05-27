@@ -180,8 +180,7 @@ let patch_proof n d_old d_new cut =
  *)
 let optimize_proof n d =
   let (evm, env) = Pfedit.get_current_context () in
-  let trm = intern env evm d in
-let open Printing in debug_term env trm "trm";
+  let trm = unwrap_definition env (intern env evm d) in
   let (d, opts) = configure_optimize trm in
   patch n false ()
     (fun env evm _ ->

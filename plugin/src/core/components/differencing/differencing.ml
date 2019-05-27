@@ -85,6 +85,7 @@ let debug_search (d : goal_proof_diff) : unit =
  *)
 let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidates =
   let d = reduce_letin (reduce_casts d) in
+  debug_search d;
   if no_diff evd opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
@@ -101,7 +102,8 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
     | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
        let change = get_change opts in
        let ind = is_ind opts in
-       if no_diff evd opts (eval_with_terms t_o t_n d) then
+       let opts_hypos = if is_identity change then set_change opts Conclusion else opts in (* TODO clean, explain *)
+       if no_diff evd opts_hypos (eval_with_terms t_o t_n d) then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
        else if ind || not (is_conclusion change || is_identity change) then
          (*5*) zoom_unshift (to_search_function diff opts d) d
