@@ -146,6 +146,8 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
 	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
          let d_args_rev = reverse d_args in
          filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
+    | Kindofchange.Identity -> (* TODO fix this *)
+       f
     | _ ->
        if non_empty args_o then
          let env_o = context_env (fst (old_proof d)) in
