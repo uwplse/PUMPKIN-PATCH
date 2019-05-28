@@ -85,18 +85,13 @@ let debug_search (d : goal_proof_diff) : unit =
  *)
 let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidates =
   let d = reduce_letin (reduce_casts d) in
-  debug_search d;
   if no_diff evd opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
-    let cs = 
     try_chain_diffs
       [(diff_app_ind evd (diff_inductive diff d) diff opts); (* 2a *)
        (find_difference evd opts)]                           (* 2b *)
       d
-    in let open Printing in let open Proofcatterms in
-	debug_terms (context_env (fst (old_proof d))) cs "cs in 2";
-       cs
   else if applies_ih opts d then
     let diff opts = diff opts evd in
     (*3*) diff_app evd diff diff opts (reduce_trim_ihs d)
@@ -108,10 +103,7 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
        let ind = is_ind opts in
        let opts_hypos = if is_identity change then set_change opts Conclusion else opts in
        if no_diff evd opts_hypos (eval_with_terms t_o t_n d) then
-         (*4*) let cs =  zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d in
-let open Printing in let open Proofcatterms in
-	             debug_terms (context_env (fst (old_proof d))) cs "cs in 4";
-cs
+         (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
        else if ind || not (is_conclusion change || is_identity change) then
          (*5*) zoom_unshift (to_search_function diff opts d) d
        else

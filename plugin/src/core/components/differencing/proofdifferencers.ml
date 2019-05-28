@@ -133,7 +133,6 @@ let find_difference evd (opts : options) (d : goal_proof_diff) : candidates =
       infer_type env_merge evd new_term
   in
   let candidates = build_app_candidates env_merge evd opts from_type old_term new_term in
-  let open Printing in debug_terms env_merge candidates "candidates";
   let goal_type = mkProd (Name.Anonymous, new_goal_type, shift old_goal_type) in
   let reduced = reduce_all reduce_remove_identities env_merge evd candidates in
   let filter = filter_by_type goal_type env_merge evd in

@@ -162,9 +162,6 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
          let specialize = specialize_using specialize_no_reduce env_o evd in
          let final_args_o = Array.of_list (fst (split_at arity args_o)) in
 	 if Kindofchange.is_identity (get_change opts) then (* TODO explain *)
-	   let open Printing in
-	   debug_terms env_o (Array.to_list final_args_o) "final_args_o";
-	   debug_terms env_o f "f";
 	   List.map 
 	     (fun f -> 
 	       let dummy_arg = mkRel 1 in

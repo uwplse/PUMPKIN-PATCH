@@ -48,6 +48,7 @@ Proof.
   - apply Nat.add_0_r.
 Qed.
 
+Print old1.
 Optimize Proof Term old1 as new1.
 Print new1. (* TODO test *)
 

@@ -32,11 +32,6 @@ open Higherdifferencers
  * but another arrow is.
  *)
 let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
-  let open Printing in
-  let arrows_old = snd (old_proof d) in
-  let arrows_new = snd (new_proof d) in
-  List.iter (fun (_, _, last) -> debug_term (context_env last) (context_term last) "old") arrows_old;
-  List.iter (fun (_, _, last) -> debug_term (context_env last) (context_term last) "new") arrows_new;
   let d_goal = erase_proofs d in
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
@@ -44,12 +39,8 @@ let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
      (try
         let c1 = eval_proof_arrow h1 in
         let c2 = eval_proof_arrow h2 in
-        let cs = diff evd (add_to_diff d_goal c1 c2) in
-        let open Printing in
-        debug_terms (context_env (fst (old_proof d))) cs "cs in diff_case";
+        let cs = abstract (diff evd (add_to_diff d_goal c1 c2)) in
         let cs = abstract cs in
-	let open Printing in
-	debug_terms (context_env (fst (old_proof d))) cs "abstracted cs in diff_case";
         if non_empty cs then
           cs
         else
@@ -125,10 +116,15 @@ let diff_base_case opts evd diff d_old (d : proof_cat_diff) : candidates =
  * There currently may not be a guarantee that the two
  * arrows are traversed in exactly the same order for each proof.
  * If there is a bug in this, this may be why.
+ *
+ * For optimization, we don't bother treating the inductive case
+ * any differently.
  *)
 let diff_inductive_case opts evd diff d_old (d : proof_cat_diff) : candidates =
   let sort c ms = List.stable_sort (closer_to_ih c (find_ihs c)) ms in
-  diff_sort_ind_case (set_is_ind opts true) evd sort diff d_old d
+  let change = get_change opts in
+  let opts = if is_identity change then opts else set_is_ind opts true in
+  diff_sort_ind_case opts evd sort diff d_old d
 
 (*
  * Depending on whether a proof has inductive hypotheses, difference
