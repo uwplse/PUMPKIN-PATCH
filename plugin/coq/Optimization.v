@@ -20,7 +20,7 @@ Require Import Arith PeanoNat.
 (*
  * TODO explain
  *)
-Theorem opt_old0 :
+Theorem old0 :
   forall (n : nat),
     n = n.
 Proof.
@@ -29,17 +29,17 @@ Proof.
   - reflexivity.
 Qed.
 
-Optimize Proof Term opt_old0 as new0.
-Print new0. (* eliminate Set via nat and we're good *)
+Optimize Proof Term old0 as new0.
+Print new0. (* TODO test *)
 
-(* --- A toy example proof (TODO why does this work????) --- *)
+(* --- A toy example proof --- *)
 
 (*
  * Let's start with a deliberately easy proof (haha still needs nested induction support).
  * Here's a version of add_0_r that does extra induction.
  * This one applies a lemma to get around lack of support for nested induction.
  *)
-Theorem opt_old1 :
+Theorem old1 :
   forall (n : nat),
     n + 0 = n.
 Proof.
@@ -48,29 +48,8 @@ Proof.
   - apply Nat.add_0_r.
 Qed.
 
-(* TODO needs level 2, unfolding ... *)
-
-Print opt_old1.
-(*
-opt_old1 = 
-fun n : nat =>
-nat_rect (fun n0 : nat => n0 + 0 = n0) eq_refl
-  (fun (n0 : nat) (_ : n0 + 0 = n0) => Nat.add_0_r (S n0)) n
-     : forall n : nat, n + 0 = n
-
-Argument scope is [nat_scope]
-nat_identity_level_1 = 
-fun n : nat => nat_rect (fun _ : nat => nat) 0 (fun n IHn : nat => n) n
-     : nat -> nat
-
-*)  
-
-(*
- * Now we search for a patch from nat_identity to opt_old1.
- *)
-Patch Proof opt_old1 cheat_for_now as opt_patch1.
-Print opt_patch1.
-Print opt_old1.
+Optimize Proof Term old1 as new1.
+Print new1. (* TODO test *)
 
 (* --- TODO w/o a lemma --- *)
 
