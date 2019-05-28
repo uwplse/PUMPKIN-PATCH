@@ -43,7 +43,7 @@ Theorem old1 :
   forall (n : nat),
     n + 0 = n.
 Proof.
-  intros. induction n using nat_rect. (* see #14 *)
+  intros. induction n.
   - reflexivity.
   - apply Nat.add_0_r.
 Qed.
@@ -57,44 +57,20 @@ Print new1. (* TODO test *)
  * Let's start with a deliberately easy proof (haha still needs nested induction support).
  * Here's a version of add_0_r that does extra induction.
  *)
-Theorem opt_old2 :
+Theorem old2 :
   forall (n : nat),
     n + 0 = n.
 Proof.
-  intros. induction n using nat_rect. (* see #14 *)
+  intros. induction n.
   - reflexivity.
-  - induction n using nat_rect.
+  - induction n.
     + reflexivity.
     + simpl. rewrite <- IHn. reflexivity. 
 Qed.
 
-Patch Proof opt_old2 cheat_for_now as opt_patch2.
+Optimize Proof Term old2 as new2.
+Print new2. (* TODO test *)
 Print opt_patch2.
-
-(* nah *)
-
-(* does this work *)
-
-Theorem cheat_for_now2:
-  forall (n : nat),
-    Set.
-Proof.
-  intros n. induction n using nat_rect.
-  - apply nat.
-  - induction n using nat_rect.
-    + apply nat.
-    + apply nat.
-Qed. 
-
-Patch Proof opt_old2 cheat_for_now2 as opt_patch2'.
-Print opt_patch2'.
-
-(* nah, needs nested induction since it's in inductive case *)
-
-(* TODO for next time: OK so we need to edit the algorithm to just check
-   if even without substituting we have the type we want just from hypo
-   to conclusion in itself. then this proof can just be unit, and we apply to tt *)
-
 (* --- TODO w/ a tactic --- *)
 
 (* --- TODO a more realistic version --- *)

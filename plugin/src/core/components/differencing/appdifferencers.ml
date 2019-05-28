@@ -98,7 +98,7 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
            fs
          else
            filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args
-      | Kindofchange.Conclusion ->
+      | Kindofchange.Conclusion | Kindofchange.Identity ->
          if List.for_all2 (convertible env evd) (Array.to_list args_o) (Array.to_list args_n) then
            let specialize = specialize_using specialize_no_reduce env evd in
            let combine_app = combine_cartesian specialize in
@@ -107,8 +107,6 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
            combine_app fs (combine_cartesian_append args)
          else
            give_up
-      | Kindofchange.Identity ->
-         give_up (* TODO *)
       | _ ->
          give_up)
   | _ ->

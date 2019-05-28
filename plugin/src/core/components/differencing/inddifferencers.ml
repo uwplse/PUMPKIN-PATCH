@@ -32,6 +32,11 @@ open Higherdifferencers
  * but another arrow is.
  *)
 let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
+  let open Printing in
+  let arrows_old = snd (old_proof d) in
+  let arrows_new = snd (new_proof d) in
+  List.iter (fun (_, _, last) -> debug_term (context_env last) (context_term last) "old") arrows_old;
+  List.iter (fun (_, _, last) -> debug_term (context_env last) (context_term last) "new") arrows_new;
   let d_goal = erase_proofs d in
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
@@ -39,9 +44,12 @@ let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
      (try
         let c1 = eval_proof_arrow h1 in
         let c2 = eval_proof_arrow h2 in
-        let cs = abstract (diff evd (add_to_diff d_goal c1 c2)) in
+        let cs = diff evd (add_to_diff d_goal c1 c2) in
+        let open Printing in
+        debug_terms (context_env (fst (old_proof d))) cs "cs in diff_case";
+        let cs = abstract cs in
 	let open Printing in
-	debug_terms (context_env (fst (old_proof d))) cs "cs";
+	debug_terms (context_env (fst (old_proof d))) cs "abstracted cs in diff_case";
         if non_empty cs then
           cs
         else
