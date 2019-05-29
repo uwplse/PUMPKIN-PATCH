@@ -224,71 +224,72 @@ Definition add_0_r_5_expected (n : nat) : n + 0 = n :=
     n.
 
 (*
- * PUMPKIN is not good at nested induction, so it does not find the most 
- * efficient proof:
+ * PUMPKIN manages to find the most efficient proof, probably because
+ * there are no inductive hypotheses of the form A -> B.
  *)
-Fail Theorem test_opt_7 : add_0_r_5 = add_0_r_5_expected.
+Theorem test_opt_7 : 
+   add_0_r_5 = add_0_r_5_expected.
+Proof.
+  reflexivity.
+Qed.
 
 (*
- * NOTE: When PUMPKIN implements better handling of nested induction
- * and is able to find this patch, update test_opt_7 to pass.
+ * With Preprocess, we can remove the extra fixpoint too:
  *)
+Fixpoint add_0_r_slow_6 (n : nat) : n + 0 = n :=
+  match n with
+  | 0 => eq_refl
+  | S n1 =>
+      (fix F0 (n2 : nat) : S (n2 + 0) = S n2 :=
+         match n2 with
+         | 0 => eq_refl
+         | S n3 => 
+             eq_trans 
+               (f_equal (fun f : nat -> nat => f (S (n3 + 0))) eq_refl) 
+               (f_equal S (F0 n3))
+         end) n1
+  end.
 
-(* 
- * TODO explain
+Preprocess add_0_r_slow_6 as add_0_r_slow_6'.
+Optimize Proof Term add_0_r_slow_6' as add_0_r_6.
+
+(*
+ * This gives us the same result:
  *)
-Lemma add_0_r_slow_lemma_6:
-  forall (n m : nat),
-    n + m = m + n -> 
-    n + m = m + n.
+Theorem test_opt_8 : 
+   add_0_r_6 = add_0_r_5_expected.
 Proof.
-  auto.
+  reflexivity.
 Qed.
 
-Theorem add_0_r_slow_6 :
-  forall (n : nat),
-    n + 0 = n.
+(* --- Functions (doesn't work yet) --- *)
+
+(*
+ * We can also implement some functions inefficiently.
+ * Let's see how this behaves. (We don't define the fixpoint
+ * version because we have problems with A -> B hypotheses, still).
+ *)
+Program Definition slow_add : nat -> nat -> nat.
 Proof.
-  intros. induction n.
-  - reflexivity.
-  - simpl. rewrite add_0_r_slow_lemma_6.
-    + reflexivity.
-    + apply IHn. 
-Qed.
+  intros n m. induction n.
+  - apply m.
+  - apply S. induction IHn.
+    + apply 0.
+    + apply S. apply IHIHn.
+Defined.
 
-Optimize Proof Term add_0_r_slow_6 as add_0_r_6.
+Optimize Proof Term slow_add as not_add.
+Print not_add.
 
-Print add_0_r_slow_6.
-Print add_0_r_6.
+Eval compute in (not_add 4 7). (* 8 *)
+Eval compute in (not_add 0 0). (* 1 *)
+Eval compute in (not_add 0 1). (* 2 *)
+Eval compute in (not_add 1 1). (* 2 *)
 
-Check 
-  (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
-     eq_ind_r 
-       (fun n1 : nat => S n1 = S n0) 
-       eq_refl 
-       (add_0_r_slow_lemma_6 n0 0 IHn)).
+(*
+ * As you can see, it doesn't work for functions as-is.
+ * So we need to be careful about when we do this.
+ * To work for functions, we need to be smarter about when we accept a result.
+ * The result of the "optimization" is just the successor of m right now.
+ *)
 
-Check 
-  (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
-     eq_ind_r 
-       (fun n1 : nat => n1 = n0) 
-       eq_refl 
-       (add_0_r_slow_lemma_6 n0 0 IHn)).
-Print add_0_r_6.
-
-
-(* TODO test *)
-
-(* --- Inefficient single induction using the IH --- *)
-
-(* TODO using the IH *)
-(* TODO fixpoint version *)
-(* TODO things other than nats *)
-
-(* --- TODO w/ a tactic --- *)
-
-(* TODO stdlib *)
-
-(* --- Functions --- *)
-
-(* TODO *)
