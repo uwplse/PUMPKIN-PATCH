@@ -147,9 +147,10 @@ let find_difference evd (opts : options) (d : goal_proof_diff) : candidates =
 let no_diff evd opts (d : goal_proof_diff) : bool =
   let change = get_change opts in
   if is_identity change then
-    (* there is always a difference between "nothing" and the term *)
-    false (* TODO!!! rename kind of change, identity is confusing. consider "everything" ? "opti..."? etc. *)
+    (* there is always a difference between the term and nothing *)
+    false
   else
+    (* check convertibility *)
     let d_term = proof_to_term d in
     let d_dest = dest_goals d_term in
     let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
