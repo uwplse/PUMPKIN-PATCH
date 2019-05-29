@@ -117,7 +117,7 @@ let diff_base_case opts evd diff d_old (d : proof_cat_diff) : candidates =
  * If there is a bug in this, this may be why.
  *
  * For optimization, we don't bother treating the inductive case
- * any differently.
+ * any differently, since the IH does not change.
  *)
 let diff_inductive_case opts evd diff d_old (d : proof_cat_diff) : candidates =
   let sort c ms = List.stable_sort (closer_to_ih c (find_ihs c)) ms in

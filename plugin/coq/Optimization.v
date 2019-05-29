@@ -84,11 +84,21 @@ Theorem old3 :
 Proof.
   intros. induction n.
   - reflexivity.
-  - rewrite Nat.add_comm. reflexivity.
+  - rewrite <- Nat.add_comm. reflexivity.
 Qed.
 Print old3.
 Optimize Proof Term old3 as new3.
-Print new3. (* TODO test *)
+Print new3. (* TODO test (this one does work) *)
+(* TODO can we get it to be smart enough to remove the rewrite too? *)
+
+Theorem old4 :
+  forall (n : nat),
+    n + 0 = n.
+Proof.
+  intros. apply Nat.add_comm.
+Qed.
+
+Print old4.
 
 (* --- TODO w/ a tactic --- *)
 
