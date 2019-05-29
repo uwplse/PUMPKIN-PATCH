@@ -42,13 +42,12 @@ open Filters
  *    when the function is a constructor. If the user has
  *    cut by some lemma, then filter by that type,
  *    otherwise just return the result.
- * 4. When searching for a change in conclusions,
+ * 4. When searching for a change in conclusions (or doing optimization),
  *    search the difference in functions and apply to the old arguments.
  *    For now, we just require that the arguments haven't changed.
  *    Ideally, we should search (f_o -> f_n) and
  *    (map2 (a_n -> a_o) args_o args_n) applied to each arg_o,
  *    but the latter hasn't been necessary ever, so we don't do it for now.
- * 5. TODO
  *
  * This will still fail to find patches in many cases.
  * We need to improve semantic differencing for those cases,
