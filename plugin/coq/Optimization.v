@@ -92,17 +92,75 @@ Proof.
   reflexivity.
 Qed.
 
-(* TODO using the IH *)
-(* TODO fixpoint version *)
-(* TODO things other than nats *)
+(*
+ * Here we apply a lemma in the inductive case, but the lemma is a more general
+ * version of what we need:
+ *)
+Theorem add_0_r_slow_2 :
+  forall (n : nat),
+    n + 0 = n.
+Proof.
+  intros. induction n.
+  - reflexivity.
+  - apply Nat.add_comm.
+Qed.
 
-(* --- TODO won't work yet; clean and merge simple version, then add issue for later; need to be smart about this --- *)
+Optimize Proof Term add_0_r_slow_2 as add_0_r_2.
 
 (*
- * Let's start with a deliberately easy proof (haha still needs nested induction support).
- * Here's a version of add_0_r that does extra induction.
+ * PUMPKIN thus is able to extract the lemma and the right arguments,
+ * even though they are different from the arguments used in the inductive case:
  *)
-Theorem old2 :
+Theorem test_opt_4 :
+  add_0_r_2 = fun (n : nat) => Nat.add_comm n 0.
+Proof.
+  reflexivity.
+Qed.
+
+(*
+ * This version rewrites by commutativity instead of applying it:
+ *)
+Theorem add_0_r_slow_3 :
+  forall (n : nat),
+    n + 0 = n.
+Proof.
+  intros. induction n.
+  - reflexivity.
+  - rewrite Nat.add_comm. reflexivity.
+Qed.
+
+Optimize Proof Term add_0_r_slow_3 as add_0_r_3.
+
+(*
+ * As-is, PUMPKIN can remove the induction over the nats:
+ *)
+Theorem test_opt_5_almost :
+  add_0_r_3 = 
+    fun n : nat => 
+      eq_ind_r (fun n0 : nat => n0 = n) eq_refl (Nat.add_comm n 0).
+Proof.
+  reflexivity.
+Qed.
+
+(*
+ * But it's still not smart enough to remove the rewrite:
+ *)
+Theorem test_opt_5 :
+  add_0_r_3 = 
+    fun n : nat => Nat.add_comm n 0.
+Proof.
+  Fail reflexivity.
+Admitted.
+
+(*
+ * NOTE: When PUMPKIN implements better handling of rewrites and is able to find
+ * this patch, remove test_opt_5_almost and update test_opt_5 to pass.
+ *)
+
+(*
+ * This version applies an extra induction cycle inline in the inductive case:
+ *)
+Theorem add_0_r_slow_4 :
   forall (n : nat),
     n + 0 = n.
 Proof.
@@ -113,70 +171,76 @@ Proof.
     + simpl. rewrite <- IHn. reflexivity. 
 Qed.
 
-Optimize Proof Term old2 as new2.
-Print new2. (* TODO test *)
-(* TODO just note that this doesn't work yet. Not smart enough for the nested induction. *)
+Optimize Proof Term add_0_r_slow_4 as add_0_r_4.
 
-(* --- TODO explain --- *)
+Definition add_0_r_4_expected (n : nat) : n + 0 = n :=
+  nat_ind 
+    (fun n0 : nat => n0 + 0 = n0) 
+    eq_refl
+    (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
+      eq_ind (n0 + 0) (fun n1 : nat => S (n0 + 0) = S n1) eq_refl n0 IHn)
+    n.
 
 (*
- * Let's start with a deliberately easy proof (haha still needs nested induction support).
- * Here's a version of add_0_r that does extra induction.
- * This one applies a lemma to get around lack of support for nested induction.
+ * PUMPKIN is not good at rewrites and is also not good at nested induction,
+ * so it does not find the most efficient proof:
  *)
-Theorem old3 :
-  forall (n : nat),
-    n + 0 = n.
-Proof.
-  intros. induction n.
-  - reflexivity.
-  - rewrite <- Nat.add_comm. reflexivity.
-Qed.
-Print old3.
-Optimize Proof Term old3 as new3.
-Print new3. (* TODO test (this one does work) *)
-(* TODO can we get it to be smart enough to remove the rewrite too? *)
+Fail Theorem test_opt_6 : add_0_r_4 = add_0_r_4_expected.
 
-Theorem old4 :
-  forall (n : nat),
-    n + 0 = n.
-Proof.
-  intros. apply Nat.add_comm.
-Qed.
+(*
+ * NOTE: When PUMPKIN implements better handling of rewrites and nested induction
+ * and is able to find this patch, update test_opt_6 to pass.
+ *)
 
-Print old4.
+(*
+ * This is a minimal test for nested induction. It is defined as a term because 
+ * it is a purposely minimal test case, but it's hard to get tactics to do this:
+ *)
+Definition add_0_r_slow_5 (n : nat) : n + 0 = n :=
+  nat_ind 
+    (fun n0 : nat => n0 + 0 = n0) 
+    eq_refl
+    (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
+      nat_ind 
+        (fun n1 : nat => S n1 + 0 = S n1)
+        eq_refl
+        (fun (n1 : nat) (IHn1 : S n1 + 0 = S n1) =>
+          eq_trans 
+           (f_equal (fun f : nat -> nat => f (S (n1 + 0))) eq_refl) 
+           (f_equal S IHn1)) 
+        n0)
+    n.
 
-Theorem old5 :
-  forall (n : nat),
-    n + 0 = n.
-Proof.
-  intros. induction n.
-  - reflexivity.
-  - simpl. rewrite IHn. reflexivity.
-Qed.
+Optimize Proof Term add_0_r_slow_5 as add_0_r_5.
 
-Print old5.
+Definition add_0_r_5_expected (n : nat) : n + 0 = n :=
+  nat_ind 
+    (fun n0 : nat => n0 + 0 = n0) 
+    eq_refl
+    (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
+      eq_trans 
+        (f_equal (fun f : nat -> nat => f (n0 + 0)) eq_refl) 
+        (f_equal S IHn)) 
+    n.
 
-Check (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
-   eq_ind_r (fun n1 : nat => S n1 = S n0) eq_refl IHn).
+(*
+ * PUMPKIN is not good at nested induction, so it does not find the most 
+ * efficient proof:
+ *)
+Fail Theorem test_opt_7 : add_0_r_5 = add_0_r_5_expected.
 
-Check (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
-   eq_ind_r (fun n1 : nat => S n1 = S n0) eq_refl IHn).
+(*
+ * NOTE: When PUMPKIN implements better handling of nested induction
+ * and is able to find this patch, update test_opt_7 to pass.
+ *)
+
+(* TODO using the IH *)
+(* TODO fixpoint version *)
+(* TODO things other than nats *)
 
 (* --- TODO w/ a tactic --- *)
 
-(* --- TODO a more realistic version --- *)
-
-
-(* TODO a more realistic version *)
-
-(* TODO fixpoint version *)
-
-(*
- * Now, let's try something more complex, from the standard library.
- *)
-
-(* TODO *)
+(* TODO stdlib *)
 
 (* --- Functions --- *)
 
