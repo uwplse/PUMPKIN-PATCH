@@ -158,17 +158,12 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let evd = config.evd in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
-  let open Printing in
-  debug_terms env config.cs "cs";
   let reduced_cs = reduce_all_using strategy env evd config.cs in
-  debug_terms env reduced_cs "reduced_cs";
   let shift_concrete = List.map (shift_by (nb_rel env_abs - nb_rel env)) in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
   let bs = substitute_using strategy env_abs evd args_adj args_abs cs_adj in
   let lambdas = generalize env_abs evd opts.num_to_abstract bs in
-  debug_terms env lambdas "lambdas";
-  debug_term env opts.goal_type "goal_type";
   filter_using strategy env evd opts.goal_type lambdas
 
 (*
