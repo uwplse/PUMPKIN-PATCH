@@ -113,7 +113,7 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
          try_chain_diffs
            [(find_difference evd opts);     (* 6a *)
             (diff_app evd diff diff opts);  (* 6b *)
-            (diff_reduced (diff opts));     (* 6c *)]
+            (diff_reduced (diff opts))]     (* 6c *)
            d
        else
          give_up
