@@ -175,8 +175,14 @@ let patch_proof n d_old d_new cut =
       search_for_patch evm old_term opts d)
 
 (*
- * Command functionality for optimizing proofs
- * TODO explain
+ * Command functionality for optimizing proofs.
+ *
+ * This builds on Patch Proof to do basic proof optimization
+ * by removing unused induction principles. Basically,
+ * this performs proof patching against "nothing" with the same structure.
+ * Since we can't actually represet "nothing," and using other identities
+ * (like unit) means messing with heuristics, we instead represent
+ * this as a special configuration, and pass in the same term twice.
  *)
 let optimize_proof n d =
   let (evm, env) = Pfedit.get_current_context () in
