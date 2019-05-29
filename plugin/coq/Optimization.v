@@ -234,6 +234,53 @@ Fail Theorem test_opt_7 : add_0_r_5 = add_0_r_5_expected.
  * and is able to find this patch, update test_opt_7 to pass.
  *)
 
+(* 
+ * TODO explain
+ *)
+Lemma add_0_r_slow_lemma_6:
+  forall (n m : nat),
+    n + m = m + n -> 
+    n + m = m + n.
+Proof.
+  auto.
+Qed.
+
+Theorem add_0_r_slow_6 :
+  forall (n : nat),
+    n + 0 = n.
+Proof.
+  intros. induction n.
+  - reflexivity.
+  - simpl. rewrite add_0_r_slow_lemma_6.
+    + reflexivity.
+    + apply IHn. 
+Qed.
+
+Optimize Proof Term add_0_r_slow_6 as add_0_r_6.
+
+Print add_0_r_slow_6.
+Print add_0_r_6.
+
+Check 
+  (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
+     eq_ind_r 
+       (fun n1 : nat => S n1 = S n0) 
+       eq_refl 
+       (add_0_r_slow_lemma_6 n0 0 IHn)).
+
+Check 
+  (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
+     eq_ind_r 
+       (fun n1 : nat => n1 = n0) 
+       eq_refl 
+       (add_0_r_slow_lemma_6 n0 0 IHn)).
+Print add_0_r_6.
+
+
+(* TODO test *)
+
+(* --- Inefficient single induction using the IH --- *)
+
 (* TODO using the IH *)
 (* TODO fixpoint version *)
 (* TODO things other than nats *)
