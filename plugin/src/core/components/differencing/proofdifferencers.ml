@@ -71,19 +71,22 @@ let merge_diff_envs is_ind num_new_rels evd (d : goal_type_term_diff)  =
  * 1. Push some (H : T_new) into the common environment (and adjust indexes)
  * 2. Look for all subterms of (t1 t2) that are convertible to t
  * 3. Substitute all combinations of those subterms with H
- * 4. Remove the original term from the list (check this seperately)
+ * 4. Remove the original term from the list
  * 5. Wrap those in a lambda from (H : T_new)
  * 6. Return the list of candidates (don't check that they are patches yet)
+ *
+ * For optimization, we just return the original term.
  *)
 let build_app_candidates env evd opts (from_type : types) (old_term : types) (new_term : types) =
   try
     let env_b = push_rel CRD.(LocalAssum(Name.Anonymous, from_type)) env in
     let old_term_shift = shift old_term in
     let bodies =
-      if is_identity (get_change opts) then (* TODO clean *)
+      if is_identity (get_change opts) then
 	(* the difference between a term and nothing is the term *)
 	[old_term_shift]
-      else (* TODO explain *)
+      else
+        (* otherwise, check containment *)
 	let new_term_shift = shift new_term in
 	let sub = all_conv_substs_combs env_b evd (new_term_shift, (mkRel 1)) in
 	filter_not_same old_term_shift env_b evd (sub old_term_shift)
