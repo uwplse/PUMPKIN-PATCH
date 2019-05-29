@@ -47,12 +47,10 @@ Proof.
   - reflexivity.
   - apply Nat.add_0_r.
 Qed.
-
-Print old1.
 Optimize Proof Term old1 as new1.
 Print new1. (* TODO test *)
 
-(* --- TODO w/o a lemma --- *)
+(* --- TODO won't work yet; clean and merge simple version, then add issue for later; need to be smart about this --- *)
 
 (*
  * Let's start with a deliberately easy proof (haha still needs nested induction support).
@@ -71,7 +69,27 @@ Qed.
 
 Optimize Proof Term old2 as new2.
 Print new2. (* TODO test *)
-Print opt_patch2.
+(* TODO just note that this doesn't work yet. Not smart enough for the nested induction. *)
+
+(* --- TODO explain --- *)
+
+(*
+ * Let's start with a deliberately easy proof (haha still needs nested induction support).
+ * Here's a version of add_0_r that does extra induction.
+ * This one applies a lemma to get around lack of support for nested induction.
+ *)
+Theorem old3 :
+  forall (n : nat),
+    n + 0 = n.
+Proof.
+  intros. induction n.
+  - reflexivity.
+  - rewrite Nat.add_comm. reflexivity.
+Qed.
+Print old3.
+Optimize Proof Term old3 as new3.
+Print new3. (* TODO test *)
+
 (* --- TODO w/ a tactic --- *)
 
 (* --- TODO a more realistic version --- *)
