@@ -4,42 +4,75 @@ Require Import Arith PeanoNat.
 (*
  * PUMPKIN PATCH can remove extra induction principles and fixpoints.
  * The key is that proof optimization of this kind is simply patching against
- * identity, where identity is a formulaic proof that can be defined for each
- * induction principle. If PUMPKIN PATCH finds a patch, this is a more efficient
- * proof of the same theorem.
+ * the proof of "nothing" with the same structure. So optimization
+ * is defined in terms of patching with a few parameter tweaks.
  *
- * We will soon have automation to construct this identity proof automatically.
- * For now, and to make it easier to build test cases later on, let's walk through
- * this manually.
- * 
- * TODO update above
+ * Optimization is only as good as patching, and patching still has
+ * limited functionality. For now, we show a few proofs we can do as-is.
+ * The cases that fail should eventually pass; we mark those as Fail.
+ * Optimization will continue to improve automatically as patching improves;
+ * at that point, some of these tests will fail to Fail. If that happens,
+ * we should remove the Fail command so that they pass.
  *)
 
-(* --- A really really simple toy example proof --- *)
+(* --- A really simple toy example proof --- *)
 
 (*
- * TODO explain
+ * This is an inefficient proof of reflexivity with extra induction:
  *)
-Theorem old0 :
+Theorem refl_slow :
   forall (n : nat),
     n = n.
 Proof.
-  intros. induction n.
-  - reflexivity.
-  - reflexivity.
+  intros. induction n; auto.
 Qed.
 
-Optimize Proof Term old0 as new0.
-Print new0. (* TODO test *)
+Optimize Proof Term refl_slow as refl.
 
-(* --- A toy example proof --- *)
+(*.
+ * Optimizing this proof removes induction and produces a proof of refl:
+ *)
+Theorem test_opt_1 : 
+  refl = fun (n : nat) => eq_refl. 
+Proof. 
+  reflexivity. 
+Qed.
+
+(* --- Pattern matching --- *)
 
 (*
- * Let's start with a deliberately easy proof (haha still needs nested induction support).
- * Here's a version of add_0_r that does extra induction.
- * This one applies a lemma to get around lack of support for nested induction.
+ * We can optimize proofs with pattern matching using the preprocess command:
  *)
-Theorem old1 :
+Definition refl_slow_match (n : nat) : n = n :=
+  match n with
+  | 0 => eq_refl
+  | S n1 => eq_refl
+  end.
+
+Preprocess refl_slow_match as refl_slow'.
+Optimize Proof Term refl_slow' as refl'.
+
+(*.
+ * Optimizing this proof removes pattern matching and produces a proof of refl:
+ *)
+Theorem test_opt_2 : 
+  refl' = fun (n : nat) => eq_refl. 
+Proof. 
+  reflexivity. 
+Qed.
+
+(* --- Variations on a theme --- *)
+
+(*
+ * These are various inefficient versions of add_0_r. Some of these work as-is,
+ * some currently fail.
+ *)
+
+(*
+ * Here we apply a lemma in the inductive case, but the lemma is exactly
+ * the proof we want:
+ *)
+Theorem add_0_r_slow_1 :
   forall (n : nat),
     n + 0 = n.
 Proof.
@@ -47,8 +80,21 @@ Proof.
   - reflexivity.
   - apply Nat.add_0_r.
 Qed.
-Optimize Proof Term old1 as new1.
-Print new1. (* TODO test *)
+
+Optimize Proof Term add_0_r_slow_1 as add_0_r_1.
+
+(*
+ * PUMPKIN thus is able to extract the lemma:
+ *)
+Theorem test_opt_3 :
+  add_0_r_1 = fun (n : nat) => Nat.add_0_r n.
+Proof.
+  reflexivity.
+Qed.
+
+(* TODO using the IH *)
+(* TODO fixpoint version *)
+(* TODO things other than nats *)
 
 (* --- TODO won't work yet; clean and merge simple version, then add issue for later; need to be smart about this --- *)
 
@@ -99,6 +145,23 @@ Proof.
 Qed.
 
 Print old4.
+
+Theorem old5 :
+  forall (n : nat),
+    n + 0 = n.
+Proof.
+  intros. induction n.
+  - reflexivity.
+  - simpl. rewrite IHn. reflexivity.
+Qed.
+
+Print old5.
+
+Check (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
+   eq_ind_r (fun n1 : nat => S n1 = S n0) eq_refl IHn).
+
+Check (fun (n0 : nat) (IHn : n0 + 0 = n0) =>
+   eq_ind_r (fun n1 : nat => S n1 = S n0) eq_refl IHn).
 
 (* --- TODO w/ a tactic --- *)
 
