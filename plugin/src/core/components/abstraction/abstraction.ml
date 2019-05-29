@@ -164,6 +164,7 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let cs_adj = shift_concrete reduced_cs in
   let bs = substitute_using strategy env_abs evd args_adj args_abs cs_adj in
   let lambdas = generalize env_abs evd opts.num_to_abstract bs in
+  Printf.printf "%d abstracted candidates\n" (List.length lambdas);
   filter_using strategy env evd opts.goal_type lambdas
 
 (*
