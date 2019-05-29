@@ -6,24 +6,24 @@ open Coqterms
 open Debruijn
 open Evd
 
-type 'a filter_strategy = env -> evar_map -> types -> 'a list -> 'a list
+type 'a filter_strategy = env -> evar_map -> 'a list -> 'a list
 
 (* Filter trms to those that have type typ in env *)
-let filter_by_type (env : env) (evd : evar_map) (typ : types) (trms : types list) : types list =
+let filter_by_type typ (env : env) (evd : evar_map) (trms : types list) : types list =
   try
     List.filter (has_type env evd typ) trms
   with
   | _ -> []
 
 (* Find the singleton list with the first term that has type typ *)
-let find_by_type (env : env) (evd : evar_map) (typ : types) (trms : types list) : types list =
+let find_by_type typ (env : env) (evd : evar_map) (trms : types list) : types list =
   try
     [List.find (has_type env evd typ) trms]
   with
   | _ -> []
 
 (* Filter a list of terms to those not exactly the same as the supplied term *)
-let filter_not_same (_ : env) (_ : evar_map) (trm : types) (trms : types list) : types list =
+let filter_not_same trm (_ : env) (_ : evar_map) (trms : types list) : types list =
   let same = equal trm in (* exact equality for constructors *)
   List.filter (fun t -> not (same t)) trms
 

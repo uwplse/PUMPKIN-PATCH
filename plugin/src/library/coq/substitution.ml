@@ -68,7 +68,7 @@ let constructs_recursively env evd c trm : bool =
 let all_constr_substs env evd c trm : types =
   map_term_env_if
     (fun env -> constructs_recursively env evd)
-    (fun _ _ t ->
+    (fun env _ t ->
       let (_, args_t) = destApp t in
       List.find (types_convertible env evd t) (Array.to_list args_t))
     shift

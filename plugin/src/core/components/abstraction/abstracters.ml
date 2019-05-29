@@ -17,7 +17,7 @@ type abstraction_strategy =
   {
     reducer : reducer;
     abstracter : abstracter;
-    filter : types filter_strategy;
+    filter : types -> types filter_strategy;
     to_abstract : abstraction_dimension;
   }
 
@@ -74,7 +74,7 @@ let reduce_all_using strategy env evd (cs : candidates) : candidates =
  * Filter using the filter in the abstraction stragegy
  *)
 let filter_using strategy env evd (goal : types) (cs : candidates) : candidates =
-  strategy.filter env evd goal cs
+  strategy.filter goal env evd cs
 
 (* --- Recover options from an abstraction strategy --- *)
 

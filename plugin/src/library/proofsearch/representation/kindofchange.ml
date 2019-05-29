@@ -16,6 +16,7 @@ open Cutlemma
  *    as in sum-like inductive types like exists
  * 5) A change in a single hypotheses
  *    (that isn't an inductive type we are inducting over)
+ * 6) A change from identity (optimization)
  *)
 type kind_of_change =
   | Conclusion
@@ -23,6 +24,7 @@ type kind_of_change =
   | FixpointCase of (types * types) * cut_lemma
   | ConclusionCase of (cut_lemma option)
   | Hypothesis of types * types
+  | Identity
 
 let is_conclusion c =
   c = Conclusion
@@ -45,4 +47,9 @@ let is_conclusion_case c =
 let is_hypothesis c =
   match c with
   | Hypothesis (_, _) -> true
+  | _ -> false
+
+let is_identity c =
+  match c with
+  | Identity -> true
   | _ -> false

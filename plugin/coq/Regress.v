@@ -196,4 +196,4 @@ Fail Lemma testPatch9_bad: patch9_bad = expectedPatch1.
 Preprocess old9 as old9'.
 Preprocess new9 as new9'.
 Patch Proof old9' new9' as patch9.
-Lemma testPatch9 : patch9 = expectedPatch1. Proof. reflexivity. Qed.
+Theorem testPatch9 : patch9 = expectedPatch1. Proof. reflexivity. Qed.

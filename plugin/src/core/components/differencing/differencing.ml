@@ -101,9 +101,10 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
     | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
        let change = get_change opts in
        let ind = is_ind opts in
-       if no_diff evd opts (eval_with_terms t_o t_n d) then
+       let opts_hypos = if is_identity change then set_change opts Conclusion else opts in
+       if no_diff evd opts_hypos (eval_with_terms t_o t_n d) then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
-       else if ind || not (is_conclusion change) then
+       else if ind || not (is_conclusion change || is_identity change) then
          (*5*) zoom_unshift (to_search_function diff opts d) d
        else
          give_up
@@ -112,7 +113,7 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
          try_chain_diffs
            [(find_difference evd opts);     (* 6a *)
             (diff_app evd diff diff opts);  (* 6b *)
-            (diff_reduced (diff opts))] (* 6c *)
+            (diff_reduced (diff opts))]     (* 6c *)
            d
        else
          give_up

@@ -231,7 +231,7 @@ let abstract_case (opts : options) evd (d : goal_case_diff) cs : candidates =
   match get_change opts with
   | Kindofchange.Hypothesis (_, _) ->
      let (g_o, g_n) = map_tuple context_term (old_goal, new_proof d_goal) in
-     filter_by_type env evd (mkProd (Names.Name.Anonymous, g_n, shift g_o)) cs
+     filter_by_type (mkProd (Names.Name.Anonymous, g_n, shift g_o)) env evd cs
   | Kindofchange.InductiveType (_, _) ->
      cs
   | Kindofchange.FixpointCase ((_, _), cut) when are_cut env evd cut cs ->

@@ -42,7 +42,7 @@ open Filters
  *    when the function is a constructor. If the user has
  *    cut by some lemma, then filter by that type,
  *    otherwise just return the result.
- * 4. When searching for a change in conclusions,
+ * 4. When searching for a change in conclusions (or doing optimization),
  *    search the difference in functions and apply to the old arguments.
  *    For now, we just require that the arguments haven't changed.
  *    Ideally, we should search (f_o -> f_n) and
@@ -90,14 +90,14 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
          let new_goal = fst (new_proof d) in
          let (g_o, g_n) = map_tuple context_term (old_goal, new_goal) in
          let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
-         let filter_goal = filter_by_type env evd goal_type in
+         let filter_goal = filter_by_type goal_type env evd in
          let filter_diff_h diff = filter_diff filter_goal diff in
          let fs = filter_diff_h (diff_rec diff_f opts) d_f in
          if non_empty fs then
            fs
          else
            filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args
-      | Kindofchange.Conclusion ->
+      | Kindofchange.Conclusion | Kindofchange.Identity ->
          if List.for_all2 (convertible env evd) (Array.to_list args_o) (Array.to_list args_n) then
            let specialize = specialize_using specialize_no_reduce env evd in
            let combine_app = combine_cartesian specialize in
@@ -143,7 +143,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
 	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
          let d_args_rev = reverse d_args in
          filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
-    | _ ->
+     | _ ->
        if non_empty args_o then
          let env_o = context_env (fst (old_proof d)) in
          let (_, prop_trm_ext, _) = prop o npms_old in
@@ -160,20 +160,25 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
          let arity = prop_arity prop_trm in
          let specialize = specialize_using specialize_no_reduce env_o evd in
          let final_args_o = Array.of_list (fst (split_at arity args_o)) in
-         let final_args_n = Array.of_list (fst (split_at arity args_n)) in
-         let d_args = difference final_args_n final_args_o no_assumptions in
-         combine_cartesian
-           specialize
-           f
-           (combine_cartesian_append
-             (Array.of_list
-                (diff_map
-                   (fun d_a ->
-                     let arg_n = new_proof d_a in
-                     let apply p = specialize p (Array.make 1 arg_n) in
-                     let diff_apply = filter_diff (List.map apply) in
-                     diff_terms (diff_apply (diff_arg opts evd)) d opts d_a)
-                   d_args)))
+	 if Kindofchange.is_identity (get_change opts) then (* TODO explain *)
+	   List.map 
+	     (fun f -> 
+	       let dummy_arg = mkRel 1 in
+	       specialize (specialize f final_args_o) (Array.make 1 dummy_arg)) 
+	     f
+	 else
+           let final_args_n = Array.of_list (fst (split_at arity args_n)) in
+           let d_args = difference final_args_n final_args_o no_assumptions in
+	   let args =
+	     Array.of_list
+               (diff_map
+		  (fun d_a ->
+                    let arg_n = new_proof d_a in
+                    let apply p = specialize p (Array.make 1 arg_n) in
+                    let diff_apply = filter_diff (List.map apply) in
+                    diff_terms (diff_apply (diff_arg opts evd)) d opts d_a)
+                  d_args)
+	   in combine_cartesian specialize f (combine_cartesian_append args)
        else
          f
   else

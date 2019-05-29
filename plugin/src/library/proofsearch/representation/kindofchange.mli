@@ -16,6 +16,7 @@ open Cutlemma
  *    as in sum-like inductive types like exists
  * 5) A change in hypotheses (that isn't an inductive type we are inducting
  *    over)
+ * 6) A change from identity (optimization)
  *)
 type kind_of_change =
   | Conclusion
@@ -23,9 +24,11 @@ type kind_of_change =
   | FixpointCase of (types * types) * cut_lemma
   | ConclusionCase of (cut_lemma option)
   | Hypothesis of types * types
+  | Identity
 
 val is_conclusion : kind_of_change -> bool
 val is_inductive_type : kind_of_change -> bool
 val is_fixpoint_case : kind_of_change -> bool
 val is_conclusion_case : kind_of_change -> bool
 val is_hypothesis : kind_of_change -> bool
+val is_identity : kind_of_change -> bool

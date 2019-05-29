@@ -1,6 +1,7 @@
 (* --- Differencing of Inductive Proofs --- *)
 
 open Utilities
+open Constr
 open Proofcat
 open Proofcatterms
 open Proofdiff
@@ -14,6 +15,7 @@ open Abstraction
 open Expansion
 open Environ
 open Evd
+open Higherdifferencers
 
 (* --- Cases --- *)
 
@@ -113,10 +115,15 @@ let diff_base_case opts evd diff d_old (d : proof_cat_diff) : candidates =
  * There currently may not be a guarantee that the two
  * arrows are traversed in exactly the same order for each proof.
  * If there is a bug in this, this may be why.
+ *
+ * For optimization, we don't bother treating the inductive case
+ * any differently, since the IH does not change.
  *)
 let diff_inductive_case opts evd diff d_old (d : proof_cat_diff) : candidates =
   let sort c ms = List.stable_sort (closer_to_ih c (find_ihs c)) ms in
-  diff_sort_ind_case (set_is_ind opts true) evd sort diff d_old d
+  let change = get_change opts in
+  let opts = if is_identity change then opts else set_is_ind opts true in
+  diff_sort_ind_case opts evd sort diff d_old d
 
 (*
  * Depending on whether a proof has inductive hypotheses, difference
