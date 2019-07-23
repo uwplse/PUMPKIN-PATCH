@@ -1,4 +1,4 @@
--I src/library/utilities
+-I src/coq-plugin-lib/src/utilities
 -I src/library/categories
 -I src/library/coq
 -I src/library/proofsearch/representation
@@ -14,8 +14,8 @@
 -R src Patcher
 -Q theories Patcher
 
-src/library/utilities/utilities.mli
-src/library/utilities/utilities.ml
+src/coq-plugin-lib/src/utilities/utilities.mli
+src/coq-plugin-lib/src/utilities/utilities.ml
 
 src/library/categories/category.mli
 src/library/categories/category.ml
