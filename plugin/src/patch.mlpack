@@ -1,7 +1,5 @@
 Utilities
 
-Category
-
 Coqterms
 Printing
 Hofs
@@ -9,6 +7,8 @@ Debruijn
 Substitution
 Filters
 Reducers
+
+Category
 
 Candidates
 Assumptions
