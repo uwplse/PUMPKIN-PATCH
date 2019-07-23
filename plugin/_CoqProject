@@ -2,8 +2,8 @@
 -I src/coq-plugin-lib/src/coq
 -I src/representation
 -I src/representation/categories
+-I src/configuration
 -I src/compilation
--I src/core/configuration
 -I src/core/components/abstraction
 -I src/core/components/specialization
 -I src/core/components/inversion
@@ -47,8 +47,6 @@ src/representation/proofcatterms.mli
 src/representation/proofcatterms.ml
 src/representation/cutlemma.mli
 src/representation/cutlemma.ml
-src/representation/kindofchange.mli
-src/representation/kindofchange.ml
 
 src/compilation/evaluation.mli
 src/compilation/evaluation.ml
@@ -59,8 +57,10 @@ src/compilation/proofdiff.ml
 src/compilation/zooming.mli
 src/compilation/zooming.ml
 
-src/core/configuration/searchopts.mli
-src/core/configuration/searchopts.ml
+src/configuration/kindofchange.mli
+src/configuration/kindofchange.ml
+src/configuration/searchopts.mli
+src/configuration/searchopts.ml
 
 src/core/components/specialization/specialization.mli
 src/core/components/specialization/specialization.ml
