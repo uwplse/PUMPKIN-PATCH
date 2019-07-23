@@ -1,6 +1,6 @@
 -I src/coq-plugin-lib/src/utilities
--I src/library/categories
--I src/library/coq
+-I src/coq-plugin-lib/src/coq
+-I src/categories
 -I src/library/proofsearch/representation
 -I src/library/proofsearch/compilation
 -I src/core/configuration

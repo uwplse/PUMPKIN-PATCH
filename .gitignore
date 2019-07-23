@@ -2,6 +2,7 @@ plugin/*~
 plugin/src/*~
 plugin/*.coq.bak
 plugin/*.cmi
+*.d
 *.ml4.d
 *.mli.d
 *.ml.d
