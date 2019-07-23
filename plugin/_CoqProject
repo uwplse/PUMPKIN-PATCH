@@ -17,8 +17,8 @@
 src/coq-plugin-lib/src/utilities/utilities.mli
 src/coq-plugin-lib/src/utilities/utilities.ml
 
-src/library/categories/category.mli
-src/library/categories/category.ml
+src/categories/category.mli
+src/categories/category.ml
 
 src/library/coq/coqterms.mli
 src/library/coq/coqterms.ml
