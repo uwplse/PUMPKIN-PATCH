@@ -32,21 +32,21 @@ src/coq-plugin-lib/src/coq/filters.ml
 src/coq-plugin-lib/src/coq/reducers.mli
 src/coq-plugin-lib/src/coq/reducers.ml
 
-src/representation/categories/category.mli
-src/representation/categories/category.ml
-
 src/representation/candidates.mli
 src/representation/candidates.ml
 src/representation/assumptions.mli
 src/representation/assumptions.ml
 src/representation/merging.mli
 src/representation/merging.ml
-src/representation/proofcat.mli
-src/representation/proofcat.ml
-src/representation/proofcatterms.mli
-src/representation/proofcatterms.ml
 src/representation/cutlemma.mli
 src/representation/cutlemma.ml
+
+src/representation/categories/category.mli
+src/representation/categories/category.ml
+src/representation/categories/proofcat.mli
+src/representation/categories/proofcat.ml
+src/representation/categories/proofcatterms.mli
+src/representation/categories/proofcatterms.ml
 
 src/compilation/evaluation.mli
 src/compilation/evaluation.ml
