@@ -1,13 +1,13 @@
 (* --- Recursive Differencers for Application --- *)
 
+open Utilities
 open Constr
 open Proofcatterms
 open Proofdiff
 open Candidates
 open Searchopts
-open Coqterms
 open Evd
-open Utilities
+open Coqterms
 open Proofdifferencers
 open Higherdifferencers
 open Assumptions

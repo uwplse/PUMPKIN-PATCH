@@ -1,5 +1,6 @@
 (* Search procedures *)
 
+open Utilities
 open Environ
 open Constr
 open Assumptions
@@ -8,7 +9,6 @@ open Abstractionconfig
 open Proofdiff
 open Reducers
 open Specialization
-open Utilities
 open Inverting
 open Searchopts
 open Factoring
