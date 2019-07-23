@@ -1,8 +1,8 @@
 -I src/coq-plugin-lib/src/utilities
 -I src/coq-plugin-lib/src/coq
--I src/categories
--I src/categories/representation
--I src/categories/compilation
+-I src/representation
+-I src/representation/categories
+-I src/compilation
 -I src/core/configuration
 -I src/core/components/abstraction
 -I src/core/components/specialization
@@ -32,32 +32,32 @@ src/coq-plugin-lib/src/coq/filters.ml
 src/coq-plugin-lib/src/coq/reducers.mli
 src/coq-plugin-lib/src/coq/reducers.ml
 
-src/categories/category.mli
-src/categories/category.ml
+src/representation/categories/category.mli
+src/representation/categories/category.ml
 
-src/categories/representation/candidates.mli
-src/categories/representation/candidates.ml
-src/categories/representation/assumptions.mli
-src/categories/representation/assumptions.ml
-src/categories/representation/merging.mli
-src/categories/representation/merging.ml
-src/categories/representation/proofcat.mli
-src/categories/representation/proofcat.ml
-src/categories/representation/proofcatterms.mli
-src/categories/representation/proofcatterms.ml
-src/categories/representation/cutlemma.mli
-src/categories/representation/cutlemma.ml
-src/categories/representation/kindofchange.mli
-src/categories/representation/kindofchange.ml
+src/representation/candidates.mli
+src/representation/candidates.ml
+src/representation/assumptions.mli
+src/representation/assumptions.ml
+src/representation/merging.mli
+src/representation/merging.ml
+src/representation/proofcat.mli
+src/representation/proofcat.ml
+src/representation/proofcatterms.mli
+src/representation/proofcatterms.ml
+src/representation/cutlemma.mli
+src/representation/cutlemma.ml
+src/representation/kindofchange.mli
+src/representation/kindofchange.ml
 
-src/categories/compilation/evaluation.mli
-src/categories/compilation/evaluation.ml
-src/categories/compilation/expansion.mli
-src/categories/compilation/expansion.ml
-src/categories/compilation/proofdiff.mli
-src/categories/compilation/proofdiff.ml
-src/categories/compilation/zooming.mli
-src/categories/compilation/zooming.ml
+src/compilation/evaluation.mli
+src/compilation/evaluation.ml
+src/compilation/expansion.mli
+src/compilation/expansion.ml
+src/compilation/proofdiff.mli
+src/compilation/proofdiff.ml
+src/compilation/zooming.mli
+src/compilation/zooming.ml
 
 src/core/configuration/searchopts.mli
 src/core/configuration/searchopts.ml
