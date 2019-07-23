@@ -24,7 +24,7 @@ longer maintaining.
 
 ```
 cd plugin
-make
+./build.sh
 ```
 
 ## Using PUMPKIN
