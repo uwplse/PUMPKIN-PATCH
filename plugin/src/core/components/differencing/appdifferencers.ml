@@ -14,6 +14,7 @@ open Assumptions
 open Cutlemma
 open Specialization
 open Zooming
+open Catzooming
 open Debruijn
 open Filters
 

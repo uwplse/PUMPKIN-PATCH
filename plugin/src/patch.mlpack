@@ -4,6 +4,7 @@ Coqterms
 Printing
 Hofs
 Debruijn
+Zooming
 Substitution
 Filters
 Reducers
@@ -20,7 +21,7 @@ Proofcatterms
 Evaluation
 Expansion
 Proofdiff
-Zooming
+Catzooming
 
 Kindofchange
 Searchopts

@@ -11,7 +11,7 @@ open Proofdiff
 open Assumptions
 open Kindofchange
 open Cutlemma
-open Zooming
+open Catzooming
 
 module CRD = Context.Rel.Declaration
 

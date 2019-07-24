@@ -4,6 +4,7 @@
 -I src/representation/categories
 -I src/configuration
 -I src/compilation
+-I src/compilation/categories
 -I src/core/components/abstraction
 -I src/core/components/specialization
 -I src/core/components/inversion
@@ -25,6 +26,8 @@ src/coq-plugin-lib/src/coq/hofs.mli
 src/coq-plugin-lib/src/coq/hofs.ml
 src/coq-plugin-lib/src/coq/debruijn.mli
 src/coq-plugin-lib/src/coq/debruijn.ml
+src/coq-plugin-lib/src/coq/zooming.mli
+src/coq-plugin-lib/src/coq/zooming.ml
 src/coq-plugin-lib/src/coq/substitution.mli
 src/coq-plugin-lib/src/coq/substitution.ml
 src/coq-plugin-lib/src/coq/filters.mli
@@ -54,8 +57,8 @@ src/compilation/expansion.mli
 src/compilation/expansion.ml
 src/compilation/proofdiff.mli
 src/compilation/proofdiff.ml
-src/compilation/zooming.mli
-src/compilation/zooming.ml
+src/compilation/categories/catzooming.mli
+src/compilation/categories/catzooming.ml
 
 src/configuration/kindofchange.mli
 src/configuration/kindofchange.ml

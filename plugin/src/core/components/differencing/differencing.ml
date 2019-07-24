@@ -7,7 +7,7 @@ open Reducers
 open Candidates
 open Kindofchange
 open Printing
-open Zooming
+open Catzooming
 open Proofdifferencers
 open Higherdifferencers
 open Appdifferencers

@@ -5,7 +5,7 @@ open Proofdiff
 open Cutlemma
 open Kindofchange
 open Candidates
-open Zooming
+open Catzooming
 
 (* --- Options for search --- *)
 

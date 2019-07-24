@@ -7,6 +7,7 @@ open Proofcatterms
 open Proofdiff
 open Candidates
 open Evaluation
+open Catzooming
 open Zooming
 open Debruijn
 open Kindofchange
