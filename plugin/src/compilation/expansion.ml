@@ -14,6 +14,26 @@ open Declarations
 
 module CRD = Context.Rel.Declaration
 
+(* --- TODO for refactoring without breaking things --- *)
+
+(*
+ * Infer the type of trm in env
+ * Note: This does not yet use good evar map hygeine; will fix that
+ * during the refactor.
+ *)
+let infer_type (env : env) (evd : evar_map) (trm : types) : types =
+  let jmt = Typeops.infer env trm in
+  j_type jmt
+
+(* Check whether a term has a given type *)
+let has_type (env : env) (evd : evar_map) (typ : types) (trm : types) : bool =
+  try
+    let trm_typ = infer_type env evd trm in
+    convertible env evd trm_typ typ
+  with _ -> false
+               
+(* --- End TODO --- *)
+
 (* --- Type definitions --- *)
 
 type 'a expansion_strategy = 'a -> 'a

@@ -20,6 +20,19 @@ open Zooming
 
 module CRD = Context.Rel.Declaration
 
+(* --- TODO for refactoring without breaking things --- *)
+
+(*
+ * Infer the type of trm in env
+ * Note: This does not yet use good evar map hygeine; will fix that
+ * during the refactor.
+ *)
+let infer_type (env : env) (evd : evar_map) (trm : types) : types =
+  let jmt = Typeops.infer env trm in
+  j_type jmt
+               
+(* --- End TODO --- *)
+
 (* Internal options for abstraction *)
 type abstraction_options =
   {
