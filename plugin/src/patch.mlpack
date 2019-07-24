@@ -2,8 +2,8 @@ Utilities
 
 Coqterms
 Printing
-Hofs
 Debruijn
+Hofs
 Zooming
 Substitution
 Filters

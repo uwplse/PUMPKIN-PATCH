@@ -22,10 +22,10 @@ src/coq-plugin-lib/src/coq/coqterms.mli
 src/coq-plugin-lib/src/coq/coqterms.ml
 src/coq-plugin-lib/src/coq/printing.mli
 src/coq-plugin-lib/src/coq/printing.ml
-src/coq-plugin-lib/src/coq/hofs.mli
-src/coq-plugin-lib/src/coq/hofs.ml
 src/coq-plugin-lib/src/coq/debruijn.mli
 src/coq-plugin-lib/src/coq/debruijn.ml
+src/coq-plugin-lib/src/coq/hofs.mli
+src/coq-plugin-lib/src/coq/hofs.ml
 src/coq-plugin-lib/src/coq/zooming.mli
 src/coq-plugin-lib/src/coq/zooming.ml
 src/coq-plugin-lib/src/coq/substitution.mli
