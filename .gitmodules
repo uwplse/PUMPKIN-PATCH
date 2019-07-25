@@ -1,3 +1,6 @@
 [submodule "plugin/src/coq-plugin-lib"]
 	path = plugin/src/coq-plugin-lib
 	url = https://github.com/uwplse/coq-plugin-lib.git
+[submodule "plugin/deps/fix-to-elim"]
+	path = plugin/deps/fix-to-elim
+	url = https://github.com/uwplse/fix-to-elim.git

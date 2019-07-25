@@ -102,8 +102,6 @@ src/core/procedures/search.mli
 src/core/procedures/search.ml
 src/core/procedures/theorem.mli
 src/core/procedures/theorem.ml
-src/core/procedures/desugar.mli
-src/core/procedures/desugar.ml
 
 src/patcher.ml4
 src/patch.mlpack
