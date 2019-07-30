@@ -27,6 +27,13 @@ cd plugin
 make
 ```
 
+If you would like to use PUMPKIN in all of your developments, add this line:
+
+```
+Require Import Patcher.Patch.
+```
+to the beginning of your [coqrc](https://coq.inria.fr/refman/practical-tools/coq-commands.html#by-resource-file) resource file. Otherwise, you will want to write this line whenever you use PUMPKIN within a file.
+
 ## Using PUMPKIN
 
 We will walk through a simple example. You can follow along this example
