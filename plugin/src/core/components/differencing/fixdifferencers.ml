@@ -12,6 +12,7 @@ open Debruijn
 open Higherdifferencers
 open Evd
 open Zooming
+open Termdiffutils
        
 module CRD = Context.Rel.Declaration
 

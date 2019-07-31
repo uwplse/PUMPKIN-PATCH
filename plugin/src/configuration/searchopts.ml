@@ -12,6 +12,8 @@ open Assumptions
 open Kindofchange
 open Cutlemma
 open Catzooming
+open Termdiffutils
+open Indutils
 
 module CRD = Context.Rel.Declaration
 

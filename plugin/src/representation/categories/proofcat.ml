@@ -9,6 +9,7 @@ open Coqterms
 open Assumptions
 open Utilities
 open Merging
+open Termdiffutils
 
 (*
  * Note: Evar discipline is currently very bad here. But, we will eventually

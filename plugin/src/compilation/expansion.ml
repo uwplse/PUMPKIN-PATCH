@@ -11,6 +11,8 @@ open Evaluation
 open Utilities
 open Debruijn
 open Declarations
+open Termdiffutils
+open Indutils
 
 module CRD = Context.Rel.Declaration
 

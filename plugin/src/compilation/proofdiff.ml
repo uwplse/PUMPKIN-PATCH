@@ -13,6 +13,8 @@ open Reducers
 open Declarations
 open Utilities
 open Merging
+open Termdiffutils
+open Indutils
 
 (*
  * Note: Evar discipline here is not good yet, but will change

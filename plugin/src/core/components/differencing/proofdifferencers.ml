@@ -15,6 +15,7 @@ open Reducers
 open Kindofchange
 open Names
 open Zooming
+open Termdiffutils
 
 module CRD = Context.Rel.Declaration
 

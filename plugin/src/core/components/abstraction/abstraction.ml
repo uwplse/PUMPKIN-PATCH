@@ -17,6 +17,7 @@ open Searchopts
 open Cutlemma
 open Filters
 open Zooming
+open Termdiffutils
 
 module CRD = Context.Rel.Declaration
 

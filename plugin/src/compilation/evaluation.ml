@@ -10,6 +10,7 @@ open Utilities
 open Names
 open Debruijn
 open Declarations
+open Indutils
 
 module CRD = Context.Rel.Declaration
 

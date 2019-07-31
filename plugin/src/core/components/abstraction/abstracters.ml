@@ -9,6 +9,7 @@ open Substitution
 open Reducers
 open Filters
 open Candidates
+open Typediffutils
 
 type abstraction_dimension = Arguments | Property
 type abstracter = env -> evar_map -> types -> types -> candidates -> candidates

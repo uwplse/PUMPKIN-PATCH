@@ -1,5 +1,8 @@
 -I src/coq-plugin-lib/src/utilities
 -I src/coq-plugin-lib/src/coq
+-I src/coq-plugin-lib/src/coq/terms
+-I src/coq-plugin-lib/src/coq/types
+-I src/coq-plugin-lib/src/coq/induction
 -I src/representation
 -I src/representation/categories
 -I src/configuration
@@ -28,6 +31,14 @@ src/coq-plugin-lib/src/coq/hofs.mli
 src/coq-plugin-lib/src/coq/hofs.ml
 src/coq-plugin-lib/src/coq/zooming.mli
 src/coq-plugin-lib/src/coq/zooming.ml
+src/coq-plugin-lib/src/coq/terms/termdiffutils.mli
+src/coq-plugin-lib/src/coq/terms/termdiffutils.ml
+src/coq-plugin-lib/src/coq/types/typeutils.mli
+src/coq-plugin-lib/src/coq/types/typeutils.ml
+src/coq-plugin-lib/src/coq/types/typediffutils.mli
+src/coq-plugin-lib/src/coq/types/typediffutils.ml
+src/coq-plugin-lib/src/coq/induction/indutils.mli
+src/coq-plugin-lib/src/coq/induction/indutils.ml
 src/coq-plugin-lib/src/coq/substitution.mli
 src/coq-plugin-lib/src/coq/substitution.ml
 src/coq-plugin-lib/src/coq/filters.mli

@@ -11,6 +11,7 @@ open Reducers
 open Assumptions
 open Utilities
 open Zooming
+open Termdiffutils
 
 module CRD = Context.Rel.Declaration
 

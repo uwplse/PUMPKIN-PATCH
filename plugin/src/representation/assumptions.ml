@@ -8,6 +8,8 @@ open Debruijn
 open Coqterms
 open Hofs
 open Printing
+open Termdiffutils
+open Typediffutils
 
 module CRD = Context.Rel.Declaration
 
