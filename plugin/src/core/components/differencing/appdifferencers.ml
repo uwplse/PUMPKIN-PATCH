@@ -17,7 +17,7 @@ open Zooming
 open Catzooming
 open Debruijn
 open Filters
-open Termdiffutils
+open Convertibility
 
 (*
  * Given a search function and a difference between terms,

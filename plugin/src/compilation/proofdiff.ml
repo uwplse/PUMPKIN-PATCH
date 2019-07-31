@@ -13,7 +13,7 @@ open Reducers
 open Declarations
 open Utilities
 open Merging
-open Termdiffutils
+open Convertibility
 open Indutils
 
 (*

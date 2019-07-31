@@ -9,7 +9,7 @@ open Specialization
 open Names
 open Utilities
 open Debruijn
-open Termdiffutils
+open Convertibility
 open Typeutils
 
 module CRD = Context.Rel.Declaration

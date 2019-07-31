@@ -9,7 +9,7 @@ open Reducers
 open Specialization
 open Evd
 open Zooming
-open Termdiffutils
+open Convertibility
 
 module CRD = Context.Rel.Declaration
 

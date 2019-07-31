@@ -4,10 +4,12 @@ Coqterms
 Printing
 Debruijn
 Hofs
-Zooming
-Termdiffutils
+Inference
+Convertibility
 Typeutils
-Typediffutils
+Diffutils
+Indutils
+Zooming
 Indutils
 Substitution
 Filters

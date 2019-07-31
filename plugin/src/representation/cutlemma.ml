@@ -7,7 +7,7 @@ open Reducers
 open Coqterms
 open Debruijn
 open Utilities
-open Termdiffutils
+open Convertibility
 open Typeutils
 
 module CRD = Context.Rel.Declaration

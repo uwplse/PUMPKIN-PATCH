@@ -12,7 +12,7 @@ open Assumptions
 open Hofs
 open Filters
 open Factoring
-open Termdiffutils
+open Convertibility
 open Typeutils
 
 module CRD = Context.Rel.Declaration
