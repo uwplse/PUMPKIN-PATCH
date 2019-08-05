@@ -3,16 +3,14 @@
 open Constr
 open Environ
 open Evd
-open Coqterms
 open Reducers
 open Specialization
 open Names
 open Utilities
 open Debruijn
 open Convertibility
-open Typeutils
-
-module CRD = Context.Rel.Declaration
+open Reducers
+open Contextutils
 
 type factors = (env * types) list
 

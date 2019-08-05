@@ -3,7 +3,6 @@
 open Constr
 open Environ
 open Evd
-open Coqterms
 open Utilities
 open Debruijn
 open Reducers
@@ -13,9 +12,9 @@ open Hofs
 open Filters
 open Factoring
 open Convertibility
-open Typeutils
-
-module CRD = Context.Rel.Declaration
+open Reducers
+open Contextutils
+open Equtils
 
 type inverter = evar_map -> (env * types) -> (env * types) option
 

@@ -3,7 +3,6 @@
 open Constr
 open Environ
 open Evd
-open Coqterms
 open Utilities
 open Substitution
 open Reducers

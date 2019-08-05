@@ -6,7 +6,6 @@ open Evd
 open Proofcat
 open Assumptions
 open Expansion
-open Coqterms
 open Evaluation
 open Proofcatterms
 open Reducers

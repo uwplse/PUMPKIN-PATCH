@@ -12,11 +12,10 @@
 open Environ
 open Evd
 open Constr
-open Coqterms
 open Reducers
 open Utilities
-
-module CRD = Context.Rel.Declaration
+open Contextutils
+open Envutils
 
 type specializer = env -> evar_map -> types -> types array -> types
 

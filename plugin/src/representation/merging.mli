@@ -3,8 +3,8 @@
 open Constr
 open Environ
 open Assumptions
-open Coqterms
 
+type closure = env * (types list)
 type merged_closure = env * types list * types list
 
 (*

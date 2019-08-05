@@ -5,12 +5,11 @@ open Environ
 open Evd
 open Utilities
 open Debruijn
-open Coqterms
 open Hofs
 open Printing
 open Convertibility
-
-module CRD = Context.Rel.Declaration
+open Contextutils
+open Envutils
 
 (* For now, these are lists of pairs of ints, each int representing
    an index in a different environment; this representation

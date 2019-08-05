@@ -2,7 +2,6 @@
 
 open Proofcatterms
 open Constr
-open Coqterms
 open Environ
 open Searchopts
 open Substitution
@@ -16,8 +15,8 @@ open Kindofchange
 open Names
 open Zooming
 open Convertibility
-
-module CRD = Context.Rel.Declaration
+open Contextutils
+open Idutils
 
 (* --- TODO for refactoring without breaking things --- *)
 

@@ -4,7 +4,6 @@ open Names
 open Environ
 open Evd
 open Constr
-open Coqterms
 open Proofcat
 open Proofcatterms
 open Evaluation
@@ -13,8 +12,7 @@ open Debruijn
 open Declarations
 open Convertibility
 open Indutils
-
-module CRD = Context.Rel.Declaration
+open Contextutils
 
 (* --- TODO for refactoring without breaking things --- *)
 

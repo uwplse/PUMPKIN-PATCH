@@ -5,7 +5,6 @@ open Constr
 open Environ
 open Evd
 open Printing
-open Coqterms
 open Assumptions
 open Utilities
 open Merging

@@ -2,7 +2,6 @@
 
 open Constr
 open Environ
-open Coqterms
 open Proofdiff
 open Proofcatterms
 open Cutlemma
@@ -12,8 +11,7 @@ open Assumptions
 open Utilities
 open Zooming
 open Convertibility
-
-module CRD = Context.Rel.Declaration
+open Contextutils
 
 (*
  * If the kind of change is a change in conclusion, then

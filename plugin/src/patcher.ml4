@@ -4,7 +4,6 @@ DECLARE PLUGIN "patch"
 open Constr
 open Names
 open Environ
-open Coqterms
 open Assumptions
 open Evaluation
 open Proofdiff
@@ -25,6 +24,8 @@ open Changedetectors
 open Stdarg
 open Utilities
 open Zooming
+open Defutils
+open Envutils
 
 module Globmap = Globnames.Refmap
 

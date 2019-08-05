@@ -4,13 +4,12 @@ open Constr
 open Environ
 open Evd
 open Reducers
-open Coqterms
 open Debruijn
 open Utilities
 open Convertibility
-open Typeutils
-
-module CRD = Context.Rel.Declaration
+open Typehofs
+open Contextutils
+open Envutils
 
 (* --- TODO for refactoring without breaking things --- *)
 
@@ -45,7 +44,7 @@ let get_app (cut : cut_lemma) =
 (* Test if a type is exactly the type of the lemma to cut by *)
 let is_cut_strict env evd lemma typ =
   try
-    concls_convertible env evd (reduce_term env lemma) (reduce_term env typ)
+    concls_convertible env evd (reduce_term env Evd.empty lemma) (reduce_term env Evd.empty typ)
   with _ ->
     false
 
@@ -112,7 +111,7 @@ let has_cut_type_app env evd cut trm =
     let typ = shift (reduce_type env evd trm) in
     let env_cut = push_rel CRD.(LocalAssum(Names.Name.Anonymous, get_lemma cut)) env in
     let app = get_app cut in
-    let app_app = reduce_term env_cut (mkApp (app, Array.make 1 (mkRel 1))) in
+    let app_app = reduce_term env_cut Evd.empty (mkApp (app, Array.make 1 (mkRel 1))) in
     let app_app_typ = infer_type env_cut evd app_app in
     is_cut env_cut evd app_app_typ typ
   with _ ->

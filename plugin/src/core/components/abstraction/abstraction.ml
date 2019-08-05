@@ -7,7 +7,6 @@ open Environ
 open Evd
 open Constr
 open Debruijn
-open Coqterms
 open Utilities
 open Reducers
 open Specialization
@@ -18,8 +17,9 @@ open Cutlemma
 open Filters
 open Zooming
 open Convertibility
-
-module CRD = Context.Rel.Declaration
+open Contextutils
+open Merging
+open Apputils
 
 (* --- TODO for refactoring without breaking things --- *)
 

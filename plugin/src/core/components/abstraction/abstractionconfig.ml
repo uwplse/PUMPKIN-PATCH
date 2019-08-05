@@ -3,13 +3,12 @@ open Evd
 open Constr
 open Abstracters
 open Candidates
-open Coqterms
 open Debruijn
 open Utilities
 open Proofdiff
 open Cutlemma
-
-module CRD = Context.Rel.Declaration
+open Contextutils
+open Envutils
 
 (* --- TODO for refactoring without breaking things --- *)
 

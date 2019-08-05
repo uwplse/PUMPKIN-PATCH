@@ -2,7 +2,6 @@
 
 open Searchopts
 open Proofdiff
-open Coqterms
 open Reducers
 open Candidates
 open Kindofchange

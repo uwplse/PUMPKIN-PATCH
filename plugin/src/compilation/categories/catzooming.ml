@@ -1,6 +1,5 @@
 open Proofcat
 open Environ
-open Coqterms
 open Proofdiff
 open Proofcatterms
 open Expansion

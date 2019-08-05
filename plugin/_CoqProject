@@ -1,6 +1,14 @@
 -I src/coq-plugin-lib/src/utilities
 -I src/coq-plugin-lib/src/coq
--I src/coq-plugin-lib/src/components/differencing
+-I src/coq-plugin-lib/src/coq/termutils
+-I src/coq-plugin-lib/src/coq/constants
+-I src/coq-plugin-lib/src/coq/logicutils
+-I src/coq-plugin-lib/src/coq/logicutils/contexts
+-I src/coq-plugin-lib/src/coq/logicutils/typesandequality
+-I src/coq-plugin-lib/src/coq/logicutils/hofs
+-I src/coq-plugin-lib/src/coq/logicutils/inductive
+-I src/coq-plugin-lib/src/coq/devutils
+-I src/coq-plugin-lib/src/coq/representationutils
 -I src/representation
 -I src/representation/categories
 -I src/configuration
@@ -16,35 +24,56 @@
 -R src Patcher
 -Q theories Patcher
 
-src/coq-plugin-lib/src/utilities/utilities.mli
 src/coq-plugin-lib/src/utilities/utilities.ml
+src/coq-plugin-lib/src/utilities/utilities.mli
 
-src/coq-plugin-lib/src/coq/coqterms.mli
-src/coq-plugin-lib/src/coq/coqterms.ml
-src/coq-plugin-lib/src/coq/printing.mli
-src/coq-plugin-lib/src/coq/printing.ml
-src/coq-plugin-lib/src/coq/debruijn.mli
-src/coq-plugin-lib/src/coq/debruijn.ml
-src/coq-plugin-lib/src/coq/hofs.mli
-src/coq-plugin-lib/src/coq/hofs.ml
-src/coq-plugin-lib/src/coq/inference.ml
-src/coq-plugin-lib/src/coq/inference.mli
-src/coq-plugin-lib/src/coq/convertibility.ml
-src/coq-plugin-lib/src/coq/convertibility.mli
-src/coq-plugin-lib/src/coq/typeutils.ml
-src/coq-plugin-lib/src/coq/typeutils.mli
-src/coq-plugin-lib/src/components/differencing/diffutils.ml
-src/coq-plugin-lib/src/components/differencing/diffutils.mli
-src/coq-plugin-lib/src/coq/indutils.ml
-src/coq-plugin-lib/src/coq/indutils.mli
-src/coq-plugin-lib/src/coq/zooming.mli
-src/coq-plugin-lib/src/coq/zooming.ml
-src/coq-plugin-lib/src/coq/substitution.mli
-src/coq-plugin-lib/src/coq/substitution.ml
-src/coq-plugin-lib/src/coq/filters.mli
-src/coq-plugin-lib/src/coq/filters.ml
-src/coq-plugin-lib/src/coq/reducers.mli
-src/coq-plugin-lib/src/coq/reducers.ml
+src/coq-plugin-lib/src/coq/termutils/apputils.mli
+src/coq-plugin-lib/src/coq/termutils/apputils.ml
+src/coq-plugin-lib/src/coq/termutils/funutils.mli
+src/coq-plugin-lib/src/coq/termutils/funutils.ml
+
+src/coq-plugin-lib/src/coq/constants/equtils.mli
+src/coq-plugin-lib/src/coq/constants/equtils.ml
+src/coq-plugin-lib/src/coq/constants/sigmautils.mli
+src/coq-plugin-lib/src/coq/constants/sigmautils.ml
+src/coq-plugin-lib/src/coq/constants/idutils.mli
+src/coq-plugin-lib/src/coq/constants/idutils.ml
+
+src/coq-plugin-lib/src/coq/representationutils/defutils.mli
+src/coq-plugin-lib/src/coq/representationutils/defutils.ml
+
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.mli
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.ml
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/convertibility.mli
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/convertibility.ml
+
+src/coq-plugin-lib/src/coq/logicutils/contexts/envutils.mli
+src/coq-plugin-lib/src/coq/logicutils/contexts/envutils.ml
+src/coq-plugin-lib/src/coq/logicutils/contexts/contextutils.mli
+src/coq-plugin-lib/src/coq/logicutils/contexts/contextutils.ml
+
+src/coq-plugin-lib/src/coq/logicutils/hofs/hofs.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/hofs.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/hofimpls.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/hofimpls.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/debruijn.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/debruijn.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/substitution.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/substitution.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/reducers.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/reducers.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/typehofs.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/typehofs.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/zooming.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/zooming.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/filters.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/filters.ml
+
+src/coq-plugin-lib/src/coq/logicutils/inductive/indutils.mli
+src/coq-plugin-lib/src/coq/logicutils/inductive/indutils.ml
+
+src/coq-plugin-lib/src/coq/devutils/printing.mli
+src/coq-plugin-lib/src/coq/devutils/printing.ml
 
 src/representation/candidates.mli
 src/representation/candidates.ml

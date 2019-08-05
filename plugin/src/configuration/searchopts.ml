@@ -2,7 +2,6 @@
 
 open Constr
 open Environ
-open Coqterms
 open Proofcat
 open Proofcatterms
 open Debruijn
@@ -14,8 +13,7 @@ open Cutlemma
 open Catzooming
 open Convertibility
 open Indutils
-
-module CRD = Context.Rel.Declaration
+open Contextutils
 
 (*
  * Note: Evar discipline is not good here yet, but will change when

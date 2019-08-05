@@ -3,7 +3,6 @@
 open Utilities
 open Constr
 open Environ
-open Coqterms
 open Proofdiff
 open Candidates
 open Reducers
@@ -13,8 +12,8 @@ open Higherdifferencers
 open Evd
 open Zooming
 open Convertibility
-       
-module CRD = Context.Rel.Declaration
+open Contextutils
+open Envutils
 
 (* --- Cases --- *)
 

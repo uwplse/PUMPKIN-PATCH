@@ -7,7 +7,6 @@ open Proofdiff
 open Candidates
 open Searchopts
 open Evd
-open Coqterms
 open Proofdifferencers
 open Higherdifferencers
 open Assumptions

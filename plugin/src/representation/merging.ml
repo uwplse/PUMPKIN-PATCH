@@ -5,10 +5,10 @@ open Environ
 open Debruijn
 open Assumptions
 open Utilities
-open Coqterms
+open Contextutils
+open Envutils
 
-module CRD = Context.Rel.Declaration
-
+type closure = env * (types list)
 type merged_closure = env * types list * types list
 
 (* TODO needs cleanup, testing -- and when you test, see if you can change shifting to homogenous *)

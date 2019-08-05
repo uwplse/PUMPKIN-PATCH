@@ -5,14 +5,12 @@ open Environ
 open Evd
 open Proofcat
 open Proofcatterms
-open Coqterms
 open Utilities
 open Names
 open Debruijn
 open Declarations
 open Indutils
-
-module CRD = Context.Rel.Declaration
+open Contextutils
 
 (* --- TODO for refactoring without breaking things --- *)
 
