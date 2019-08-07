@@ -192,4 +192,6 @@ let no_diff evd opts (d : goal_proof_diff) : bool =
  *)
 let identity_candidates (d : goal_proof_diff) : candidates =
   let (new_goal, _) = new_proof d in
-  [snd (identity_term (context_env new_goal) Evd.empty (context_term new_goal))]
+  let env = context_env new_goal in
+  let sigma = Evd.from_env env in
+  [snd (identity_term (context_env new_goal) sigma (context_term new_goal))]
