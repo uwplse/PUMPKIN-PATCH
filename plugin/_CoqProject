@@ -32,13 +32,6 @@ src/coq-plugin-lib/src/coq/termutils/apputils.ml
 src/coq-plugin-lib/src/coq/termutils/funutils.mli
 src/coq-plugin-lib/src/coq/termutils/funutils.ml
 
-src/coq-plugin-lib/src/coq/constants/equtils.mli
-src/coq-plugin-lib/src/coq/constants/equtils.ml
-src/coq-plugin-lib/src/coq/constants/sigmautils.mli
-src/coq-plugin-lib/src/coq/constants/sigmautils.ml
-src/coq-plugin-lib/src/coq/constants/idutils.mli
-src/coq-plugin-lib/src/coq/constants/idutils.ml
-
 src/coq-plugin-lib/src/coq/representationutils/defutils.mli
 src/coq-plugin-lib/src/coq/representationutils/defutils.ml
 
@@ -46,6 +39,13 @@ src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.mli
 src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.ml
 src/coq-plugin-lib/src/coq/logicutils/typesandequality/convertibility.mli
 src/coq-plugin-lib/src/coq/logicutils/typesandequality/convertibility.ml
+
+src/coq-plugin-lib/src/coq/constants/equtils.mli
+src/coq-plugin-lib/src/coq/constants/equtils.ml
+src/coq-plugin-lib/src/coq/constants/sigmautils.mli
+src/coq-plugin-lib/src/coq/constants/sigmautils.ml
+src/coq-plugin-lib/src/coq/constants/idutils.mli
+src/coq-plugin-lib/src/coq/constants/idutils.ml
 
 src/coq-plugin-lib/src/coq/logicutils/contexts/envutils.mli
 src/coq-plugin-lib/src/coq/logicutils/contexts/envutils.ml

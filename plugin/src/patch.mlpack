@@ -3,14 +3,14 @@ Utilities
 Apputils
 Funutils
 
-Equtils
-Sigmautils
-Idutils
-
 Defutils
 
 Inference
 Convertibility
+
+Equtils
+Sigmautils
+Idutils
 
 Envutils
 Contextutils
