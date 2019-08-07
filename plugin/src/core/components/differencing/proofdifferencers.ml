@@ -187,7 +187,9 @@ let no_diff evd opts (d : goal_proof_diff) : bool =
  *
  * TODO: This is incorrect in some cases:
  * Inside of lambdas, we need to adjust this.
+ *
+ * TODO better evar_map hygiene
  *)
 let identity_candidates (d : goal_proof_diff) : candidates =
   let (new_goal, _) = new_proof d in
-  [identity_term (context_env new_goal) (context_term new_goal)]
+  [snd (identity_term (context_env new_goal) Evd.empty (context_term new_goal))]
