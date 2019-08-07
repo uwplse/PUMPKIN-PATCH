@@ -337,17 +337,19 @@ let apply_swaps_combine c a env evd args swaps : 'a list =
 let all_typ_swaps_combs (env : env) (evd : evar_map) (trm : types) : types list =
   unique
     equal
-    (map_subterms_env_if_lazy
-       (fun en _ t  ->
-         isApp t)
-       (fun en _ t ->
-	 let swaps = build_swap_map en evd t in
-	 let (f, args) = destApp t in
-	 apply_swaps_combine (fun s -> mkApp (f, s)) t env evd args swaps)
-       (fun _ -> ())
-       env
-       ()
-       trm)
+    (snd
+       (map_subterms_env_if_lazy
+          (fun _ _ _ t  ->
+            isApp t)
+          (fun en evd _ t ->
+	    let swaps = build_swap_map en evd t in
+	    let (f, args) = destApp t in
+	    evd, apply_swaps_combine (fun s -> mkApp (f, s)) t env evd args swaps)
+          (fun _ -> ())
+          env
+          evd
+          ()
+          trm))
 
 (*
  * In an environment, swaps all subterms  convertible to the source
@@ -359,15 +361,17 @@ let all_typ_swaps_combs (env : env) (evd : evar_map) (trm : types) : types list 
 let all_conv_swaps_combs (env : env) (evd : evar_map) (swaps : swap_map) (trm : types) =
     unique
     equal
-    (map_subterms_env_if_lazy
-       (fun _ _ t  -> isApp t)
-       (fun en depth t ->
-	 let swaps = shift_swaps_by depth swaps in
-	 let (f, args) = destApp t in
-	 unique
-	   equal
-	   (apply_swaps_combine (fun s -> mkApp (f, s)) t env evd args swaps))
-       (fun depth -> depth + 1)
-       env
-       0
-       trm)
+    (snd
+       (map_subterms_env_if_lazy
+          (fun _ _ _ t  -> isApp t)
+          (fun en evd depth t ->
+	    let swaps = shift_swaps_by depth swaps in
+	    let (f, args) = destApp t in
+	    evd, unique
+	           equal
+	           (apply_swaps_combine (fun s -> mkApp (f, s)) t env evd args swaps))
+          (fun depth -> depth + 1)
+          env
+          evd
+          0
+          trm))

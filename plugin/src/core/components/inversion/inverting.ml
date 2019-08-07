@@ -96,34 +96,36 @@ let build_swap_map (env : env) (evd : evar_map) (o : types) (n : types) : swap_m
  * swaps above.
  *)
 let exploit_type_symmetry (env : env) (evd : evar_map) (trm : types) : types list =
-  map_subterms_env_if_lazy
-    (fun _ _ t -> isApp t && is_rewrite (fst (destApp t)))
-    (fun en _ t ->
-      let (f, args) = destApp t in
-      let i_eq = Array.length args - 1 in
-      let eq = args.(i_eq) in
-      let eq_type = infer_type en evd eq in
-      let eq_args = List.append (Array.to_list (snd (destApp eq_type))) [eq] in
-      let eq_r = mkApp (eq_sym, Array.of_list eq_args) in
-      let i_src = 1 in
-      let i_dst = 4 in
-      let args_r =
-	Array.mapi
-	  (fun i a ->
-	    if i = i_eq then
-	      eq_r
-	    else if i = i_src then
-	      args.(i_dst)
-	    else if i = i_dst then
-	      args.(i_src)
-	    else
-	      a)
-	  args
-      in [mkApp (f, args_r)])
-    id
-    env
-    ()
-    trm
+  snd
+    (map_subterms_env_if_lazy
+       (fun _ _ _ t -> isApp t && is_rewrite (fst (destApp t)))
+       (fun en evd _ t ->
+         let (f, args) = destApp t in
+         let i_eq = Array.length args - 1 in
+         let eq = args.(i_eq) in
+         let eq_type = infer_type en evd eq in
+         let eq_args = List.append (Array.to_list (snd (destApp eq_type))) [eq] in
+         let eq_r = mkApp (eq_sym, Array.of_list eq_args) in
+         let i_src = 1 in
+         let i_dst = 4 in
+         let args_r =
+	   Array.mapi
+	     (fun i a ->
+	       if i = i_eq then
+	         eq_r
+	       else if i = i_src then
+	         args.(i_dst)
+	       else if i = i_dst then
+	         args.(i_src)
+	       else
+	         a)
+	     args
+         in evd, [mkApp (f, args_r)])
+       id
+       env
+       evd
+       ()
+       trm)
 
 (*
  * Try to exploit symmetry and invert a single factor (like a single
