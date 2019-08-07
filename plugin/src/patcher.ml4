@@ -73,15 +73,15 @@ let _ = Goptions.declare_bool_option {
 (* Intern terms corresponding to two definitions *)
 let intern_defs d1 d2 : types * types =
   let (evm, env) = Pfedit.get_current_context() in
-  let d1 = intern env evm d1 in
-  let d2 = intern env evm d2 in
+  let evm, d1 = intern env evm d1 in
+  let evm, d2 = intern env evm d2 in
   (unwrap_definition env d1, unwrap_definition env d2)
 
 (* Initialize diff & search configuration *)
 let configure trm1 trm2 cut : goal_proof_diff * options =
   let (evm, env) = Pfedit.get_current_context() in
   let cut_term = Option.map (intern env evm) cut in
-  let lemma = Option.map (build_cut_lemma env) cut_term in
+  let lemma = Option.map (fun evm, t -> build_cut_lemma env t) cut_term in
   let c1 = eval_proof env trm1 in
   let c2 = eval_proof env trm2 in
   let d = add_goals (difference c1 c2 no_assumptions) in
@@ -160,7 +160,8 @@ let patch_proof n d_old d_new cut =
  *)
 let optimize_proof n d =
   let (evm, env) = Pfedit.get_current_context () in
-  let trm = unwrap_definition env (intern env evm d) in
+  let evm, def = intern env evm d in
+  let trm = unwrap_definition env def in
   let (d, opts) = configure_optimize trm in
   patch n false ()
     (fun env evm _ ->
@@ -175,31 +176,36 @@ let optimize_proof n d =
  *)
 let patch_theorem n d_old d_new t =
   let (evm, env) = Pfedit.get_current_context() in
-  let (old_term, new_term) = (intern env evm d_old, intern env evm d_new) in
+  let evm, old_term = intern env evm d_old in
+  let evm, new_term = intern env evm d_new in
   patch n false t
     (fun env evm t ->
-      let theorem = intern env evm t in
+      let evm, theorem = intern env evm t in
       let t_trm = lookup_definition env theorem in
       update_theorem env evm old_term new_term t_trm)
 
 (* Invert a term *)
 let invert n trm : unit =
   let (evm, env) = Pfedit.get_current_context() in
-  let body = lookup_definition env (intern env evm trm) in
+  let evm, def = intern env evm trm in
+  let body = lookup_definition env def in
   invert_patch n env evm body
 
 (* Specialize a term *)
 let specialize n trm : unit =
   let (evm, env) = Pfedit.get_current_context() in
   let reducer = specialize_body specialize_term in
-  let specialized = reducer env evm (intern env evm trm) in
+  let evm, def = intern env evm trm in
+  let specialized = reducer env evm def in
   ignore (define_term n evm specialized false)
 
 (* Abstract a term by a function or arguments *)
 let abstract n trm goal : unit =
   let (evm, env) = Pfedit.get_current_context() in
-  let c = lookup_definition env (intern env evm trm) in
-  let goal_type = unwrap_definition env (intern env evm goal) in
+  let evm, def = intern env evm trm in
+  let c = lookup_definition env def in
+  let evm, goal_def = intern env evm goal in
+  let goal_type = unwrap_definition env goal_def in
   let config = configure_from_goal env evm goal_type c in
   let abstracted = abstract_with_strategies config in
   if List.length abstracted > 0 then
@@ -220,7 +226,8 @@ let abstract n trm goal : unit =
 (* Factor a term into a sequence of lemmas *)
 let factor n trm : unit =
   let (evm, env) = Pfedit.get_current_context() in
-  let body = lookup_definition env (intern env evm trm) in
+  let evm, def = intern env evm trm in
+  let body = lookup_definition env def in
   let fs = reconstruct_factors (factor_term env evm body) in
   let prefix = Id.to_string n in
   try
