@@ -115,7 +115,8 @@ let invert_patch n env evm patch =
 let patch n try_invert a search =
   let (evm, env) = Pfedit.get_current_context () in
   let reduce = try_reduce reduce_remove_identities in
-  let patch = reduce env evm (search env evm a) in
+  let patch_to_red = search env evm a in
+  let patch = reduce env evm patch_to_red in
   let prefix = Id.to_string n in
   ignore (define_term n evm patch false);
   (if !opt_printpatches then
