@@ -44,7 +44,7 @@ let return_patch opts env evd (patches : types list) : types =
   match get_change opts with
   | FixpointCase ((old_type, new_type), cut) ->
      let body_reducer = specialize_in (get_app cut) specialize_term in
-     let reduction_condition en tr = has_cut_type_strict_sym en evd cut tr in
+     let reduction_condition en evd tr = has_cut_type_strict_sym en evd cut tr in
      let reducer = reduce_body_if reduction_condition body_reducer in
      let specialized = List.map (reducer env evd) patches in
      let specialized_fs = List.map (factor_term env evd) specialized in

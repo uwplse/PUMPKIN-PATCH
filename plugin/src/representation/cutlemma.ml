@@ -50,8 +50,8 @@ let is_cut_strict env evd lemma typ =
 
 (* Test if a term has exactly the type of the lemma to cut by *)
 let has_cut_type_strict env evd cut trm =
-  try
-    on_type (is_cut_strict env evd (get_lemma cut)) env evd trm 
+  try (* TODO do we need red type here or not? same everywhere *)
+    on_red_type_default (fun env evd -> is_cut_strict env evd (get_lemma cut)) env evd trm 
   with _ ->
     false
 
@@ -74,7 +74,7 @@ let rec flip_concls lemma =
  *)
 let has_cut_type_strict_rev env evd cut trm =
   try
-    on_type (is_cut_strict env evd (flip_concls (get_lemma cut))) env evd trm
+    on_red_type_default (fun env evd -> is_cut_strict env evd (flip_concls (get_lemma cut))) env evd trm
   with _ ->
     false
 
@@ -101,14 +101,14 @@ let rec is_cut env evd lemma typ =
 (* Check if a term has loosely the cut lemma type (can have extra hypotheses) *)
 let has_cut_type env evd cut trm =
   try
-    on_type (is_cut env evd (get_lemma cut)) env evd trm
+    on_red_type_default (fun env evd -> is_cut env evd (get_lemma cut)) env evd trm
   with _ ->
     false
 
 (* Check if a term is loosely an application of the lemma to cut by *)
 let has_cut_type_app env evd cut trm =
   try
-    let typ = shift (reduce_type env evd trm) in
+    let evd, typ = on_red_type_default (fun env evd trm -> evd, shift trm) env evd trm in
     let env_cut = push_rel CRD.(LocalAssum(Names.Name.Anonymous, get_lemma cut)) env in
     let app = get_app cut in
     let app_app = reduce_term env_cut Evd.empty (mkApp (app, Array.make 1 (mkRel 1))) in

@@ -159,7 +159,8 @@ let invert_factor evd (env, rp) : (env * types) option =
   match kind rp with
   | Lambda (n, old_goal_type, body) ->
      let env_body = push_rel CRD.(LocalAssum(n, old_goal_type)) env in
-     let new_goal_type = unshift (reduce_type env_body evd body) in
+     let evd, body_type = reduce_type env_body evd body in
+     let new_goal_type = unshift body_type in
      let rp_goal = all_conv_substs env evd (old_goal_type, new_goal_type) rp in
      let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
      let flipped = exploit_type_symmetry env evd rp_goal in
