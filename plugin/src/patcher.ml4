@@ -71,11 +71,11 @@ let _ = Goptions.declare_bool_option {
 (* --- Auxiliary functionality for top-level functions --- *)
 
 (* Intern terms corresponding to two definitions *)
-let intern_defs d1 d2 : types * types =
+let intern_defs d1 d2 : evar_map * types * types =
   let (evm, env) = Pfedit.get_current_context() in
   let evm, d1 = intern env evm d1 in
   let evm, d2 = intern env evm d2 in
-  (unwrap_definition env d1, unwrap_definition env d2)
+  (evm, unwrap_definition env d1, unwrap_definition env d2)
 
 (* Initialize diff & search configuration *)
 let configure trm1 trm2 cut : goal_proof_diff * options =
@@ -112,8 +112,7 @@ let invert_patch n env evm patch =
     failwith "Could not find a well-typed inverted term"
 
 (* Common patch command functionality *)
-let patch n try_invert a search =
-  let (evm, env) = Pfedit.get_current_context () in
+let patch env evm n try_invert a search =
   let reduce = try_reduce reduce_remove_identities in
   let patch_to_red = search env evm a in
   let patch = reduce env evm patch_to_red in
@@ -141,11 +140,12 @@ let patch n try_invert a search =
  * The latter two just pass extra guidance for now
  *)
 let patch_proof n d_old d_new cut =
-  let (old_term, new_term) = intern_defs d_old d_new in
+  let (evm, env) = Pfedit.get_current_context () in
+  let (evm, old_term, new_term) = intern_defs d_old d_new in
   let (d, opts) = configure old_term new_term cut in
   let change = get_change opts in
   let try_invert = not (is_conclusion change || is_hypothesis change) in
-  patch n try_invert ()
+  patch env evm n try_invert ()
     (fun env evm _ ->
       search_for_patch evm old_term opts d)
 
@@ -164,7 +164,7 @@ let optimize_proof n d =
   let evm, def = intern env evm d in
   let trm = unwrap_definition env def in
   let (d, opts) = configure_optimize trm in
-  patch n false ()
+  patch env evm n false ()
     (fun env evm _ ->
       search_for_patch evm trm opts d)
 
@@ -179,7 +179,7 @@ let patch_theorem n d_old d_new t =
   let (evm, env) = Pfedit.get_current_context() in
   let evm, old_term = intern env evm d_old in
   let evm, new_term = intern env evm d_new in
-  patch n false t
+  patch env evm n false t
     (fun env evm t ->
       let evm, theorem = intern env evm t in
       let t_trm = lookup_definition env theorem in

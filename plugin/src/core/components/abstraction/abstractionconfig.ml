@@ -9,19 +9,7 @@ open Proofdiff
 open Cutlemma
 open Contextutils
 open Envutils
-
-(* --- TODO for refactoring without breaking things --- *)
-
-(*
- * Infer the type of trm in env
- * Note: This does not yet use good evar map hygeine; will fix that
- * during the refactor.
- *)
-let infer_type (env : env) (evd : evar_map) (trm : types) : types =
-  let jmt = Typeops.infer env trm in
-  j_type jmt
-               
-(* --- End TODO --- *)
+open Inference
 
 (* --- Configuring Abstraction --- *)
 
@@ -59,10 +47,14 @@ let rec configure_goal_body env evd goal c : abstraction_config =
   | (Prod (_, _, gb), Lambda (n, t, cb)) when isProd gb && isLambda cb ->
      configure_goal_body (push_rel CRD.(LocalAssum(n, t)) env) evd gb cb
   | (Prod (_, gt, gb), Lambda (_, _, _)) when isApp gt && isApp gb ->
-     let (_, ctt, ctb) = destProd (infer_type env evd c) in
+     let evd, c_typ = infer_type env evd c in
+     let (_, ctt, ctb) = destProd c_typ in
      if isApp ctb then
        let cs = [c] in
        let args_base = Array.to_list (snd (destApp gt)) in
+       let open Printing in
+       debug_terms (push_local (Anonymous, ctt) env) (Array.to_list (snd (destApp gb))) "args_goal";
+       debug_terms env (List.map unshift (Array.to_list (snd (destApp gb)))) "args_goal unshifted";
        let args_goal = List.map unshift (Array.to_list (snd (destApp gb))) in
        if List.for_all2 equal args_base args_goal then (* argument *)
 	 if isApp ctt then
@@ -129,8 +121,9 @@ let rec push_prop env evd typ : env =
   | Prod (n, t, b) ->
      push_prop (push_rel CRD.(LocalAssum(n, t)) env) evd b
   | App (f, _) ->
+     let evd, f_typ = infer_type env evd f in
      push_rel
-       CRD.(LocalAssum(Names.Name.Anonymous, infer_type env evd f))
+       CRD.(LocalAssum(Names.Name.Anonymous, f_typ))
        (pop_rel_context (nb_rel env) env)
   | _ ->
      failwith "Could not find function to abstract"
@@ -146,7 +139,8 @@ let configure_fixpoint_cases env evd (diffs : types list) (cs : candidates) =
     (fun goal ->
       List.map
 	(fun c ->
-          let env_prop = push_prop env evd (infer_type env evd c) in
+          let evd, prop = infer_type env evd c in
+          let env_prop = push_prop env evd prop in
 	  configure_goal_body env_prop evd goal c)
 	cs)
     goals
@@ -169,7 +163,8 @@ let rec configure_args_cut_app env evd (app : types) cs : abstraction_config =
        | _ ->
           failwith "Could not infer arguments to generalize"
      in
-     let (f_base, f_goal) = get_lemma_functions (infer_type env evd f) in
+     let evd, f_typ = infer_type env evd f in
+     let (f_base, f_goal) = get_lemma_functions f_typ in
      let args_base = Array.to_list args in
      let args_goal = args_base in
      let strategies = no_reduce_strategies in

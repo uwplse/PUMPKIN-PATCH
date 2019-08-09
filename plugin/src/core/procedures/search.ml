@@ -57,13 +57,13 @@ let return_patch opts env evd (patches : types list) : types =
             evd
             (diff_fix_cases env evd (difference old_type new_type no_assumptions))
             specialized_fs_terms)
-     in List.hd generalized
+     in List.hd generalized (* TODO better failure when none found *)
   | ConclusionCase (Some cut) ->
      let patches = reduce_all remove_unused_hypos env evd patches in
      let generalized =
        abstract_with_strategies
          (configure_cut_args env evd cut patches)
-     in List.hd generalized
+     in List.hd generalized (* TODO better failure when none found *)
   | Hypothesis (_, _) ->
      let patches = reduce_all remove_unused_hypos env evd patches in
      List.hd patches

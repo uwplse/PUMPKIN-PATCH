@@ -44,7 +44,7 @@ let get_app (cut : cut_lemma) =
 (* Test if a type is exactly the type of the lemma to cut by *)
 let is_cut_strict env evd lemma typ =
   try
-    concls_convertible env evd (reduce_term env Evd.empty lemma) (reduce_term env Evd.empty typ)
+    concls_convertible env evd (reduce_term env evd lemma) (reduce_term env evd typ)
   with _ ->
     false
 

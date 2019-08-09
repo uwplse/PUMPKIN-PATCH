@@ -169,7 +169,7 @@ Qed.
 (** [] *)
 
 Theorem bin_to_nat_nat_to_bin : forall n : nat,
-  bin_to_nat(nat_to_bin(n)) = n.
+  bin_to_nat (nat_to_bin n) = n.
 Proof.
   induction n as [|n'].
   - reflexivity.
@@ -320,6 +320,85 @@ Definition cut :=
   forall (a : nat),
     S (a + S a) = S (S (a + a)) ->
     S (a + S (a + 0)) = S (S (a + (a + 0))).
+
+Definition test_1 (b0 : bin) :=
+  (S ((bin_to_nat b0) + (S ((bin_to_nat b0) + O)))) = (S (S ((bin_to_nat b0) + ((bin_to_nat b0) + O)))).
+
+Definition test_2 (b0 : bin) :=
+  ((S ((bin_to_nat b0) + (S (bin_to_nat b0)))) = (S (S ((bin_to_nat b0) + (bin_to_nat b0))))).
+
+
+(* 
+arg_actual: (S ((bin_to_nat b0) + (S ((bin_to_nat b0) + O)))) = (S (S ((bin_to_nat b0) + ((bin_to_nat b0) + O))))
+arg_abstract: (P ((bin_to_nat b0) + O))
+
+trms: (λ (_ : ((S ((bin_to_nat b0) + (S (bin_to_nat b0)))) = (S (S ((bin_to_nat b0) + (bin_to_nat b0)))))) . (eq_ind nat (bin_to_nat b0) (λ (n : nat) . (eq nat (S (bin_to_nat b0 + (S n))) (S (S ((bin_to_nat b0) + n))))) P ((bin_to_nat b0) + O) (plus_n_O (bin_to_nat b0))))
+
+abstracted: (λ (_ : ((S ((bin_to_nat b0) + (S (bin_to_nat b0)))) = (S (S ((bin_to_nat b0) + (bin_to_nat b0)))))) . (eq_ind nat (bin_to_nat b0) (λ (n : nat) . ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n))))) (_) ((bin_to_nat b0) + O) (plus_n_O (bin_to_nat b0))))
+
+arg_actual: (λ (n : nat) . ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n)))))
+arg_abstract: P
+
+trms: (λ (_ : ((S ((bin_to_nat b0) + (S (bin_to_nat b0)))) = (S (S ((bin_to_nat b0) + (bin_to_nat b0)))))) . (eq_ind nat (bin_to_nat b0) (λ (n : nat) . ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n))))) (_) ((bin_to_nat b0) + O) (plus_n_O (bin_to_nat b0))))
+
+abstracted: (λ (_ : ((S ((bin_to_nat b0) + (S (bin_to_nat b0)))) = (S (S ((bin_to_nat b0) + (bin_to_nat b0)))))) . (eq_ind nat (bin_to_nat b0) (_ [Rel 3]) (_) ((bin_to_nat b0) + O) (plus_n_O (bin_to_nat b0))))
+
+1 abstracted candidates
+arg_actual: ((S ((bin_to_nat b0) + (S (bin_to_nat b0)))) = (S (S ((bin_to_nat b0) + (bin_to_nat b0)))))
+arg_abstract: (P (bin_to_nat b0))
+
+trms: (λ (_ : ((S ((bin_to_nat b0) + (S (bin_to_nat b0)))) = (S (S ((bin_to_nat b0) + (bin_to_nat b0)))))) . (eq_ind nat (bin_to_nat b0) (λ (n : nat) . ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n))))) (_) ((bin_to_nat b0) + O) (plus_n_O (bin_to_nat b0))))
+
+abstracted: (λ (_ : ((_) (bin_to_nat b0))) . (eq_ind nat (bin_to_nat b0) (λ (n : nat) . ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n))))) (_) ((bin_to_nat b0) + O) (plus_n_O (bin_to_nat b0))))
+
+arg_actual: (λ (n : nat) . ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n)))))
+arg_abstract: P
+
+trms: (λ (_ : (P (bin_to_nat b0))) . (eq_ind nat (bin_to_nat b0) (λ (n : nat) . ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n))))) (_) ((bin_to_nat b0) + O) (plus_n_O (bin_to_nat b0))))
+abstracted: (λ (_ : (P (bin_to_nat b0))) . (eq_ind nat (bin_to_nat b0) (_ [Rel 3]) (_) ((bin_to_nat b0) + O) (plus_n_O (bin_to_nat b0))))
+
+1 abstracted candidates
+
+need to abstract: ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n))) to P n
+*)
+
+(* have:
+Definition foo (P : nat -> Prop) (b0 : bin) (H : P (bin_to_nat b0)) :=
+  @eq_ind 
+    nat 
+    (bin_to_nat b0) 
+    (fun (n : nat) => ((S ((bin_to_nat b0) + (S n))) = (S (S ((bin_to_nat b0) + n))))) 
+    H 
+    ((bin_to_nat b0) + O) 
+    (plus_n_O (bin_to_nat b0)).*)
+
+(* want: *)
+Definition foo_wanted (P : nat -> Prop) (b0 : bin) (H : P (bin_to_nat b0)) :=
+  @eq_ind 
+    nat 
+    (bin_to_nat b0) 
+    (fun (n : nat) => P n) 
+    H 
+    ((bin_to_nat b0) + O) 
+    (plus_n_O (bin_to_nat b0)).
+
+Definition try_alt (P : nat -> Prop) (b0 : bin) (H : P (bin_to_nat b0)) :=
+  @eq_ind 
+    nat 
+    (bin_to_nat b0)
+    P 
+    H 
+    ((bin_to_nat b0) + O)
+    (plus_n_O (bin_to_nat b0)).
+Check try_alt.
+
+Definition goal_type :=
+  forall (P : nat -> Prop) (b0 : bin) (H : P (bin_to_nat b0)),
+    P ((bin_to_nat b0) + 0).
+
+Check try_alt.
+
+(* OK yeah, so we have a term with the right type, but type checking still fails *)
 
 (* Patch *)
 Patch Proof blindfs_induction.bin_to_nat_pres_incr bin_to_nat_pres_incr cut by (fun (H : cut) b0 => H (bin_to_nat b0)) as patch.
@@ -547,7 +626,7 @@ Print patch_inv.
 (* Talia: Now we have an isomorphism. *)
 
 Theorem bin_to_nat_nat_to_bin : forall n : nat,
-  bin_to_nat(nat_to_bin(n)) = n.
+  bin_to_nat(nat_to_binn) = n.
 Proof.
   induction n as [|n'].
   - reflexivity.
