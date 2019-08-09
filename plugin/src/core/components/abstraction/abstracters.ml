@@ -53,7 +53,12 @@ let sort_dependent args args_abstract =
 let substitute_using (strategy : abstraction_strategy) (env : env) (evd : evar_map) (args : types list) (args_abstract : types list) (cs : candidates) : candidates =
   let abs = strategy.abstracter in
   let num_args = List.length args_abstract in
-  let (args_sorted, args_abstract_sorted) = sort_dependent args args_abstract in
+  let (args_sorted, args_abstract_sorted) =
+    if strategy.to_abstract = Property then
+      (List.rev args, List.rev args_abstract) (* TODO refactor/simplify *)
+    else
+      sort_dependent args args_abstract
+  in
   if num_args > 0 then
     let cs_abs = abs env evd (last args_sorted) (last args_abstract_sorted) cs in
     List.fold_right2
