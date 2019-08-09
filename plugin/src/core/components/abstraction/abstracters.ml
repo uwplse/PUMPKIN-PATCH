@@ -287,10 +287,10 @@ let types_full_no_reduce_prop : abstraction_strategy =
   { types_full_no_reduce with to_abstract = Property }
 
 let reduce_strategies_prop : abstraction_strategy list =
-  [function_pattern_full_reduce_prop; types_full_reduce_prop]
+  [function_pattern_full_reduce_prop]
 
 let no_reduce_strategies_prop : abstraction_strategy list =
-  [function_pattern_full_no_reduce_prop; types_full_no_reduce_prop]
+  [function_pattern_full_no_reduce_prop]
 
 let default_strategies_prop : abstraction_strategy list =
   List.append reduce_strategies_prop no_reduce_strategies_prop
