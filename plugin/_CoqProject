@@ -39,6 +39,8 @@ src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.mli
 src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.ml
 src/coq-plugin-lib/src/coq/logicutils/typesandequality/convertibility.mli
 src/coq-plugin-lib/src/coq/logicutils/typesandequality/convertibility.ml
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/checking.mli
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/checking.ml
 
 src/coq-plugin-lib/src/coq/constants/equtils.mli
 src/coq-plugin-lib/src/coq/constants/equtils.ml
