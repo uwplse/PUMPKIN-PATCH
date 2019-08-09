@@ -52,9 +52,6 @@ let rec configure_goal_body env evd goal c : abstraction_config =
      if isApp ctb then
        let cs = [c] in
        let args_base = Array.to_list (snd (destApp gt)) in
-       let open Printing in
-       debug_terms (push_local (Anonymous, ctt) env) (Array.to_list (snd (destApp gb))) "args_goal";
-       debug_terms env (List.map unshift (Array.to_list (snd (destApp gb)))) "args_goal unshifted";
        let args_goal = List.map unshift (Array.to_list (snd (destApp gb))) in
        if List.for_all2 equal args_base args_goal then (* argument *)
 	 if isApp ctt then

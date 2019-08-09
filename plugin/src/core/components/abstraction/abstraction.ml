@@ -165,26 +165,6 @@ let get_abstraction_opts config strategy : abstraction_options =
      let (env, _) = concrete in
      let num_to_abstract = nb_rel env in
      { concrete; abstract; goal_type; num_to_abstract }
-
-(* Check whether a term has a given type *)
-let has_type (env : env) (sigma : evar_map) (typ : types) (trm : types) : bool =
-  let sigma, trm_typ = Inference.infer_type env sigma trm in
-  let open Printing in
-  debug_term env trm_typ "trm_typ";
-  debug_term env typ "typ";
-  debug_term env (reduce_nf env sigma trm_typ) "a";
-  debug_term env (reduce_nf env sigma typ) "b";
-  Convertibility.convertible env sigma trm_typ typ
-       
-(* TODO inline filter_by_type, check intermediate stuff *)
-(* Filter trms to those that have type typ in env *)
-let filter_by_type typ (env : env) (evd : evar_map) (trms : types list) : types list =
-  try
-    List.filter (has_type env evd typ) trms
-  with
-  | Pretype_errors.PretypeError (_, _, _) ->
-     Printf.printf "%s\n\n" "Pretype error";
-     []
        
 (* Abstract candidates with a provided abstraction strategy *)
 let abstract_with_strategy (config : abstraction_config) strategy : candidates =
@@ -199,12 +179,7 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let bs = substitute_using strategy env_abs evd args_adj args_abs cs_adj in
   let lambdas = generalize env_abs evd opts.num_to_abstract bs in
   Printf.printf "%d abstracted candidates\n" (List.length lambdas);
-  let filtered = filter_using strategy env evd opts.goal_type lambdas in
-  let open Printing in
-  debug_terms env lambdas "lambdas";
-  debug_terms env filtered "filtered";
-  debug_term env opts.goal_type "goal_type";
-  filtered
+  filter_using strategy env evd opts.goal_type lambdas
 
 (*
  * Try to abstract candidates with an ordered list of abstraction strategies
