@@ -49,6 +49,8 @@ src/coq-plugin-lib/src/coq/constants/sigmautils.ml
 src/coq-plugin-lib/src/coq/constants/idutils.mli
 src/coq-plugin-lib/src/coq/constants/idutils.ml
 
+src/coq-plugin-lib/src/coq/logicutils/contexts/stateutils.mli
+src/coq-plugin-lib/src/coq/logicutils/contexts/stateutils.ml
 src/coq-plugin-lib/src/coq/logicutils/contexts/envutils.mli
 src/coq-plugin-lib/src/coq/logicutils/contexts/envutils.ml
 src/coq-plugin-lib/src/coq/logicutils/contexts/contextutils.mli
