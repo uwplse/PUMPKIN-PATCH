@@ -100,7 +100,7 @@ let build_swap_map (env : env) (evd : evar_map) (o : types) (n : types) : swap_m
 let exploit_type_symmetry (env : env) (evd : evar_map) (trm : types) : types list =
   snd
     (map_subterms_env_if_lazy
-       (fun _ _ _ t -> isApp t && is_rewrite (fst (destApp t)))
+       (fun _ evd _ t -> evd, isApp t && is_rewrite (fst (destApp t)))
        (fun en evd _ t ->
          let (f, args) = destApp t in
          let i_eq = Array.length args - 1 in
@@ -163,7 +163,7 @@ let invert_factor evd (env, rp) : (env * types) option =
      let env_body = push_rel CRD.(LocalAssum(n, old_goal_type)) env in
      let evd, body_type = reduce_type env_body evd body in
      let new_goal_type = unshift body_type in
-     let rp_goal = all_conv_substs env evd (old_goal_type, new_goal_type) rp in
+     let rp_goal = snd (all_conv_substs env evd (old_goal_type, new_goal_type) rp) in (* TODO evar_map *)
      let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
      let flipped = exploit_type_symmetry env evd rp_goal in
      let flipped_wt = filter_by_type goal_type env evd flipped in

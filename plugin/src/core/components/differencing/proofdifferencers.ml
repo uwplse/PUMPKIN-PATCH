@@ -55,7 +55,7 @@ let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible en
 let sub_new_ih is_ind num_new_rels env evd (old_term : types) : types =
   if is_ind then
     let ih_new = mkRel (1 + num_new_rels) in
-    all_typ_substs env evd (ih_new, ih_new) old_term
+    snd (all_typ_substs env evd (ih_new, ih_new) old_term) (* TODO evar_map *)
   else
     old_term
 
@@ -104,7 +104,7 @@ let build_app_candidates env evd opts (from_type : types) (old_term : types) (ne
       else
         (* otherwise, check containment *)
 	let new_term_shift = shift new_term in
-	let sub = all_conv_substs_combs env_b evd (new_term_shift, (mkRel 1)) in
+	let sub tr = snd (all_conv_substs_combs env_b evd (new_term_shift, (mkRel 1)) tr) in (* TODO evar_map *)
 	filter_not_same old_term_shift env_b evd (sub old_term_shift)
     in List.map (fun b -> reconstruct_lambda_n env_b b (nb_rel env)) bodies
   with _ ->

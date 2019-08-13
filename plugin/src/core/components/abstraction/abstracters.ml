@@ -104,7 +104,7 @@ let syntactic_full env evd (arg_actual : types) (arg_abstract : types) (trms : c
   if equal arg_actual arg_abstract then
     trms
   else
-    List.map (all_conv_substs env evd (arg_actual, arg_abstract)) trms
+    List.map (fun tr -> snd (all_conv_substs env evd (arg_actual, arg_abstract) tr)) trms (* TODO evar_maps *)
 
 let syntactic_full_strategy : abstracter =
   syntactic_full
@@ -114,7 +114,7 @@ let types_full env evd (arg_actual : types) (arg_abstract : types) (trms : candi
   if equal arg_actual arg_abstract then
     trms
   else
-    List.map (all_typ_substs env evd (arg_actual, arg_abstract)) trms
+    List.map (fun tr -> snd (all_typ_substs env evd (arg_actual, arg_abstract) tr)) trms (* TODO evar_maps *)
 
 let types_full_strategy : abstracter =
   types_full
@@ -138,7 +138,7 @@ let pattern_full (env : env) (evd : evar_map) (arg_actual : types) (arg_abstract
   match map_tuple kind (arg_actual, arg_abstract) with
   | (App (f, args), _) when exists_types_conv (Array.to_list args) ->
      let arg = List.find types_conv (Array.to_list args) in
-     let sub = all_constr_substs env evd f in
+     let sub tr = snd (all_constr_substs env evd f tr) in (* TODO evar_map *)
      syntactic_full env evd arg arg_abstract (List.map sub trms)
   | _ ->
      trms
@@ -151,7 +151,7 @@ let syntactic_all_combinations env evd (arg_actual : types) (arg_abstract : type
   if equal arg_actual arg_abstract then
     trms
   else
-    flat_map (all_conv_substs_combs env evd (arg_actual, arg_abstract)) trms
+    flat_map (fun tr -> snd (all_conv_substs_combs env evd (arg_actual, arg_abstract) tr)) trms (* TODO evar_map *)
 
 let syntactic_all_strategy : abstracter =
   syntactic_all_combinations

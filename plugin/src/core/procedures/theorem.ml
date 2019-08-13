@@ -107,11 +107,11 @@ let update_theorem env evd (src : types) (dst : types) (trm : types) : types =
   let num_hs = nb_rel env in
   let num_src_hs = nb_rel env_s - num_hs in
   let num_dst_hs = nb_rel env_d - num_hs in
-  let patch = all_conv_substs env evd (src, dst) trm in
+  let patch = snd (all_conv_substs env evd (src, dst) trm) in (* TODO evar_map *)
   let patch_dep =
     if num_src_hs = num_dst_hs then
       let patch = shift_by num_src_hs patch in
-      unshift_by num_src_hs (all_conv_substs env_s evd (src_concl, dst_concl) patch)
+      unshift_by num_src_hs (snd (all_conv_substs env_s evd (src_concl, dst_concl) patch)) (* TODO evar_map *)
     else
       patch
   in

@@ -345,8 +345,8 @@ let all_typ_swaps_combs (env : env) (evd : evar_map) (trm : types) : types list 
     equal
     (snd
        (map_subterms_env_if_lazy
-          (fun _ _ _ t  ->
-            isApp t)
+          (fun _ evd _ t  ->
+            evd, isApp t)
           (fun en evd _ t ->
 	    let swaps = build_swap_map en evd t in
 	    let (f, args) = destApp t in
@@ -369,7 +369,7 @@ let all_conv_swaps_combs (env : env) (evd : evar_map) (swaps : swap_map) (trm : 
     equal
     (snd
        (map_subterms_env_if_lazy
-          (fun _ _ _ t  -> isApp t)
+          (fun _ evd _ t  -> evd, isApp t)
           (fun en evd depth t ->
 	    let swaps = shift_swaps_by depth swaps in
 	    let (f, args) = destApp t in
