@@ -11,7 +11,6 @@ open Assumptions
 open Kindofchange
 open Cutlemma
 open Catzooming
-open Convertibility
 open Indutils
 open Contextutils
 
@@ -19,6 +18,13 @@ open Contextutils
  * Note: Evar discipline is not good here yet, but will change when
  * we merge PUMPKIN with DEVOID and refactor.
  *)
+
+(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+(* --- End TODO --- *)
 
 (* --- Auxiliary --- *)
 

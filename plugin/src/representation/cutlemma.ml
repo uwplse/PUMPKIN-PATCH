@@ -6,7 +6,6 @@ open Evd
 open Reducers
 open Debruijn
 open Utilities
-open Convertibility
 open Typehofs
 open Contextutils
 open Envutils
@@ -21,7 +20,12 @@ open Envutils
 let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
   j_type jmt
-               
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+let concls_convertible env sigma t1 t2 = snd (Convertibility.concls_convertible env sigma t1 t2)
+
 (* --- End TODO --- *)
 
 type cut_lemma =

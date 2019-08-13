@@ -16,7 +16,13 @@ open Zooming
 open Catzooming
 open Debruijn
 open Filters
-open Convertibility
+
+(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+(* --- End TODO --- *)
 
 (*
  * Given a search function and a difference between terms,

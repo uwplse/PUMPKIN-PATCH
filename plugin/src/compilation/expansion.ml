@@ -10,7 +10,6 @@ open Evaluation
 open Utilities
 open Debruijn
 open Declarations
-open Convertibility
 open Indutils
 open Contextutils
 
@@ -25,6 +24,9 @@ let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
   j_type jmt
 
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+         
 (* Check whether a term has a given type *)
 let has_type (env : env) (evd : evar_map) (typ : types) (trm : types) : bool =
   try

@@ -8,13 +8,19 @@ open Specialization
 open Names
 open Utilities
 open Debruijn
-open Convertibility
 open Reducers
 open Contextutils
 
 type factors = (env * types) list
 
 open Zooming
+
+(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+(* --- End TODO --- *)
 
 (* --- Assumptions for path finding --- *)
 

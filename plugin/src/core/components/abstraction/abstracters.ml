@@ -8,7 +8,13 @@ open Substitution
 open Reducers
 open Filters
 open Candidates
-open Convertibility
+
+(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+(* --- End TODO --- *)
 
 type abstraction_dimension = Arguments | Property
 type abstracter = env -> evar_map -> types -> types -> candidates -> candidates

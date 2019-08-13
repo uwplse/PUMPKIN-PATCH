@@ -7,7 +7,6 @@ open Utilities
 open Debruijn
 open Hofs
 open Printing
-open Convertibility
 open Contextutils
 open Envutils
 
@@ -22,6 +21,13 @@ type swap_map = (types * types) list
 let no_assumptions = []
 let no_substitutions = []
 let no_swaps = []
+
+(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+(* --- End TODO --- *)
 
 (* --- Auxiliary functions on assumptions --- *)
 

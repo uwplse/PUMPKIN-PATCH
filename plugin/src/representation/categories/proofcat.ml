@@ -8,12 +8,18 @@ open Printing
 open Assumptions
 open Utilities
 open Merging
-open Convertibility
 
 (*
  * Note: Evar discipline is currently very bad here. But, we will eventually
  * get rid of this representation, so it is not worth fixing in the meantime.
  *)
+
+(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+(* --- End TODO --- *)
        
 (* --- Type definitions --- *)
 

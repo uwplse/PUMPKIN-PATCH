@@ -12,13 +12,19 @@ open Reducers
 open Declarations
 open Utilities
 open Merging
-open Convertibility
 open Indutils
 
 (*
  * Note: Evar discipline here is not good yet, but will change
  * when we refactor later.
  *)
+
+(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+(* --- End TODO --- *)
 
 (* --- Types --- *)
 

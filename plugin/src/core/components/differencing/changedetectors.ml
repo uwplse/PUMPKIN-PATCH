@@ -10,8 +10,14 @@ open Reducers
 open Assumptions
 open Utilities
 open Zooming
-open Convertibility
 open Contextutils
+
+(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+
+(* --- End TODO --- *)
 
 (*
  * If the kind of change is a change in conclusion, then

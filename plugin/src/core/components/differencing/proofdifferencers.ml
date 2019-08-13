@@ -14,7 +14,6 @@ open Reducers
 open Kindofchange
 open Names
 open Zooming
-open Convertibility
 open Contextutils
 open Idutils
 
@@ -28,6 +27,9 @@ open Idutils
 let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
   j_type jmt
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
                
 (* --- End TODO --- *)
 

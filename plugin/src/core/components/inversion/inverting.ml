@@ -11,7 +11,6 @@ open Assumptions
 open Hofs
 open Filters
 open Factoring
-open Convertibility
 open Reducers
 open Contextutils
 open Equtils
@@ -28,6 +27,9 @@ type inverter = evar_map -> (env * types) -> (env * types) option
 let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
   j_type jmt
+
+let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
+let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
                
 (* --- End TODO --- *)
 
