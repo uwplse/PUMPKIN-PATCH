@@ -84,7 +84,7 @@ let build_swap_map (env : env) (evd : evar_map) (o : types) (n : types) : swap_m
     | (_, _) ->
        no_swaps
   in
-  let _, srcs = filter_state (fun n evd -> convertible env evd o n) (all_typ_swaps_combs env n evd) evd in
+  let _, srcs = filter_state (fun n evd -> convertible env evd o n) (snd (all_typ_swaps_combs env n evd)) evd in
   merge_swaps (List.map (fun s -> build_swaps 0 (s, n)) srcs)
 
 (*
@@ -170,7 +170,7 @@ let invert_factor evd (env, rp) : (env * types) option =
        Some (env, List.hd flipped_wt)
      else
        let swap_map = build_swap_map env evd old_goal_type new_goal_type in
-       let swapped = all_conv_swaps_combs env swap_map rp_goal evd in
+       let _, swapped = all_conv_swaps_combs env swap_map rp_goal evd in
        let _, swapped_wt = filter_by_type goal_type env evd swapped in
        if List.length swapped_wt > 0 then
 	 Some (env, List.hd swapped_wt)

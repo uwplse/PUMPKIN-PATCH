@@ -212,7 +212,8 @@ val shift_swaps : swap_map -> swap_map
  * This checks convertibility after recursing, and so will replace at
  * the lowest level possible.
  *)
-val all_conv_swaps_combs : env -> swap_map -> types -> evar_map -> types list
+val all_conv_swaps_combs :
+  env -> swap_map -> types -> evar_map -> (types list) state
 
 (*
  * In an environment, swaps all subterms with types convertible to the source
@@ -221,4 +222,4 @@ val all_conv_swaps_combs : env -> swap_map -> types -> evar_map -> types list
  * This checks convertibility after recursing, and so will replace at
  * the lowest level possible.
  *)
-val all_typ_swaps_combs : env -> types -> evar_map -> types list
+val all_typ_swaps_combs : env -> types -> evar_map -> (types list) state

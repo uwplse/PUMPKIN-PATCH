@@ -345,22 +345,21 @@ let apply_swaps_combine c a env args swaps =
  * with convertible types with each other, building a swap map for each
  * term
  *)
-let all_typ_swaps_combs (env : env) (trm : types) sigma : types list =
-  unique
-    equal
-    (snd
-       (map_subterms_env_if_lazy
-          (fun _ sigma _ t  ->
-            sigma, isApp t)
-          (fun en sigma _ t ->
-	    let sigma, swaps = build_swap_map en t sigma in
-	    let (f, args) = destApp t in
-	    apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps sigma)
-          (fun _ -> ())
-          env
-          sigma
-          ()
-          trm))
+let all_typ_swaps_combs (env : env) (trm : types) sigma =
+  Util.on_snd
+    (unique equal)
+    (map_subterms_env_if_lazy
+       (fun _ sigma _ t  ->
+         sigma, isApp t)
+       (fun en sigma _ t ->
+	 let sigma, swaps = build_swap_map en t sigma in
+	 let (f, args) = destApp t in
+	 apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps sigma)
+       (fun _ -> ())
+       env
+       sigma
+       ()
+       trm)
 
 (*
  * In an environment, swaps all subterms  convertible to the source
@@ -370,19 +369,18 @@ let all_typ_swaps_combs (env : env) (trm : types) sigma : types list =
  * the highest level possible.
  *)
 let all_conv_swaps_combs (env : env) (swaps : swap_map) (trm : types) sigma =
-    unique
-    equal
-    (snd
-       (map_subterms_env_if_lazy
-          (fun _ sigma _ t  -> sigma, isApp t)
-          (fun en sigma depth t ->
-	    let swaps = shift_swaps_by depth swaps in
-	    let (f, args) = destApp t in
-	    Util.on_snd
-              (unique equal)
-	      (apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps sigma))
-          (fun depth -> depth + 1)
-          env
-          sigma
-          0
-          trm))
+  Util.on_snd
+    (unique equal)
+    (map_subterms_env_if_lazy
+       (fun _ sigma _ t  -> sigma, isApp t)
+       (fun en sigma depth t ->
+	 let swaps = shift_swaps_by depth swaps in
+	 let (f, args) = destApp t in
+	 Util.on_snd
+           (unique equal)
+	   (apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps sigma))
+       shift_i
+       env
+       sigma
+       0
+       trm)
