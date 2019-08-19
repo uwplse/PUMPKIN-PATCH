@@ -97,7 +97,7 @@ let rec args_to env evd (f : types) (trm : types) : env * (types array) =
 let update_theorem env evd (src : types) (dst : types) (trm : types) : types =
   assert (isConst src && isConst dst);
   let (env, trm) = zoom_lambda_term env trm in
-  let trm = reduce_term env evd trm in
+  let _, trm = reduce_term env evd trm in
   let (env_args, args) = args_to env evd src trm in
   let specialize = specialize_using specialize_no_reduce env_args evd in
   let src_typ = infer_type env_args evd (specialize src args) in

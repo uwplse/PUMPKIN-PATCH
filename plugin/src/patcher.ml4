@@ -115,7 +115,7 @@ let invert_patch n env evm patch =
 let patch env evm n try_invert a search =
   let reduce = try_reduce reduce_remove_identities in
   let patch_to_red = search env evm a in
-  let patch = reduce env evm patch_to_red in
+  let _, patch = reduce env evm patch_to_red in
   let prefix = Id.to_string n in
   ignore (define_term n evm patch false);
   (if !opt_printpatches then
@@ -197,7 +197,7 @@ let specialize n trm : unit =
   let (evm, env) = Pfedit.get_current_context() in
   let reducer = specialize_body specialize_term in
   let evm, def = intern env evm trm in
-  let specialized = reducer env evm def in
+  let _, specialized = reducer env evm def in
   ignore (define_term n evm specialized false)
 
 (* Abstract a term by a function or arguments *)
@@ -218,7 +218,7 @@ let abstract n trm goal : unit =
       let rels = List.map (fun i -> i + num_discard) (from_one_to num_args) in
       let args = Array.map (fun i -> mkRel i) (Array.of_list rels) in
       let app = mkApp (List.hd abstracted, args) in
-      let reduced = reduce_term config.env evm app in
+      let _, reduced = reduce_term config.env evm app in
       let reconstructed = reconstruct_lambda config.env reduced in
       ignore (define_term n evm reconstructed false)
   else

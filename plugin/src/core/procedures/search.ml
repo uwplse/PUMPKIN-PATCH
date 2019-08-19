@@ -17,6 +17,7 @@ open Differencing
 open Cutlemma
 open Kindofchange
 open Evd
+open Stateutils
 
 (* --- Procedure --- *)
 
@@ -46,7 +47,7 @@ let return_patch opts env evd (patches : types list) : types =
      let body_reducer = specialize_in (get_app cut) specialize_term in
      let reduction_condition en evd tr = has_cut_type_strict_sym en evd cut tr in
      let reducer = reduce_body_if reduction_condition body_reducer in
-     let specialized = List.map (reducer env evd) patches in
+     let _, specialized = reduce_all reducer env evd patches in
      let specialized_fs = List.map (factor_term env evd) specialized in
      let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
      let generalized =
@@ -59,13 +60,13 @@ let return_patch opts env evd (patches : types list) : types =
             specialized_fs_terms)
      in List.hd generalized (* TODO better failure when none found *)
   | ConclusionCase (Some cut) ->
-     let patches = reduce_all remove_unused_hypos env evd patches in
+     let _, patches = reduce_all remove_unused_hypos env evd patches in
      let generalized =
        abstract_with_strategies
          (configure_cut_args env evd cut patches)
      in List.hd generalized (* TODO better failure when none found *)
   | Hypothesis (_, _) ->
-     let patches = reduce_all remove_unused_hypos env evd patches in
+     let _, patches = reduce_all remove_unused_hypos env evd patches in
      List.hd patches
   | _ ->
      Printf.printf "%s\n" "SUCCESS";

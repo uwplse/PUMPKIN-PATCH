@@ -13,18 +13,12 @@ open Declarations
 open Utilities
 open Merging
 open Indutils
+open Convertibility
 
 (*
  * Note: Evar discipline here is not good yet, but will change
  * when we refactor later.
  *)
-
-(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
-
-(* --- End TODO --- *)
 
 (* --- Types --- *)
 
@@ -237,7 +231,7 @@ let reduced_proof_terms (r : reducer) (d : goal_proof_diff) : env * types * type
   let (env, ns, os) = merge_diff_closures (dest_goals (proof_to_term d)) [] in
   let [new_goal_type; new_term] = ns in
   let [old_goal_type; old_term] = os in
-  (env, r env Evd.empty old_term, r env Evd.empty new_term)
+  (env, snd (r env Evd.empty old_term), snd (r env Evd.empty new_term))
 
 (* Get the goal types for a lift goal diff *)
 let goal_types (d : lift_goal_diff) : types * types =
@@ -255,7 +249,7 @@ let reduce_diff (r : reducer) (d : goal_proof_diff) : goal_proof_diff =
   let (goal_n, _) = new_proof d in
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
-  eval_with_terms (r env_o Evd.empty o) (r env_n Evd.empty n) d
+  eval_with_terms (snd (r env_o Evd.empty o)) (snd (r env_n Evd.empty n)) d
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
 let rec reduce_casts (d : goal_proof_diff) : goal_proof_diff =
@@ -278,8 +272,8 @@ let reduce_letin (d : goal_proof_diff) : goal_proof_diff =
       let d_dest = dest_goals d in
       let ((_, old_env), _) = old_proof d_dest in
       let ((_, new_env), _) = new_proof d_dest in
-      let o' = reduce_whd_if_let_in old_env Evd.empty o in
-      let n' = reduce_whd_if_let_in new_env Evd.empty n in
+      let o' = snd (reduce_whd_if_let_in old_env Evd.empty o) in
+      let n' = snd (reduce_whd_if_let_in new_env Evd.empty n) in
       eval_with_terms o' n' d
     else
       d
@@ -310,7 +304,7 @@ let update_case_assums (d_ms : (arrow list) proof_diff) : equal_assumptions =
     (fun assums dst_o dst_n ->
       let d = difference dst_o dst_n assums in
       let (env, d_goal, _) = merge_lift_diff_envs d [] in
-      if convertible env Evd.empty (old_proof d_goal) (new_proof d_goal) then
+      if snd (convertible env Evd.empty (old_proof d_goal) (new_proof d_goal)) then
         assume_local_equal assums
       else
         shift_assumptions assums)

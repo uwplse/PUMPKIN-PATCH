@@ -8,13 +8,8 @@ open Substitution
 open Reducers
 open Filters
 open Candidates
-
-(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
-
-(* --- End TODO --- *)
+open Convertibility
+open Stateutils
 
 type abstraction_dimension = Arguments | Property
 type abstracter = env -> evar_map -> types -> types -> candidates -> candidates
@@ -78,13 +73,13 @@ let substitute_using (strategy : abstraction_strategy) (env : env) (evd : evar_m
 (*
  * Reduce using the reducer in the abstraction strategy
  *)
-let reduce_all_using strategy env evd (cs : candidates) : candidates =
+let reduce_all_using strategy env evd (cs : candidates) : candidates state =
   reduce_all strategy.reducer env evd cs
 
 (*
  * Filter using the filter in the abstraction stragegy
  *)
-let filter_using strategy env evd (goal : types) (cs : candidates) : candidates =
+let filter_using strategy env evd (goal : types) (cs : candidates) : candidates state =
   strategy.filter goal env evd cs
 
 (* --- Recover options from an abstraction strategy --- *)
@@ -133,11 +128,11 @@ let function_pattern_full_strategy : abstracter =
 
 (* A pattern-based full abstraction strategy for constructors *)
 let pattern_full (env : env) (evd : evar_map) (arg_actual : types) (arg_abstract : types) (trms : types list) : types list =
-  let types_conv = types_convertible env evd arg_abstract in
-  let exists_types_conv = List.exists types_conv in
+  let types_conv trm evd = types_convertible env evd arg_abstract trm in
+  let exists_types_conv = exists_state types_conv in
   match map_tuple kind (arg_actual, arg_abstract) with
-  | (App (f, args), _) when exists_types_conv (Array.to_list args) ->
-     let arg = List.find types_conv (Array.to_list args) in
+  | (App (f, args), _) when snd (exists_types_conv (Array.to_list args) evd) ->
+     let _, arg = find_state types_conv (Array.to_list args) evd in
      let sub tr = snd (all_constr_substs env evd f tr) in (* TODO evar_map *)
      syntactic_full env evd arg arg_abstract (List.map sub trms)
   | _ ->

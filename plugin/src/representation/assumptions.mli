@@ -3,6 +3,7 @@
 open Constr
 open Environ
 open Evd
+open Stateutils
 
 type equal_assumptions
 type param_substitutions
@@ -156,7 +157,11 @@ val unique_swaps : swap_map -> swap_map
 (*
  * Filter a swap map by a relation on a pair of types
  *)
-val filter_swaps : ((types * types) -> bool) -> swap_map -> swap_map
+val filter_swaps :
+  ((types * types) -> evar_map -> bool state) ->
+  swap_map ->
+  evar_map ->
+  swap_map state
 
 (*
  * Map a function on two types along a swap map and return a list
@@ -207,7 +212,7 @@ val shift_swaps : swap_map -> swap_map
  * This checks convertibility after recursing, and so will replace at
  * the lowest level possible.
  *)
-val all_conv_swaps_combs : env -> evar_map -> swap_map -> types -> types list
+val all_conv_swaps_combs : env -> swap_map -> types -> evar_map -> types list
 
 (*
  * In an environment, swaps all subterms with types convertible to the source
@@ -216,4 +221,4 @@ val all_conv_swaps_combs : env -> evar_map -> swap_map -> types -> types list
  * This checks convertibility after recursing, and so will replace at
  * the lowest level possible.
  *)
-val all_typ_swaps_combs : env -> evar_map -> types -> types list
+val all_typ_swaps_combs : env -> types -> evar_map -> types list

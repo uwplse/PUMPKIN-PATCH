@@ -19,6 +19,7 @@ open Zooming
 open Contextutils
 open Merging
 open Apputils
+open Convertibility
 
 (* --- TODO for refactoring without breaking things --- *)
 
@@ -30,9 +31,6 @@ open Apputils
 let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
   j_type jmt
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
                
 (* --- End TODO --- *)
 
@@ -174,14 +172,14 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let evd = config.evd in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
-  let reduced_cs = reduce_all_using strategy env evd config.cs in
+  let _, reduced_cs = reduce_all_using strategy env evd config.cs in
   let shift_concrete = List.map (shift_by (nb_rel env_abs - nb_rel env)) in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
   let bs = substitute_using strategy env_abs evd args_adj args_abs cs_adj in
   let lambdas = generalize env_abs evd opts.num_to_abstract bs in
   Printf.printf "%d abstracted candidates\n" (List.length lambdas);
-  filter_using strategy env evd opts.goal_type lambdas
+  snd (filter_using strategy env evd opts.goal_type lambdas)
 
 (*
  * Try to abstract candidates with an ordered list of abstraction strategies
@@ -222,7 +220,7 @@ let try_abstract_inductive evd (d : lift_goal_diff) (cs : candidates) : candidat
     let (env, d_type, cs) = merge_lift_diff_envs d cs in
     let new_goal_type = new_proof d_type in
     let old_goal_type = old_proof d_type in
-    if List.for_all2 (convertible env evd) (unfold_args old_goal_type) (unfold_args new_goal_type) then
+    if List.for_all2 (fun t1 t2 -> snd (convertible env evd t1 t2)) (unfold_args old_goal_type) (unfold_args new_goal_type) then
       let config = configure_args env evd d_type cs in
       let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
       List.map
@@ -247,10 +245,10 @@ let abstract_case (opts : options) evd (d : goal_case_diff) cs : candidates =
   match get_change opts with
   | Kindofchange.Hypothesis (_, _) ->
      let (g_o, g_n) = map_tuple context_term (old_goal, new_proof d_goal) in
-     filter_by_type (mkProd (Names.Name.Anonymous, g_n, shift g_o)) env evd cs
+     snd (filter_by_type (mkProd (Names.Name.Anonymous, g_n, shift g_o)) env evd cs)
   | Kindofchange.InductiveType (_, _) ->
      cs
-  | Kindofchange.FixpointCase ((_, _), cut) when are_cut env evd cut cs ->
+  | Kindofchange.FixpointCase ((_, _), cut) when snd (are_cut env evd cut cs) ->
      cs
   | _ ->
      try_abstract_inductive evd d_goal cs

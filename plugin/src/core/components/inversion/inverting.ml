@@ -14,7 +14,9 @@ open Factoring
 open Reducers
 open Contextutils
 open Equtils
-
+open Convertibility
+open Stateutils
+       
 type inverter = evar_map -> (env * types) -> (env * types) option
 
 (* --- TODO for refactoring without breaking things --- *)
@@ -27,9 +29,6 @@ type inverter = evar_map -> (env * types) -> (env * types) option
 let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
   j_type jmt
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
                
 (* --- End TODO --- *)
 
@@ -74,8 +73,8 @@ let build_swap_map (env : env) (evd : evar_map) (o : types) (n : types) : swap_m
   let rec build_swaps i swap =
     match map_tuple kind swap with
     | (App (f_s, args_s), App (f_n, args_n)) ->
-       let is_swap s = not (fold_tuple equal s) in
-       let arg_swaps = filter_swaps is_swap (of_arguments args_s args_n) in
+       let is_swap s evd = evd, not (fold_tuple equal s) in
+       let _, arg_swaps = filter_swaps is_swap (of_arguments args_s args_n) evd in
        let swaps = unshift_swaps_by i arg_swaps in
        merge_swaps (swaps :: (map_swaps (build_swaps i) swaps))
     | (Lambda (n_s, t_s, b_s), Lambda (_, t_n, b_n)) ->
@@ -85,7 +84,7 @@ let build_swap_map (env : env) (evd : evar_map) (o : types) (n : types) : swap_m
     | (_, _) ->
        no_swaps
   in
-  let srcs = List.filter (convertible env evd o) (all_typ_swaps_combs env evd n) in
+  let _, srcs = filter_state (fun n evd -> convertible env evd o n) (all_typ_swaps_combs env n evd) evd in
   merge_swaps (List.map (fun s -> build_swaps 0 (s, n)) srcs)
 
 (*
@@ -157,7 +156,7 @@ let exploit_type_symmetry (env : env) (evd : evar_map) (trm : types) : types lis
  * as a separate step.
  *)
 let invert_factor evd (env, rp) : (env * types) option =
-  let rp = reduce_term env evd rp in
+  let _, rp = reduce_term env evd rp in
   match kind rp with
   | Lambda (n, old_goal_type, body) ->
      let env_body = push_rel CRD.(LocalAssum(n, old_goal_type)) env in
@@ -166,13 +165,13 @@ let invert_factor evd (env, rp) : (env * types) option =
      let rp_goal = snd (all_conv_substs env evd (old_goal_type, new_goal_type) rp) in (* TODO evar_map *)
      let goal_type = mkProd (n, new_goal_type, shift old_goal_type) in
      let flipped = exploit_type_symmetry env evd rp_goal in
-     let flipped_wt = filter_by_type goal_type env evd flipped in
+     let _, flipped_wt = filter_by_type goal_type env evd flipped in
      if List.length flipped_wt > 0 then
        Some (env, List.hd flipped_wt)
      else
        let swap_map = build_swap_map env evd old_goal_type new_goal_type in
-       let swapped = all_conv_swaps_combs env evd swap_map rp_goal in
-       let swapped_wt = filter_by_type goal_type env evd swapped in
+       let swapped = all_conv_swaps_combs env swap_map rp_goal evd in
+       let _, swapped_wt = filter_by_type goal_type env evd swapped in
        if List.length swapped_wt > 0 then
 	 Some (env, List.hd swapped_wt)
        else

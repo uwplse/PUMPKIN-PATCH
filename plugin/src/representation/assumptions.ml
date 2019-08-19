@@ -9,6 +9,8 @@ open Hofs
 open Printing
 open Contextutils
 open Envutils
+open Convertibility
+open Stateutils
 
 (* For now, these are lists of pairs of ints, each int representing
    an index in a different environment; this representation
@@ -21,13 +23,6 @@ type swap_map = (types * types) list
 let no_assumptions = []
 let no_substitutions = []
 let no_swaps = []
-
-(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
-
-(* --- End TODO --- *)
 
 (* --- Auxiliary functions on assumptions --- *)
 
@@ -240,8 +235,8 @@ let unique_swaps (swaps : swap_map) : swap_map =
 (*
  * Filter a swap map by a relation on a pair of types
  *)
-let filter_swaps (p : (types * types) -> bool) (swaps : swap_map) : swap_map =
-  List.filter p swaps
+let filter_swaps (p : (types * types) -> evar_map -> bool state) (swaps : swap_map) =
+  filter_state p swaps
 
 (*
  * Build a swap map from two arrays of arguments
@@ -294,66 +289,76 @@ let shift_swaps = shift_swaps_by 1
 (*
  * Get a swap map for all combinations of a function application
  *)
-let build_swap_map (en : env) (evd : evar_map) (t : types) : swap_map =
+let build_swap_map env (t : types) =
   match kind t with
   | App (_, args) ->
      filter_swaps
-       (fun (a1, a2) ->
-	 (not (convertible en evd a1 a2)) && types_convertible en evd a1 a2)
+       (branch_state
+          (fun (a1, a2) sigma -> convertible env sigma a1 a2)
+          (fun _ -> ret false) (* convertible *)
+          (branch_state
+             (fun (a1, a2) sigma -> types_convertible env sigma a1 a2)
+             (fun _ -> ret true) (* (not convertible) && types_convertible *)
+             (fun _ -> ret false))) (* not types_convertible *)
        (combinations_of_arguments args)
   | _ ->
-     no_swaps
+     ret no_swaps
 
 (*
  * Given a pair of arguments to swap, apply the swap inside of args
  *)
-let swap_args (env : env) (evd : evar_map) (args : types array) ((a1, a2) : types * types) =
-  combine_cartesian_append
-    (Array.map
-       (fun a ->
-         if convertible env evd a1 a then
-           [a2]
-         else if convertible env evd a2 a then
-           [a1]
-         else
-           [a])
+let swap_args (env : env) (args : types array) ((a1, a2) : types * types) =
+  bind
+    (map_state_array
+       (branch_state
+          (fun a sigma -> convertible env sigma a1 a)
+          (fun _ -> ret [a2])
+          (branch_state
+             (fun a sigma -> convertible env sigma a2 a)
+             (fun _ -> ret [a1])
+             (fun a -> ret [a])))
        args)
+    (fun l -> ret (combine_cartesian_append l))
 
 (*
  * Apply a swap map to an array of arguments
  *)
-let apply_swaps env evd args swaps : (types array) list =
-  List.flatten (map_swaps (swap_args env evd args) swaps)
+let apply_swaps env args swaps =
+  bind
+    (map_state (swap_args env args) swaps)
+    flatten_state
 
 (*
  * Apply a swap map to an array of arguments,
  * then combine the results using the combinator c, using a as a default
  *)
-let apply_swaps_combine c a env evd args swaps : 'a list =
-  let swapped = apply_swaps env evd args swaps in
-  if List.length swapped = 0 then
-    [a]
-  else
-    a :: List.map c swapped
+let apply_swaps_combine c a env args swaps =
+  bind
+    (apply_swaps env args swaps)
+    (fun swapped -> (* TODO is evar_map OK here in both cases? *)
+      if List.length swapped = 0 then
+        ret [a]
+      else
+        ret (a :: List.map c swapped))
 
 (* In env, swap all arguments to a function
  * with convertible types with each other, building a swap map for each
  * term
  *)
-let all_typ_swaps_combs (env : env) (evd : evar_map) (trm : types) : types list =
+let all_typ_swaps_combs (env : env) (trm : types) sigma : types list =
   unique
     equal
     (snd
        (map_subterms_env_if_lazy
-          (fun _ evd _ t  ->
-            evd, isApp t)
-          (fun en evd _ t ->
-	    let swaps = build_swap_map en evd t in
+          (fun _ sigma _ t  ->
+            sigma, isApp t)
+          (fun en sigma _ t ->
+	    let sigma, swaps = build_swap_map en t sigma in
 	    let (f, args) = destApp t in
-	    evd, apply_swaps_combine (fun s -> mkApp (f, s)) t env evd args swaps)
+	    apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps sigma)
           (fun _ -> ())
           env
-          evd
+          sigma
           ()
           trm))
 
@@ -364,20 +369,20 @@ let all_typ_swaps_combs (env : env) (evd : evar_map) (trm : types) : types list 
  * This checks convertibility before recursing, and so will replace at
  * the highest level possible.
  *)
-let all_conv_swaps_combs (env : env) (evd : evar_map) (swaps : swap_map) (trm : types) =
+let all_conv_swaps_combs (env : env) (swaps : swap_map) (trm : types) sigma =
     unique
     equal
     (snd
        (map_subterms_env_if_lazy
-          (fun _ evd _ t  -> evd, isApp t)
-          (fun en evd depth t ->
+          (fun _ sigma _ t  -> sigma, isApp t)
+          (fun en sigma depth t ->
 	    let swaps = shift_swaps_by depth swaps in
 	    let (f, args) = destApp t in
-	    evd, unique
-	           equal
-	           (apply_swaps_combine (fun s -> mkApp (f, s)) t env evd args swaps))
+	    Util.on_snd
+              (unique equal)
+	      (apply_swaps_combine (fun s -> mkApp (f, s)) t env args swaps sigma))
           (fun depth -> depth + 1)
           env
-          evd
+          sigma
           0
           trm))

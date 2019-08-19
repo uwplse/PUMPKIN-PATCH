@@ -50,14 +50,14 @@ let rec get_goal_fix env evd (d : types proof_diff) : candidates =
     | _ ->
        let reduce_hd = reduce_unfold_whd env evd in
        let rec get_goal_reduced d =
-         let red_old = reduce_hd (old_proof d) in
-         let red_new = reduce_hd (new_proof d) in
+         let _, red_old = reduce_hd (old_proof d) in
+         let _, red_new = reduce_hd (new_proof d) in
          match map_tuple kind (red_old, red_new) with
          | (App (f1, args1), App (f2, args2)) when equal f1 f2 ->
             let d_args = difference args1 args2 no_assumptions in
             diff_map_flat get_goal_reduced d_args
          | _ when not (equal red_old red_new) ->
-            [reduce_unfold env evd (mkProd (Names.Name.Anonymous, red_old, shift red_new))]
+            [snd (reduce_unfold env evd (mkProd (Names.Name.Anonymous, red_old, shift red_new)))]
          | _ ->
             give_up
        in get_goal_reduced (difference old_term new_term no_assumptions)
@@ -108,7 +108,7 @@ let diff_fix_cases env evd (d : types proof_diff) : candidates =
         List.map
           (fun t -> mkApp (t, Array.make 1 new_term))
           lambdas
-      in unique equal (reduce_all reduce_term env evd apps)
+      in unique equal (snd (reduce_all reduce_term env evd apps))
     else
       failwith "Cannot infer goals for generalizing change in definition"
   | _ ->

@@ -9,6 +9,8 @@ open Utilities
 open Typehofs
 open Contextutils
 open Envutils
+open Convertibility
+open Stateutils
 
 (* --- TODO for refactoring without breaking things --- *)
 
@@ -21,13 +23,9 @@ let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
   j_type jmt
 
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
-
-let concls_convertible env sigma t1 t2 = snd (Convertibility.concls_convertible env sigma t1 t2)
-
 (* --- End TODO --- *)
 
+       
 type cut_lemma =
   {
     lemma : types;
@@ -46,18 +44,20 @@ let get_app (cut : cut_lemma) =
   cut.app
 
 (* Test if a type is exactly the type of the lemma to cut by *)
-let is_cut_strict env evd lemma typ =
+let is_cut_strict env sigma lemma typ =
   try
-    concls_convertible env evd (reduce_term env evd lemma) (reduce_term env evd typ)
+    let sigma, lemma = reduce_term env sigma lemma in
+    let sigma, typ = reduce_term env sigma typ in
+    concls_convertible env sigma lemma typ
   with _ ->
-    false
+    sigma, false
 
 (* Test if a term has exactly the type of the lemma to cut by *)
-let has_cut_type_strict env evd cut trm =
+let has_cut_type_strict env sigma cut trm =
   try (* TODO do we need red type here or not? same everywhere *)
-    on_red_type_default (fun env evd -> is_cut_strict env evd (get_lemma cut)) env evd trm 
+    on_red_type_default (fun env sigma -> is_cut_strict env sigma (get_lemma cut)) env sigma trm 
   with _ ->
-    false
+    sigma, false
 
 (* Flip the conclusions of a cut lemma *)
 let rec flip_concls lemma =
@@ -80,34 +80,44 @@ let has_cut_type_strict_rev env evd cut trm =
   try
     on_red_type_default (fun env evd -> is_cut_strict env evd (flip_concls (get_lemma cut))) env evd trm
   with _ ->
-    false
+    evd, false
 
 (* Test if a term has the type of the lemma or its reverse *)
 let has_cut_type_strict_sym env evd cut trm =
-  has_cut_type_strict env evd cut trm || has_cut_type_strict_rev env evd cut trm
+  branch_state
+    (fun trm sigma -> has_cut_type_strict env sigma cut trm)
+    (fun _ -> ret true)
+    (fun trm sigma -> has_cut_type_strict_rev env sigma cut trm)
+    trm
+    evd
 
 (* Check if a type is loosely the cut lemma (can have extra hypotheses) *)
-let rec is_cut env evd lemma typ =
+let rec is_cut env sigma lemma typ =
   match map_tuple kind (lemma, typ) with
   | (Prod (nl, tl, bl), Prod (nt, tt, bt)) ->
      if not (isProd bl || isProd bt) then
-       is_cut_strict env evd lemma typ
+       is_cut_strict env sigma lemma typ
      else
-       if convertible env evd tl tt then
-         is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) evd bl bt
-       else
-         let cut_l = is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) evd bl (shift typ) in
-         let cut_r = is_cut (push_rel CRD.(LocalAssum(nt, tt)) env) evd (shift lemma) bt in
-         cut_l || cut_r
+       branch_state
+         (fun tt sigma -> convertible env sigma tl tt)
+         (fun _ sigma -> is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) sigma bl bt)
+         (fun _ ->
+           branch_state
+             (fun bl sigma -> is_cut (push_rel CRD.(LocalAssum(nl, tl)) env) sigma bl (shift typ))
+             (fun _ -> ret true)
+             (fun _ sigma -> is_cut (push_rel CRD.(LocalAssum(nt, tt)) env) sigma (shift lemma) bt)
+             bl)
+         tt
+         sigma
   | _  ->
-     false
+     sigma, false
 
 (* Check if a term has loosely the cut lemma type (can have extra hypotheses) *)
 let has_cut_type env evd cut trm =
   try
     on_red_type_default (fun env evd -> is_cut env evd (get_lemma cut)) env evd trm
   with _ ->
-    false
+    evd, false
 
 (* Check if a term is loosely an application of the lemma to cut by *)
 let has_cut_type_app env evd cut trm =
@@ -115,11 +125,11 @@ let has_cut_type_app env evd cut trm =
     let evd, typ = on_red_type_default (fun env evd trm -> evd, shift trm) env evd trm in
     let env_cut = push_rel CRD.(LocalAssum(Names.Name.Anonymous, get_lemma cut)) env in
     let app = get_app cut in
-    let app_app = reduce_term env_cut Evd.empty (mkApp (app, Array.make 1 (mkRel 1))) in
+    let evd, app_app = reduce_term env_cut Evd.empty (mkApp (app, Array.make 1 (mkRel 1))) in
     let app_app_typ = infer_type env_cut evd app_app in
     is_cut env_cut evd app_app_typ typ
   with _ ->
-    false
+    evd, false
 
 (* Check if a term is consistent with the cut type *)
 let consistent_with_cut env cut trm =
@@ -135,11 +145,11 @@ let consistent_with_cut env cut trm =
 
 (* Filter a list of terms to those with the (loose) cut lemma type *)
 let filter_cut env evd cut trms =
-  List.filter (has_cut_type env evd cut) trms
+  filter_state (fun trm evd -> has_cut_type env evd cut trm) trms evd
 
 (* Filter a list of terms to those that apply the (loose) cut lemma type *)
 let filter_applies_cut env evd cut trms =
-  List.filter (has_cut_type_app env evd cut) trms
+  filter_state (fun trm evd -> has_cut_type_app env evd cut trm) trms evd
 
 (*
  * Filter a list of terms to those that are consistent with the cut type
@@ -159,4 +169,7 @@ let filter_consistent_cut env cut trms =
 
 (* This returns true when the candidates we have patch the lemma we cut by *)
 let are_cut env evd cut cs =
-  List.length (filter_cut env evd cut cs) = List.length cs
+  bind
+    (fun evd -> filter_cut env evd cut cs)
+    (fun trms -> ret (List.length trms = List.length cs))
+    evd

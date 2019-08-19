@@ -11,13 +11,7 @@ open Assumptions
 open Utilities
 open Zooming
 open Contextutils
-
-(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
-
-(* --- End TODO --- *)
+open Convertibility
 
 (*
  * If the kind of change is a change in conclusion, then
@@ -63,12 +57,12 @@ let find_kind_of_change evd (cut : cut_lemma option) (d : goal_proof_diff) =
   let goals = goal_types d_goals in
   let env = context_env (old_proof d_goals) in
   let r = reduce_remove_identities env evd in
-  let old_goal = r (fst goals) in
-  let new_goal = r (snd goals) in
+  let _, old_goal = r (fst goals) in
+  let _, new_goal = r (snd goals) in
   let rec diff env typ_o typ_n =
     match map_tuple kind (typ_o, typ_n) with
     | (Prod (n_o, t_o, b_o), Prod (_, t_n, b_n)) ->
-       if (not (convertible env evd t_o t_n)) then
+       if (not (snd (convertible env evd t_o t_n))) then
          let d_typs = difference t_o t_n no_assumptions in
          if same_shape env d_typs then
            InductiveType (t_o, t_n)
@@ -83,8 +77,8 @@ let find_kind_of_change evd (cut : cut_lemma option) (d : goal_proof_diff) =
        else
          let args_o = Array.to_list args_o in
          let args_n = Array.to_list args_n in
-         if isConst f_o && isConst f_n && (not (convertible env evd f_o f_n)) then
-           if List.for_all2 (convertible env evd) args_o args_n then
+         if isConst f_o && isConst f_n && (not (snd (convertible env evd f_o f_n))) then
+           if List.for_all2 (fun t1 t2 -> snd (convertible env evd t1 t2)) args_o args_n then
              if not (Option.has_some cut) then
                failwith "Must supply cut lemma for change in fixpoint"
              else

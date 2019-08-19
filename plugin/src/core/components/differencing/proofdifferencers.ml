@@ -16,6 +16,7 @@ open Names
 open Zooming
 open Contextutils
 open Idutils
+open Stateutils
 
 (* --- TODO for refactoring without breaking things --- *)
 
@@ -105,7 +106,7 @@ let build_app_candidates env evd opts (from_type : types) (old_term : types) (ne
         (* otherwise, check containment *)
 	let new_term_shift = shift new_term in
 	let sub tr = snd (all_conv_substs_combs env_b evd (new_term_shift, (mkRel 1)) tr) in (* TODO evar_map *)
-	filter_not_same old_term_shift env_b evd (sub old_term_shift)
+	snd (filter_not_same old_term_shift env_b evd (sub old_term_shift))
     in List.map (fun b -> reconstruct_lambda_n env_b b (nb_rel env)) bodies
   with _ ->
     give_up
@@ -153,11 +154,11 @@ let find_difference evd (opts : options) (d : goal_proof_diff) : candidates =
   in
   let candidates = build_app_candidates env_merge evd opts from_type old_term new_term in
   let goal_type = mkProd (Name.Anonymous, new_goal_type, shift old_goal_type) in
-  let reduced = reduce_all reduce_remove_identities env_merge evd candidates in
+  let _, reduced = reduce_all reduce_remove_identities env_merge evd candidates in
   let filter = filter_by_type goal_type env_merge evd in
   List.map
     (unshift_local (num_new_rels - 1) num_new_rels)
-    (filter (if is_ind then filter_ihs env_merge evd reduced else reduced))
+    (snd (filter (if is_ind then snd (filter_ihs env_merge evd reduced) else reduced)))
 
 (* Determine if two diffs are identical (convertible). *)
 let no_diff evd opts (d : goal_proof_diff) : bool =

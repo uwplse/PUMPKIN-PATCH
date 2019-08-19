@@ -37,30 +37,31 @@ let specialize_using (s : specializer) env evd f args =
  * This will delta-reduce the function f if necessary.
  * At the bottom level, it returns betaiota reduction.
  *)
-let rec specialize_body (s : specializer) (env : env) (evd : evar_map) (t : types) : types =
+let rec specialize_body (s : specializer) (env : env) (evd : evar_map) (t : types) =
   match kind t with
   | Lambda (n, t, b) ->
-     mkLambda (n, t, specialize_body s (push_rel CRD.(LocalAssum(n, t)) env) evd b)
+     let evd, b = specialize_body s (push_local (n, t) env) evd b in
+     evd, mkLambda (n, t, b)
   | App (f, args) ->
      let f_body = unwrap_definition env f in
-     s env evd f_body args
+     evd, s env evd f_body args
   | _ ->
      failwith "Term should be of the form (fun args => f args)"
 
 (* Convert a specializer into a reducer by taking arguments *)
 let specialize_to (args : types array) (s : specializer) : reducer =
-  fun env evd f -> s env evd f args
+  fun env evd f -> evd, s env evd f args
 
 (*
  * Convert a specializer into a reducer by taking the function
  * This only handles a single argument
  *)
 let specialize_in (f : types) (s : specializer) : reducer =
-  fun env evd arg -> s env evd f (Array.make 1 arg)
+  fun env evd arg -> evd, s env evd f (Array.make 1 arg)
 
 (* Convert a reducer into a specializer in the obvious way *)
 let reducer_to_specializer (r : reducer) : specializer =
-  fun env evd f args -> r env evd (mkApp (f, args))
+  fun env evd f args -> snd (r env evd (mkApp (f, args)))
 
 (* --- Defaults --- *)
 

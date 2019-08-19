@@ -10,17 +10,11 @@ open Utilities
 open Debruijn
 open Reducers
 open Contextutils
+open Convertibility
 
 type factors = (env * types) list
 
 open Zooming
-
-(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
-
-(* --- End TODO --- *)
 
 (* --- Assumptions for path finding --- *)
 
@@ -39,7 +33,7 @@ let apply_assumption (fs : factors) (trm : types) : types =
  * Check if the term is the assumption (last term in the environment)
  *)
 let is_assumption (env : env) (evd : evar_map) (trm : types) : bool =
-  convertible env evd trm assumption
+  snd (convertible env evd trm assumption)
 
 (*
  * Assume a term of type typ in an environment
@@ -119,7 +113,7 @@ let rec find_path (env : env) (evd : evar_map) (trm : types) : factors =
  * function.
  *)
 let factor_term (env : env) (evd : evar_map) (trm : types) : factors =
-  let (env_zoomed, trm_zoomed) = zoom_lambda_term env (reduce_term env evd trm) in
+  let (env_zoomed, trm_zoomed) = zoom_lambda_term env (snd (reduce_term env evd trm)) in
   let path_body = find_path env_zoomed evd trm_zoomed in
   List.map
     (fun (env, body) ->
