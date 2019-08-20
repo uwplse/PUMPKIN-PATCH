@@ -74,7 +74,7 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
       | Kindofchange.InductiveType (_, _) ->
          diff_rec diff_f opts d_f
       | Kindofchange.FixpointCase ((_, _), cut) ->
-         let filter_diff_cut diff = filter_diff (fun trms -> snd (filter_cut env evd cut trms)) diff in
+         let filter_diff_cut diff = filter_diff (fun trms -> snd (filter_cut env cut trms evd)) diff in
          let fs = filter_diff_cut (diff_rec diff_f opts) d_f in
          if non_empty fs then
            fs
@@ -87,7 +87,7 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
            (fun args ->
              if Option.has_some cut then
                let args_lambdas = List.map (reconstruct_lambda env) args in
-               snd (filter_applies_cut env evd (Option.get cut) args_lambdas)
+               snd (filter_applies_cut env (Option.get cut) args_lambdas evd)
              else
                args)
            (diff_map_flat (diff_rec diff_arg (set_change opts Kindofchange.Conclusion)))
@@ -142,7 +142,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
        f
     | Kindofchange.FixpointCase ((_, _), cut) ->
        let env = context_env (fst (old_proof d)) in
-       let filter_diff_cut diff = filter_diff (fun trms -> snd (filter_cut env evd cut trms)) diff in
+       let filter_diff_cut diff = filter_diff (fun trms -> snd (filter_cut env cut trms evd)) diff in
        if non_empty f then
          f
        else

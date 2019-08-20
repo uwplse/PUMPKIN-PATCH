@@ -248,7 +248,7 @@ let abstract_case (opts : options) evd (d : goal_case_diff) cs : candidates =
      snd (filter_by_type (mkProd (Names.Name.Anonymous, g_n, shift g_o)) env evd cs)
   | Kindofchange.InductiveType (_, _) ->
      cs
-  | Kindofchange.FixpointCase ((_, _), cut) when snd (are_cut env evd cut cs) ->
+  | Kindofchange.FixpointCase ((_, _), cut) when snd (are_cut env cut cs evd) ->
      cs
   | _ ->
      try_abstract_inductive evd d_goal cs
