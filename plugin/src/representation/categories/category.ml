@@ -1,12 +1,15 @@
-(* A super simple representation for small categories. *)
+(* A representation for small categories with state *)
+(* Will go away at some point *)
 
 open Utilities
+open Stateutils
+open Evd
 
 module type Opaque =
 sig
   type t
   val as_string : t -> string
-  val equal : t -> t -> bool
+  val equal : t -> t -> evar_map -> bool state
 end
 
 module type CatT =
@@ -37,19 +40,26 @@ struct
 
   type arrow = (obj * morph * obj)
   type arr =
-    Identity of obj
+  | Identity of obj
   | Composite of arr * arr
   | Primitive of arrow
 
-  let make objects morphisms i t =
+  let make (objects : Object.t list) morphisms i t =
     let aux obj l (dom, mor, cod) =
-      if Object.equal obj dom then ((mor, cod) :: l) else l
+      branch_state
+        (Object.equal obj)
+        (fun _ -> ret ((mor, cod) :: l))
+        (fun _ -> ret l)
+        dom
     in
-    let cs =
-      List.map
-        (fun obj -> (obj, List.fold_left (aux obj) [] morphisms))
-        objects
-    in Category (cs, i, t)
+    bind
+      (map_state
+        (fun obj ->
+          bind
+            (fold_left_state (aux obj) [] morphisms)
+            (fun ms -> ret (obj, ms)))
+        objects)
+      (fun cs -> ret (Category (cs, i, t)))
 
   (* Operations about morphisms *)
   let rec domain f =
@@ -77,9 +87,12 @@ struct
     Identity a
 
   let between (Category (cl, _, _)) dom cod =
-    List.map (fun (mor, _) -> (dom, mor, cod))
-      (List.filter (fun (_, obj) -> Object.equal obj cod)
-        (snd (List.find (fun adj -> Object.equal (fst adj) dom) cl)))
+    bind
+      (find_state (fun adj -> Object.equal (fst adj) dom) cl)
+      (fun adj ->
+        bind
+          (filter_state (fun (_, obj) -> Object.equal obj cod) (snd adj))
+          (map_state (fun (mor, _) -> ret (dom, mor, cod))))
 
   let objects c =
     match c with
@@ -88,9 +101,14 @@ struct
         let append_initial_terminal it os =
           if Option.has_some it then
             let ito = Option.get it in
-            if List.exists (fun o -> Object.equal o ito) os then os else ito :: os
-          else os
-        in append_initial_terminal t (append_initial_terminal i os)
+            branch_state
+              (exists_state (fun o -> Object.equal o ito))
+              ret
+              (fun os -> ret (ito :: os))
+              os
+          else
+            ret os
+        in bind (append_initial_terminal i os) (append_initial_terminal t)
 
   let morphisms (Category (cs, _, _)) =
     flat_map (fun (s, adjs) -> (List.map (fun (m, d) -> (s, m, d)) adjs)) cs
@@ -102,7 +120,7 @@ struct
   let morphism_as_string (src, m, dst) =
     Printf.sprintf "(%s, %s, %s)" (Object.as_string src) (Morphism.as_string m) (Object.as_string dst)
 
-  let as_string cat =
+  let as_string cat sigma =
     (* For now, string representation for debugging *)
     (*failwith "TODO: repurpose graphviz serialization"*)
     let initial_terminal_as_string it =
@@ -113,7 +131,7 @@ struct
     in
     Printf.sprintf
       "Objects:\n%s\n\nMorphisms:\n%s\n\nInitial:\n%s\n\nTerminal:\n%s\n"
-      (String.concat ",\n" (List.map Object.as_string (objects cat)))
+      (String.concat ",\n" (List.map Object.as_string (snd (objects cat sigma))))
       (String.concat ",\n" (List.map morphism_as_string (morphisms cat)))
       (initial_terminal_as_string (initial cat))
       (initial_terminal_as_string (terminal cat))

@@ -1,11 +1,14 @@
-(* A super simple interface for small categories. *)
-(* TODO clean, given additions of functor and so on *)
+(* An interface for small categories with state *)
+(* Will go away at some point *)
+
+open Stateutils
+open Evd
 
 module type Opaque =
 sig
   type t
   val as_string : t -> string
-  val equal : t -> t -> bool
+  val equal : t -> t -> evar_map -> bool state
 end
 
 module type CatT =
@@ -29,7 +32,7 @@ sig
   type obj = Object.t
   type morph = Morphism.t
 
-  val make : obj list -> (obj * morph * obj) list -> obj option -> obj option -> cat
+  val make : obj list -> (obj * morph * obj) list -> obj option -> obj option -> evar_map -> cat state
 
   type arrow = (obj * morph * obj)
   type arr =
@@ -41,13 +44,13 @@ sig
   val codomain : arr -> obj
   val compose : arr -> arr -> arr option
   val identity : obj -> arr
-  val between : cat -> obj -> obj -> arrow list (* primitive morphisms only *)
-  val objects : cat -> obj list
+  val between : cat -> obj -> obj -> evar_map -> (arrow list) state (* primitive morphisms only *)
+  val objects : cat -> evar_map -> (obj list) state
   val morphisms : cat -> arrow list (* primitive morpshism only *)
   val initial : cat -> obj option
   val terminal : cat -> obj option
 
-  val as_string : cat -> string
+  val as_string : cat -> evar_map -> string
 end
 
 module Functor (Dom : CatT) (Cod : CatT):
