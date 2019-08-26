@@ -521,26 +521,6 @@ let arrows_from (c : proof_cat) (o : context_object) =
  * Maintains order for lists
  *)
 let arrows_between (c : proof_cat) (src : context_object) (dst : context_object)sigma =
-
-  let rec reaches ms (s : context_object) (d : context_object) =
-    branch_state
-      (objects_equal d)
-      (fun _ -> ret true)
-      (fun s ->
-        bind
-          (arrows_with_source s ms)
-          (fun adj ->
-            and_state
-              (fun adj -> ret (non_empty adj))
-              (fun adj ->
-                bind
-                  (map_state (map_dest (reaches ms s)) adj)
-                  (exists_state (fun s -> ret (id s))))
-              adj
-              adj))
-      s
-  in
-  
 let rec between ms s d =
   branch_state
     (objects_equal d)
@@ -585,30 +565,48 @@ let paths_from (c : proof_cat) (src : context_object) =
   in paths (morphisms c) src
 
 (*
+ * TODO move to lib if we still need this after refactor to remove cats
+ *)
+let find_off (a : 'a list) (p : 'a -> evar_map -> bool state) sigma : int state =
+  let rec find_rec a p n =
+    match a with
+    | [] -> failwith "not found"
+    | h :: tl ->
+       branch_state
+         p
+         (fun _ -> ret n)
+         (fun _ -> find_rec tl p (n + 1))
+         h
+  in find_rec a p 0 sigma
+           
+(*
  * Get the length of the shortest path from the initial context to dst
  * If dst is the initial context, this is 0
  * Error if no initial context
  * Error if dst is unreachable
- * TODO left off here
  *)
-let shortest_path_length (c : proof_cat) (o : context_object) sigma : int =
+let shortest_path_length (c : proof_cat) (o : context_object) sigma : int state =
   let i = initial c in
   let sigma, has_path_bool = has_path c i o sigma in
   assert has_path_bool;
-  let is_o = objects_equal o in
-  let contains_o = contains_object o in
-  map_if_else
-    (fun _ -> 0)
-    (fun s ->
-      let pdsts = List.map conclusions (paths_from c s) in
-      let pdsts_with_o = List.filter contains_o pdsts in
-      let lengths_to_o =
-        List.map
-          (fun path -> find_off path is_o + 1)
+  branch_state
+    (objects_equal o)
+    (fun _ -> ret 0)
+    (fun s sigma ->
+      let sigma, paths = paths_from c s sigma in
+      let pdsts = List.map conclusions paths in
+      let sigma, pdsts_with_o = filter_state (contains_object o) pdsts sigma in
+      let sigma, lengths_to_o =
+        map_state
+          (fun path ->
+            bind
+              (find_off path (objects_equal o))
+              (fun n -> ret (n + 1)))
           pdsts_with_o
-      in List.hd (List.sort Pervasives.compare lengths_to_o))
-    (is_o i)
+          sigma
+      in sigma, List.hd (List.sort Pervasives.compare lengths_to_o))
     i
+    sigma
 
 (* --- Functors --- *)
 
@@ -617,7 +615,8 @@ module ProofFunctor = Functor (ProofCat) (ProofCat)
 (*
  * Apply a functor over proof categories
  *)
-let apply_functor (fo : context_object -> context_object) (fa : arrow -> arrow) (c : proof_cat) =
-  let f = ProofFunctor.make fo fa in
-  ProofFunctor.apply f c
+let apply_functor fo fa (c : proof_cat) =
+  bind
+    (ProofFunctor.make fo fa)
+    (fun f -> ret (ProofFunctor.apply f c))
 

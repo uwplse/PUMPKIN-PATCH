@@ -1,5 +1,5 @@
 (* A representation for small categories with state *)
-(* Will go away at some point *)
+(* Will go away at some point soon (not bothering to clean!) *)
 
 open Utilities
 open Stateutils
@@ -19,9 +19,9 @@ sig
   type cat
   type arrow = (obj * morph * obj)
 
-  val objects : cat -> obj list
+  val objects : cat -> evar_map -> (obj list) state
   val morphisms : cat -> arrow list
-  val make : obj list -> arrow list -> obj option -> obj option -> cat
+  val make : obj list -> arrow list -> obj option -> obj option -> evar_map -> cat state
   val initial : cat -> obj option
   val terminal : cat -> obj option
 end
@@ -140,14 +140,20 @@ end
 
 module Functor (Dom : CatT) (Cod : CatT) =
 struct
-  type f_obj = Dom.obj -> Cod.obj
+  type f_obj = Dom.obj -> evar_map -> Cod.obj state
   type f_arr = Dom.arrow -> Cod.arrow
-  type f_iterm = Dom.obj option -> Cod.obj option
+  type f_iterm = Dom.obj option -> evar_map -> (Cod.obj option) state
   type t = Fun of f_obj * f_arr * f_iterm * f_iterm
 
   let make (f_o : f_obj) (f_a : f_arr) =
-    let f_it = Option.map f_o in
-    Fun (f_o, f_a, f_it, f_it)
+    let f_it : f_iterm =
+      fun o sigma ->
+      match Option.map (fun o -> f_o o sigma) o with
+      | Some (sigma, o') ->
+         ret (Some o') sigma
+      | None ->
+         ret None sigma
+    in ret (Fun (f_o, f_a, f_it, f_it))
 
   let make_with_it (f_o : f_obj) (f_a : f_arr) (f_i : f_iterm) (f_t : f_iterm) =
     Fun (f_o, f_a, f_i, f_t)
@@ -164,14 +170,14 @@ struct
   let f_T (f : t) = match f with
     Fun (_, _, _, f_t) -> f_t
 
-  let apply (f : t) (c : Dom.cat) =
+  let apply (f : t) (c : Dom.cat) sigma =
     let f_o = f_O f in
     let f_a = f_A f in
-    let os = List.map f_o (Dom.objects c) in
+    let sigma, os = bind (Dom.objects c) (map_state f_o) sigma in
     let ms = List.map f_a (Dom.morphisms c) in
-    let i = (f_I f) (Dom.initial c) in
-    let t = (f_T f) (Dom.terminal c) in
-    Cod.make os ms i t
+    let sigma, i = (f_I f) (Dom.initial c) sigma in
+    let sigma, t = (f_T f) (Dom.terminal c) sigma in
+    Cod.make os ms i t sigma
 
   let as_string (f : t) =
     failwith "TODO"
