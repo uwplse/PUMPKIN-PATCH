@@ -5,6 +5,7 @@ open Evd
 open Stateutils
 
 (* Proof categories, core logic *)
+(* Will go away soon *)
 
 (* --- Type definitions --- *)
 
@@ -305,7 +306,7 @@ val is_hypothesis : proof_cat -> context_object -> evar_map -> bool state
 val is_not_hypothesis : proof_cat -> context_object -> evar_map -> bool state
 
 (* Apply a function to the list of objects of c *)
-val map_objects : (context_object list -> 'a) -> proof_cat -> evar_map -> 'a state
+val map_objects : (context_object list -> evar_map -> 'a state) -> proof_cat -> evar_map -> 'a state
 
 (* Apply a function to the list of arrows of c *)
 val map_arrows : (arrow list -> 'a) -> proof_cat -> 'a
@@ -317,19 +318,19 @@ val map_arrows : (arrow list -> 'a) -> proof_cat -> 'a
  * If this path is a list, then this maintains order
  * Assumes there are no cycles
  *)
-val arrows_from : proof_cat -> context_object -> arrow list
+val arrows_from : proof_cat -> context_object -> evar_map -> (arrow list) state
 
 (*
  * Get a list of explicit arrows on some path between two objects in a category
  * If this path is a list, then this maintains order
  * Assumes there are no cycles
  *)
-val arrows_between : proof_cat -> context_object -> context_object -> arrow list
+val arrows_between : proof_cat -> context_object -> context_object -> evar_map -> (arrow list) state
 
 (*
  * Find ordered paths from an object via explicit arrows
  *)
-val paths_from : proof_cat -> context_object -> arrow list list
+val paths_from : proof_cat -> context_object -> evar_map -> (arrow list list) state
 
 (*
  * Get the length of the shortest path from the initial object to an object
@@ -337,7 +338,7 @@ val paths_from : proof_cat -> context_object -> arrow list list
  * Error if no initial object
  * Error if the object is unreachable
  *)
-val shortest_path_length : proof_cat -> context_object -> int
+val shortest_path_length : proof_cat -> context_object -> evar_map -> int state
 
 (* --- Functors --- *)
 
@@ -345,7 +346,8 @@ val shortest_path_length : proof_cat -> context_object -> int
  * Apply a functor over proof categories
  *)
 val apply_functor :
-  (context_object -> context_object) ->
+  (context_object -> evar_map -> context_object state) ->
   (arrow -> arrow) ->
   proof_cat ->
-  proof_cat
+  evar_map ->
+  proof_cat state

@@ -520,7 +520,7 @@ let arrows_from (c : proof_cat) (o : context_object) =
  * Assumes there are no cycles
  * Maintains order for lists
  *)
-let arrows_between (c : proof_cat) (src : context_object) (dst : context_object)sigma =
+let arrows_between (c : proof_cat) (src : context_object) (dst : context_object) =
 let rec between ms s d =
   branch_state
     (objects_equal d)
@@ -618,5 +618,5 @@ module ProofFunctor = Functor (ProofCat) (ProofCat)
 let apply_functor fo fa (c : proof_cat) =
   bind
     (ProofFunctor.make fo fa)
-    (fun f -> ret (ProofFunctor.apply f c))
+    (fun f -> ProofFunctor.apply f c)
 
