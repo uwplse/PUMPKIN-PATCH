@@ -8,6 +8,7 @@ open Names
 open Debruijn
 open Assumptions
 open Utilities
+open Evd
 
 module CRD = Context.Rel.Declaration
 
@@ -114,12 +115,12 @@ let context_as_app (co : context_object) : types * types array =
  * Then return empty list
  * Then in params_and_prop, test for that and error
  *)
-let unique_common_subpath (paths : arrow list list) : arrow list =
-  List.fold_left
+let unique_common_subpath (paths : arrow list list) =
+  fold_left_state
     (fun l path ->
       match l with
-      | [] -> path
-      | _ -> List.filter (fun m -> snd (contains_arrow m path Evd.empty)) l)
+      | [] -> ret path
+      | _ -> filter_state (fun m -> contains_arrow m path) l)
     []
     paths
 
@@ -137,7 +138,7 @@ let params_and_prop (c : proof_cat) (npms : int) : arrow list * arrow =
     let subpath = List.rev (List.map (Array.get path) (range 0 (npms + 1))) in
     (List.rev (List.tl subpath), List.hd subpath)
   else
-    let common_subpaths = List.rev (unique_common_subpath paths) in
+    let common_subpaths = List.rev (snd (unique_common_subpath paths Evd.empty)) in
     (List.tl common_subpaths, List.hd common_subpaths)
 
 (*
