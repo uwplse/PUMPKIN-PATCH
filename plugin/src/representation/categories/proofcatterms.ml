@@ -147,18 +147,16 @@ let params_and_prop (c : proof_cat) (npms : int) =
 (*
  * From a proof category that represents an inductive proof, get
  * the inductive parameters
- *
- * TODO left off here
  *)
-let params (c : proof_cat) (npms : int) : arrow list =
-  fst (snd (params_and_prop c npms Evd.empty))
+let params (c : proof_cat) (npms : int) =
+  bind (params_and_prop c npms) (fun pair -> ret (fst pair))
 
 (*
  * From a proof category that represents an inductive proof,
  * get the inductive property
  *)
-let prop (c : proof_cat) (npms : int) : arrow =
-  snd (snd (params_and_prop c npms Evd.empty))
+let prop (c : proof_cat) (npms : int) =
+  bind (params_and_prop c npms) (fun pair -> ret (snd pair))
 
 (*
  * Get the only extension in a proof category as a term

@@ -153,7 +153,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
      | _ ->
        if non_empty args_o then
          let env_o = context_env (fst (old_proof d)) in
-         let (_, prop_trm_ext, _) = prop o npms_old in
+         let _, (_, prop_trm_ext, _) = prop o npms_old Evd.empty in
          let prop_trm = ext_term prop_trm_ext in
          let rec prop_arity p =
            match kind p with

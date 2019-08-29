@@ -4,6 +4,8 @@ open Constr
 open Environ
 open Proofcat
 open Names
+open Evd
+open Stateutils
 
 (* --- Construction --- *)
 
@@ -76,7 +78,7 @@ val context_as_app  : context_object -> types * types array
  * This assumes the proof category represents an inductive proof
  * It has undefined behavior if you call it otherwise
  *)
-val params : proof_cat -> int -> arrow list
+val params : proof_cat -> int -> evar_map -> (arrow list) state
 
 (*
  * From a proof category that represents an inductive proof, get
@@ -85,7 +87,7 @@ val params : proof_cat -> int -> arrow list
  * This assumes the proof category represents an inductive proof
  * It has undefined behavior if you call it otherwise
  *)
-val prop : proof_cat -> int -> arrow
+val prop : proof_cat -> int -> evar_map -> arrow state
 
 (*
  * Get the only extension in a proof category as a term

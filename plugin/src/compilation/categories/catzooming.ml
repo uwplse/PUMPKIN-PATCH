@@ -106,8 +106,8 @@ let intro_params nparams d =
               intro_common d
             else
               intro d)
-          (params (old_proof d) nparams)
-          (params (new_proof d) nparams)
+          (snd (params (old_proof d) nparams Evd.empty))
+          (snd (params (new_proof d) nparams Evd.empty))
           (Some d)))
 
 (* --- Zoomers and using zoomers --- *)
