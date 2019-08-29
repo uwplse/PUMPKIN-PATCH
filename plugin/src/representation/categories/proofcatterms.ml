@@ -130,30 +130,35 @@ let unique_common_subpath (paths : arrow list list) =
  *
  * Not sure about reversal
  *)
-let params_and_prop (c : proof_cat) (npms : int) : arrow list * arrow =
+let params_and_prop (c : proof_cat) (npms : int) =
   let i = initial c in
-  let _, paths = paths_from c i Evd.empty in
-  if List.length paths = 1 then
-    let path = Array.of_list (List.hd paths) in
-    let subpath = List.rev (List.map (Array.get path) (range 0 (npms + 1))) in
-    (List.rev (List.tl subpath), List.hd subpath)
-  else
-    let common_subpaths = List.rev (snd (unique_common_subpath paths Evd.empty)) in
-    (List.tl common_subpaths, List.hd common_subpaths)
+  bind
+    (paths_from c i)
+    (fun paths ->   
+      if List.length paths = 1 then
+        let path = Array.of_list (List.hd paths) in
+        let subpath = List.rev (List.map (Array.get path) (range 0 (npms + 1))) in
+        ret (List.rev (List.tl subpath), List.hd subpath)
+      else
+        bind
+          (unique_common_subpath paths)
+          (fun l -> ret (let l = List.rev l in (List.tl l, List.hd l))))
 
 (*
  * From a proof category that represents an inductive proof, get
  * the inductive parameters
+ *
+ * TODO left off here
  *)
 let params (c : proof_cat) (npms : int) : arrow list =
-  fst (params_and_prop c npms)
+  fst (snd (params_and_prop c npms Evd.empty))
 
 (*
  * From a proof category that represents an inductive proof,
  * get the inductive property
  *)
 let prop (c : proof_cat) (npms : int) : arrow =
-  snd (params_and_prop c npms)
+  snd (snd (params_and_prop c npms Evd.empty))
 
 (*
  * Get the only extension in a proof category as a term
