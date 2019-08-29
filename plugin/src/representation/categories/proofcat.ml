@@ -498,7 +498,7 @@ let has_path (c : proof_cat) (src : context_object) (dst : context_object) =
               (fun adj -> ret (non_empty adj))
               (fun adj ->
                 bind
-                  (map_state (map_dest (reaches ms s)) adj)
+                  (map_state (map_dest (fun s' -> reaches ms s' d)) adj)
                   (exists_state (fun s -> ret (id s))))
               adj
               adj))

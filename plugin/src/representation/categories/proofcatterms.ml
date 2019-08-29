@@ -1,5 +1,6 @@
 (* Logic for proof categories that is specific to terms and types *)
 
+open Stateutils
 open Constr
 open Environ
 open Proofcat
@@ -7,7 +8,6 @@ open Names
 open Debruijn
 open Assumptions
 open Utilities
-open Stateutils
 
 module CRD = Context.Rel.Declaration
 
