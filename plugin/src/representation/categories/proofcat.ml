@@ -529,7 +529,7 @@ let rec between ms s d =
       bind
         (arrows_with_source s ms)
         (fun adj sigma ->
-          let sigma, tl = flat_map_state (map_dest (between ms s)) adj sigma in
+          let sigma, tl = flat_map_state (map_dest (fun s' -> between ms s' d)) adj sigma in
           sigma, List.append adj tl))
     s
   in
