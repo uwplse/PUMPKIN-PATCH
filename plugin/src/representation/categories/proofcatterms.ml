@@ -170,14 +170,15 @@ let only_extension_as_term (c : proof_cat) : types =
  * Given a proof category with several paths,
  * construct several proof categories, each with one path.
  *)
-let split (c : proof_cat) : proof_cat list =
+let split (c : proof_cat) =
   let i = initial c in
-  List.map
-    (fun ms ->
-      let os = i :: (conclusions ms) in
-      let (_, _, t) = List.nth ms (List.length ms - 1) in
-      snd (make_category os ms (Some i) (Some t) Evd.empty))
-    (snd (paths_from c i Evd.empty))
+  bind
+    (paths_from c i)
+    (map_state
+       (fun ms sigma ->
+         let os = i :: (conclusions ms) in
+         let (_, _, t) = List.nth ms (List.length ms - 1) in
+         make_category os ms (Some i) (Some t) sigma))
 
 (* --- Transformations on terms and environments --- *)
 

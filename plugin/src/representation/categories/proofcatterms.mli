@@ -100,7 +100,7 @@ val only_extension_as_term : proof_cat -> types
  * Given a proof category with several paths,
  * construct several proof categories, each with one path.
  *)
-val split : proof_cat -> proof_cat list
+val split : proof_cat -> evar_map -> (proof_cat list) state
 
 (* --- Transformations on terms and environments --- *)
 

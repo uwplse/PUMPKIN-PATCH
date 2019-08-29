@@ -191,7 +191,7 @@ let diff_inductive diff d_old opts evd (d : (proof_cat * int) proof_diff) : cand
   else
     zoom_map
       (fun d ->
-        let sort c = base_cases_first (List.map expand_constr (split c)) in
+        let sort c = base_cases_first (List.map expand_constr (snd (split c Evd.empty))) in
         let d_sorted = map_diffs sort id d in
         let ds = dest_cases d_sorted in
         List.map (unshift_by nparams_o) (diff_ind_cases opts evd diff d_old ds))
