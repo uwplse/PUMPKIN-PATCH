@@ -7,6 +7,7 @@ open Names
 open Debruijn
 open Assumptions
 open Utilities
+open Stateutils
 
 module CRD = Context.Rel.Declaration
 
@@ -118,7 +119,7 @@ let unique_common_subpath (paths : arrow list list) : arrow list =
     (fun l path ->
       match l with
       | [] -> path
-      | _ -> List.filter (fun m -> contains_arrow m path) l)
+      | _ -> List.filter (fun m -> snd (contains_arrow m path Evd.empty)) l)
     []
     paths
 
@@ -130,7 +131,7 @@ let unique_common_subpath (paths : arrow list list) : arrow list =
  *)
 let params_and_prop (c : proof_cat) (npms : int) : arrow list * arrow =
   let i = initial c in
-  let paths = paths_from c i in
+  let _, paths = paths_from c i Evd.empty in
   if List.length paths = 1 then
     let path = Array.of_list (List.hd paths) in
     let subpath = List.rev (List.map (Array.get path) (range 0 (npms + 1))) in
@@ -171,8 +172,8 @@ let split (c : proof_cat) : proof_cat list =
     (fun ms ->
       let os = i :: (conclusions ms) in
       let (_, _, t) = List.nth ms (List.length ms - 1) in
-      make_category os ms (Some i) (Some t))
-    (paths_from c i)
+      snd (make_category os ms (Some i) (Some t) Evd.empty))
+    (snd (paths_from c i Evd.empty))
 
 (* --- Transformations on terms and environments --- *)
 
@@ -203,7 +204,7 @@ let closest_ih c (ihs : arrow list) (m : arrow) : context_object * int =
     List.sort
       (fun (_, i1) (_, i2) -> Pervasives.compare i1 i2)
       (List.map
-         (map_dest (fun d -> (d, List.length (arrows_between c d s))))
+         (map_dest (fun d -> (d, List.length (snd (arrows_between c d s Evd.empty)))))
          ihs)
   in List.hd ih_proxes
 
@@ -285,16 +286,18 @@ let shift_ext_by (n : int) (e : extension) : extension =
 
 (* Map the identifiers of contexts of c with f *)
 let map_ids (f : int -> int) (c : proof_cat) : proof_cat =
-  apply_functor
-    (fun (Context (c, id)) ->
-      Context (c, f id))
-    (fun (Context (s, sid), e, Context (d, did)) ->
-      (Context (s, f sid), e, Context (d, f did)))
-    c
+  snd
+    (apply_functor
+       (fun (Context (c, id)) ->
+         ret (Context (c, f id)))
+       (fun (Context (s, sid), e, Context (d, did)) ->
+         (Context (s, f sid), e, Context (d, f did)))
+       c
+       Evd.empty)
 
 (* Get a map from context identifiers to fresh identifiers *)
 let get_fresh_ids (c : proof_cat) : (int * int) list =
-  List.map (fun (Context (_, id)) -> (id, (fid ()))) (objects c)
+  List.map (fun (Context (_, id)) -> (id, (fid ()))) (snd (objects c Evd.empty))
 
 (*
  * Make fresh identifiers for every context in c
@@ -339,8 +342,8 @@ let rec substitute_ext_env (env : env) (e : extension) : extension =
  *)
 let partition_initial_terminal (c : proof_cat) (is_initial : bool) : (context_object list) * arrow * (arrow list) =
   let i_or_t = map_if_else initial terminal is_initial c in
-  let os = all_objects_except i_or_t (objects c) in
-  let maps = map_if_else (maps_from i_or_t) (maps_to i_or_t) is_initial in
+  let _, os = all_objects_except i_or_t (snd (objects c Evd.empty)) Evd.empty in
+  let maps = map_if_else (fun o -> snd (maps_from i_or_t o Evd.empty)) (fun o -> snd (maps_to i_or_t o Evd.empty)) is_initial in
   let (c_or_a, as_or_cs) = List.partition maps (morphisms c) in
   (os, List.hd c_or_a, as_or_cs)
 
@@ -359,7 +362,7 @@ let substitute_terminal (c : proof_cat) (exp : proof_cat) : proof_cat =
       List.append old_assums ((s1, e2, d2) :: ((d2, e3, d3) :: other_concls))
     else
       List.append old_assums ((s1, e2, d2) :: new_concls)
-  in make_category os ms (initial_opt c) (terminal_opt exp)
+  in snd (make_category os ms (initial_opt c) (terminal_opt exp) Evd.empty)
 
 (* --- Merging categories --- *)
 
@@ -373,12 +376,16 @@ let substitute_categories (sc : proof_cat) (dc : proof_cat) : proof_cat =
   let dcf = make_all_fresh dc in
   let t = terminal sc in
   let i = initial dcf in
-  remove_object
-    i
-    (apply_functor
-      id
-      (fun (src, e, dst) -> (map_if (fun _ -> t) (objects_equal i src) src, e, dst))
-      (combine (initial_opt sc) (terminal_opt dcf) sc dcf))
+  snd
+    (remove_object
+       i
+       (snd
+          (apply_functor
+             (fun o -> ret o)
+             (fun (src, e, dst) -> (map_if (fun _ -> t) (snd (objects_equal i src Evd.empty)) src, e, dst))
+             (snd (combine (initial_opt sc) (terminal_opt dcf) sc dcf Evd.empty))
+             Evd.empty))
+       Evd.empty)
 
 (*
  * Find all of the contexts in c where the shortest path is length i
@@ -389,7 +396,7 @@ let contexts_at_index (c : proof_cat) (i : int) : context_object list =
     if n = 0 then
       [o]
     else
-      let adj = arrows_with_source o ms in
+      let _, adj = arrows_with_source o ms Evd.empty in
       flat_map (map_dest (fun d -> find_at ms d (n - 1))) adj
   in find_at (morphisms c) (initial c) i
 
@@ -414,12 +421,12 @@ let merge_first_n (n : int) (c1 : proof_cat) (c2 : proof_cat) : proof_cat =
   assert (n > 0);
   let end1 = context_at_index c1 (n - 1) in
   let end2 = context_at_index c2 (n - 1) in
-  let path2 = arrows_from c2 end2 in
+  let _, path2 = arrows_from c2 end2 Evd.empty in
   let os2 = conclusions path2 in
-  let ms2 = List.map (map_source_arrow (fun o -> map_if (fun _ -> end1) (objects_equal end2 o) o)) path2 in
-  let os = List.append (objects c1) os2 in
+  let ms2 = List.map (map_source_arrow (fun o -> map_if (fun _ -> end1) (snd (objects_equal end2 o Evd.empty)) o)) path2 in
+  let os = List.append (snd (objects c1 Evd.empty)) os2 in
   let ms = List.append (morphisms c1) ms2 in
-  make_category os ms (initial_opt c1) None
+  snd (make_category os ms (initial_opt c1) None Evd.empty)
 
 (*
  * Assume the first n objects in c are equal, and merge
@@ -431,8 +438,8 @@ let merge_up_to_index (n : int) (c : proof_cat) : proof_cat =
     c
   else
     let i = initial c in
-    let ps = paths_from c i in
-    let cs = List.map (fun ms -> make_category (i :: conclusions ms) ms (Some i) None) ps in
+    let _, ps = paths_from c i Evd.empty in
+    let cs = List.map (fun ms -> snd (make_category (i :: conclusions ms) ms (Some i) None Evd.empty)) ps in
     List.fold_left (merge_first_n n) (List.hd cs) (List.tl cs)
 
 (*
@@ -445,13 +452,13 @@ let merge_up_to_index (n : int) (c : proof_cat) : proof_cat =
  * So revisit this later. So far we haven't needed it.
  *)
 let merge_conclusions_nonrec (c : proof_cat) : proof_cat =
-  let non_assums = List.filter (map_dest (is_not_hypothesis c)) (morphisms c) in
+  let non_assums = List.filter (fun m -> snd (map_dest (is_not_hypothesis c) m Evd.empty)) (morphisms c) in
   match conclusions non_assums with
   | h :: t ->
-     let os = all_objects_except_those_in t (objects c) in
-     let merge_h_t o = map_if (fun _ -> h) (contains_object o t) o in
+     let _, os = all_objects_except_those_in t (snd (objects c Evd.empty)) Evd.empty in
+     let merge_h_t o = map_if (fun _ -> h) (snd (contains_object o t Evd.empty)) o in
      let ms = map_arrows (List.map (map_dest_arrow merge_h_t)) c in
-     make_category os ms (initial_opt c) (Some h)
+     snd (make_category os ms (initial_opt c) (Some h) Evd.empty)
   | [] -> c
 
 (*
@@ -475,20 +482,21 @@ let merge_inductive (is_rec : bool) (n : int) (c : proof_cat) : proof_cat =
  *)
 let bind (c : proof_cat) (m : arrow) : proof_cat =
   let (src, e, dst) = m in
-  let t = if is_terminal c src then Some dst else terminal_opt c in
-  let i = if is_initial c dst then Some src else initial_opt c in
-  let c' =
+  let t = if snd (is_terminal c src Evd.empty) then Some dst else terminal_opt c in
+  let i = if snd (is_initial c dst Evd.empty) then Some src else initial_opt c in
+  let _, c' =
     apply_functor
-      id
+      (fun o -> ret o)
       (fun m' ->
-        if arrows_equal (src, AnonymousBinding, dst) m' then
+        if snd (arrows_equal (src, AnonymousBinding, dst) m' Evd.empty) then
           m
         else
           m')
       c
+      Evd.empty
   in map_if
-    (fun c' -> set_initial_terminal i t (add_arrow m c'))
-    (not (category_contains_arrow m c'))
+    (fun c' -> snd (set_initial_terminal i t (snd (add_arrow m c' Evd.empty)) Evd.empty))
+    (not (snd (category_contains_arrow m c' Evd.empty)))
     c'
    
 
@@ -500,34 +508,38 @@ let bind (c : proof_cat) (m : arrow) : proof_cat =
 let bind_apply_function (e : extension) (n : int) (c : proof_cat) : proof_cat =
   let args = List.rev (List.map (fun i -> Index i) (from_one_to n)) in
   let binding = List.fold_left (fun b r -> AppBinding (b, r)) e args in
-  apply_functor
-    id
-    (fun m ->
-      map_if
-        (fun (src, _, dst) -> (src, binding, dst))
-        (maps_to (terminal c) m)
-        m)
-    c
+  snd
+    (apply_functor
+       (fun o -> ret o)
+       (fun m ->
+         map_if
+           (fun (src, _, dst) -> (src, binding, dst))
+           (snd (maps_to (terminal c) m Evd.empty))
+           m)
+       c
+       Evd.empty)
 
 (* Bind an inductive argument arg to the end of c *)
 let bind_inductive_arg (arg : types) (c : proof_cat) : proof_cat =
   let t = terminal c in
   let bound = ext_of_term (context_env t) arg in
-  apply_functor
-    id
-    (fun m ->
-      map_if
-        (map_ext_arrow (fun _ -> bound))
-        (maps_to t m)
-        m)
-    c
+  snd
+    (apply_functor
+       (fun o -> ret o)
+       (fun m ->
+         map_if
+           (map_ext_arrow (fun _ -> bound))
+           (snd (maps_to t m Evd.empty))
+           m)
+       c
+       Evd.empty)
 
 (* Bind an array of inductive arguments args to each category in cs *)
 let bind_inductive_args (args : types array) (cs : proof_cat array) : proof_cat array =
   Array.mapi
     (fun i arg ->
       let c = cs.(i) in
-      let t_index = shortest_path_length c (terminal c) in
+      let _, t_index = shortest_path_length c (terminal c) Evd.empty in
       bind_inductive_arg (shift_by (t_index - 1) arg) c)
     args
 
@@ -633,18 +645,20 @@ let sub_arr_property_params pi pb subs ds m =
  * Substitute a property and parameters into an a category c.
  *)
 let sub_property_params npms pms pb c : proof_cat =
-  let os = objects c in
-  let ds = List.map (fun o -> (context_index o, shortest_path_length c o)) os in
+  let _, os = objects c Evd.empty in
+  let ds = List.map (fun o -> (context_index o, snd (shortest_path_length c o Evd.empty))) os in
   let pms_es = List.map (map_ext ext_term) pms in
   let pms_shift = List.mapi (fun j t -> shift_by_unconditional (- (npms - j)) t) pms_es in
   let pms_shift_rev = List.rev pms_shift in
   let pms_subs = build_n_substitutions npms pms_shift_rev no_substitutions in
   let pi = npms + 1 in
   let pms_subs_shift = unshift_from_substitutions_by pi pms_subs in
-  apply_functor
-    (sub_obj_property_params pi pb pms_subs_shift ds)
-    (sub_arr_property_params pi pb pms_subs_shift ds)
-    c
+  snd
+    (apply_functor
+       (fun o -> ret (sub_obj_property_params pi pb pms_subs_shift ds o))
+       (sub_arr_property_params pi pb pms_subs_shift ds)
+       c
+       Evd.empty)
 
 (*
  * Bind an inductive property p and parameters pms in c
@@ -653,15 +667,15 @@ let sub_property_params npms pms pb c : proof_cat =
  *)
 let bind_property_and_params (po : types option) (pms : types list) (npms : int) (c : proof_cat) : proof_cat =
   let ms = morphisms c in
-  let p_unbound = List.find (maps_to (context_at_index c (npms + 1))) ms in
+  let p_unbound = List.find (fun m -> snd (maps_to (context_at_index c (npms + 1)) m Evd.empty)) ms in
   let po_shift = Option.map (shift_by npms) po in
   let p_bound = bind_property_arrow po_shift p_unbound in
   let (last_param, p_binding, _) = p_bound in
-  let pms_unbound = arrows_between c (initial c) last_param in
+  let _, pms_unbound = arrows_between c (initial c) last_param Evd.empty in
   let pms_shift = List.mapi (fun i p -> shift_by_unconditional (npms - i - 1) p) pms in
   let pms_bound = bind_param_arrows pms_shift pms_unbound in
-  let ms_old = all_arrows_except_those_in (p_unbound :: pms_unbound) ms in
+  let _, ms_old = all_arrows_except_those_in (p_unbound :: pms_unbound) ms Evd.empty in
   let ms' = List.append pms_bound (p_bound :: ms_old) in
-  let c' = make_category (objects c) ms' (initial_opt c) (terminal_opt c) in
+  let _, c' = make_category (snd (objects c Evd.empty)) ms' (initial_opt c) (terminal_opt c) Evd.empty in
   sub_property_params npms pms_bound p_binding c'
 

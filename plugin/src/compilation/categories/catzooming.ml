@@ -1,3 +1,4 @@
+open Stateutils
 open Proofcat
 open Environ
 open Proofdiff
@@ -25,10 +26,10 @@ type 'a zoomer =
 let remove_initial (c : proof_cat) : proof_cat =
   let i = initial c in
   let ms = morphisms c in
-  let os' = all_objects_except i (objects c) in
-  let (ms', ims) = List.partition (map_source (objects_not_equal i)) ms in
+  let _, os' = all_objects_except i (snd (objects c Evd.empty)) Evd.empty in
+  let (ms', ims) = List.partition (map_source (fun o -> snd (objects_not_equal i o Evd.empty))) ms in
   let (_, _, i') = List.hd ims in
-  make_category os' ms' (Some i') (terminal_opt c)
+  snd (make_category os' ms' (Some i') (terminal_opt c) Evd.empty)
 
 (* Remove the first n contexts *)
 let rec remove_first_n (n : int) (c : proof_cat) : proof_cat =
@@ -101,7 +102,7 @@ let intro_params nparams d =
        (List.fold_right2
           (fun (_, e1, _) (_, e2, _) d_opt ->
             let d = Option.get d_opt in
-            if extensions_equal_assums e1 e2 (assumptions d) then
+            if snd (extensions_equal_assums (assumptions d) e1 e2 Evd.empty) then
               intro_common d
             else
               intro d)

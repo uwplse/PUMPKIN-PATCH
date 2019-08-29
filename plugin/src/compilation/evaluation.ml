@@ -36,7 +36,7 @@ let infer_type (env : env) (evd : evar_map) (trm : types) : types =
  *)
 let eval_theorem_bind (e : extension) (env : env) (typ : types) : proof_cat =
   let t = Context (Term (typ, env), (fid ())) in
-  let c = set_terminal (Some t) (add_object t initial_category) in
+  let _, c = set_terminal (Some t) (snd (add_object t (snd (initial_category Evd.empty)) Evd.empty)) Evd.empty in
   bind c (initial_context, e, t)
 
 (* Evaluate an anonymous proof of typ one step *)
@@ -130,7 +130,7 @@ let bind_constrs_to_args fc cs ncs arg_partition =
  *)
 let combine_constrs (default : proof_cat) (cs : proof_cat list) : proof_cat =
   match cs with
-  | h :: t -> List.fold_left (combine (initial_opt h) None) h t
+  | h :: t -> List.fold_left (fun c1 c2 -> snd (combine (initial_opt h) None c1 c2 Evd.empty)) h t
   | [] -> default
 
 (*

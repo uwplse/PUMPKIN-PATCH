@@ -1,5 +1,6 @@
 (* Expanding proof categories *)
 
+open Stateutils
 open Names
 open Environ
 open Evd
@@ -72,9 +73,9 @@ let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
   let cs = List.map (eval_proof env_ind) constrs in
   List.fold_left
     (fun cind c ->
-      let os = (terminal c) :: (objects cind) in
+      let os = (terminal c) :: (snd (objects cind Evd.empty)) in
       let ms = List.append (morphisms c) (morphisms cind) in
-      make_category os ms (initial_opt cind) None)
+      snd (make_category os ms (initial_opt cind) None Evd.empty))
     (List.hd cs)
     (List.tl cs)
 
@@ -143,7 +144,7 @@ let expand_terminal (c : proof_cat) : proof_cat =
   match t with
   | Context (Term (trm, env), i) ->
      let ms = morphisms c in
-     let concls = arrows_with_dest t ms in
+     let _, concls = arrows_with_dest t ms Evd.empty in
      let binding =
        if non_empty concls then
          let (_, ext, _) = List.hd concls in (* arbitrary for now *)
@@ -164,7 +165,7 @@ let expand_terminal (c : proof_cat) : proof_cat =
  *)
 let partition_expandable (c : proof_cat) : (arrow list * arrow list) =
   List.partition
-    (map_dest (fun o -> context_is_product o && is_not_hypothesis c o))
+    (map_dest (fun o -> context_is_product o && snd (is_not_hypothesis c o Evd.empty)))
     (morphisms c)
 
 (*
@@ -175,12 +176,12 @@ let expand_inductive_conclusions (ms : arrow list) : proof_cat list =
   List.map
     (fun (s, e, d) ->
       let dc = expand_product_fully d in
-      let map_i_to_src m = if (objects_equal (initial dc) m) then s else m in
+      let map_i_to_src m = if (snd (objects_equal (initial dc) m Evd.empty)) then s else m in
       let arity = (List.length (morphisms dc)) - 1 in
       bind_apply_function
         (shift_ext_by arity (substitute_ext_env (context_env (terminal dc)) e))
         arity
-        (apply_functor map_i_to_src (map_source_arrow map_i_to_src) dc))
+        (snd (apply_functor (fun o -> ret (map_i_to_src o)) (map_source_arrow map_i_to_src) dc Evd.empty)))
     ms
 
 (*
@@ -194,15 +195,15 @@ let expand_inductive_conclusions (ms : arrow list) : proof_cat list =
  * inductive types.
  *)
 let expand_inductive_conclusions_fully (c : proof_cat) : proof_cat =
-  let c_os = objects c in
+  let _, c_os = objects c Evd.empty in
   let (ms_to_expand, old_ms) = partition_expandable c in
-  let old_os = all_objects_except_those_in (conclusions ms_to_expand) c_os in
+  let _, old_os = all_objects_except_those_in (conclusions ms_to_expand) c_os Evd.empty in
   let expanded = expand_inductive_conclusions ms_to_expand in
-  let new_os = flat_map (map_objects (all_objects_except_those_in c_os)) expanded in
+  let new_os = flat_map (fun os -> snd (map_objects (fun o sigma -> all_objects_except_those_in c_os o sigma) os Evd.empty)) expanded in
   let new_ms = flat_map morphisms expanded in
   let os = List.append old_os new_os in
   let ms = List.append old_ms new_ms in
-  make_category os ms (initial_opt c) None
+  snd (make_category os ms (initial_opt c) None Evd.empty)
 
 (* For an inductive proof, expand n inductive parameters and the principle P *)
 let expand_inductive_params (n : int) (c : proof_cat) : proof_cat =
@@ -217,8 +218,8 @@ let expand_inductive_params (n : int) (c : proof_cat) : proof_cat =
 let applies_ih (env : env) (evd : evar_map) (p : types) (c : proof_cat) (o : context_object) : bool =
   if context_is_app o then
     let (f, _) = context_as_app o in
-    let f = unshift_by (shortest_path_length c o) f in
-    is_hypothesis c o && has_type env evd p f
+    let f = unshift_by (snd (shortest_path_length c o Evd.empty)) f in
+    snd (is_hypothesis c o Evd.empty) && has_type env evd p f
   else
     false
 
@@ -233,14 +234,16 @@ let bind_ihs (c : proof_cat) : proof_cat =
   let env_with_p = context_env (context_at_index c 1) in
   let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
   let env = pop_rel_context 1 env_with_p in
-  apply_functor
-    id
-    (fun m ->
-      if map_dest (applies_ih env Evd.empty p c) m then
-        map_ext_arrow (fun _ -> fresh_ih ()) m
-      else
-        m)
-    c
+  snd
+    (apply_functor
+       (fun o -> ret o)
+       (fun m ->
+         if map_dest (applies_ih env Evd.empty p c) m then
+           map_ext_arrow (fun _ -> fresh_ih ()) m
+         else
+           m)
+       c
+       Evd.empty)
 
 (*
  * Expand an inductive constructor
@@ -252,8 +255,8 @@ let expand_constr (c : proof_cat) : proof_cat =
   let ms = morphisms c_exp in
   let assums = hypotheses ms in
   let concls = conclusions ms in
-  let tr = List.hd (all_objects_except_those_in assums concls) in (*arbitrary*)
-  make_category (objects c_exp) ms (initial_opt c_exp) (Some tr)
+  let tr = List.hd (snd (all_objects_except_those_in assums concls Evd.empty)) in (*arbitrary*)
+  snd (make_category (snd (objects c_exp Evd.empty)) ms (initial_opt c_exp) (Some tr) Evd.empty)
 
 (*
  * Expand the application of a constant function
