@@ -410,13 +410,14 @@ let substitute_categories (sc : proof_cat) (dc : proof_cat) =
  * Find all of the contexts in c where the shortest path is length i
  * Assumes c has an initial object
  *)
-let contexts_at_index (c : proof_cat) (i : int) : context_object list =
+let contexts_at_index (c : proof_cat) (i : int) =
   let rec find_at ms o n =
     if n = 0 then
-      [o]
+      ret [o]
     else
-      let _, adj = arrows_with_source o ms Evd.empty in
-      snd (flat_map_state (map_dest (fun d sigma -> sigma, find_at ms d (n - 1))) adj Evd.empty)
+      bind
+        (arrows_with_source o ms)
+        (flat_map_state (map_dest (fun d -> find_at ms d (n - 1))))
   in find_at (morphisms c) (initial c) i
 
 (*
@@ -425,7 +426,7 @@ let contexts_at_index (c : proof_cat) (i : int) : context_object list =
  * Assumes c has an initial object
  *)
 let context_at_index (c : proof_cat) (i : int) : context_object =
-  let ois = contexts_at_index c i in
+  let _, ois = contexts_at_index c i Evd.empty in
   assert ((List.length ois) = 1);
   List.hd ois
 
