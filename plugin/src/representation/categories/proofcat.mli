@@ -109,12 +109,12 @@ val not_contains_arrow : arrow -> arrow list -> evar_map -> bool state
 (*
  * Map a function on the source of an arrow
  *)
-val map_source : (context_object -> 'a) -> arrow -> 'a
+val map_source : (context_object -> evar_map -> 'a state) -> arrow -> evar_map -> 'a state
 
 (*
  * Map a function on the destination of an arrow
  *)
-val map_dest : (context_object -> 'a) -> arrow -> 'a
+val map_dest : (context_object -> evar_map -> 'a state) -> arrow -> evar_map -> 'a state
 
 (*
  * Map a function on the extension of an arrow
@@ -124,12 +124,12 @@ val map_ext : (extension -> 'a) -> arrow -> 'a
 (*
  * Map a function on the destination of an arrow and return a new arrow
  *)
-val map_source_arrow : (context_object -> context_object) -> arrow -> arrow
+val map_source_arrow : (context_object -> evar_map -> context_object state) -> arrow -> evar_map -> arrow state
 
 (*
  * Map a function on the source of an arrow and return a new arrow
  *)
-val map_dest_arrow : (context_object -> context_object) -> arrow -> arrow
+val map_dest_arrow : (context_object -> evar_map -> context_object state) -> arrow -> evar_map -> arrow state
 
 (*
  * Map a function on the extension of an arrow and return a new arrow

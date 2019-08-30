@@ -27,7 +27,7 @@ let remove_initial (c : proof_cat) : proof_cat =
   let i = initial c in
   let ms = morphisms c in
   let _, os' = all_objects_except i (snd (objects c Evd.empty)) Evd.empty in
-  let (ms', ims) = List.partition (map_source (fun o -> snd (objects_not_equal i o Evd.empty))) ms in
+  let (ms', ims) = List.partition (fun m -> snd (map_source (fun o sigma -> objects_not_equal i o sigma) m Evd.empty)) ms in
   let (_, _, i') = List.hd ims in
   snd (make_category os' ms' (Some i') (terminal_opt c) Evd.empty)
 

@@ -203,20 +203,28 @@ let find_ihs (c : proof_cat) : arrow list =
   List.filter arrow_is_ih (morphisms c)
 
 (* Find the distance to the closest IH to m given a list of IHs *)
-let closest_ih c (ihs : arrow list) (m : arrow) : context_object * int =
+(* TODO clean *)
+let closest_ih c (ihs : arrow list) (m : arrow) sigma : (context_object * int) state =
   let (s, _, _) = m in
+  let sigma, ih_distances =
+    map_state
+      (map_dest
+         (fun d sigma ->
+           let sigma, path = arrows_between c d s sigma in
+           sigma, (d, List.length path)))
+      ihs
+      sigma
+  in
   let ih_proxes =
     List.sort
       (fun (_, i1) (_, i2) -> Pervasives.compare i1 i2)
-      (List.map
-         (map_dest (fun d -> (d, List.length (snd (arrows_between c d s Evd.empty)))))
-         ihs)
-  in List.hd ih_proxes
+      ih_distances
+  in sigma, List.hd ih_proxes
 
 (* Determine which arrow is closer to an IH *)
 let closer_to_ih c (ihs : arrow list) (m1 : arrow) (m2 : arrow) : int =
-  let (m1_ih_dst, m1_ih_prox) = closest_ih c ihs m1 in
-  let (m2_ih_dst, m2_ih_prox) = closest_ih c ihs m2 in
+  let _, (m1_ih_dst, m1_ih_prox) = closest_ih c ihs m1 Evd.empty in
+  let _, (m2_ih_dst, m2_ih_prox) = closest_ih c ihs m2 Evd.empty in
   let ih_1_index = shortest_path_length c m1_ih_dst in
   let ih_2_index = shortest_path_length c m2_ih_dst in
   if m1_ih_prox = m2_ih_prox then
@@ -402,7 +410,7 @@ let contexts_at_index (c : proof_cat) (i : int) : context_object list =
       [o]
     else
       let _, adj = arrows_with_source o ms Evd.empty in
-      flat_map (map_dest (fun d -> find_at ms d (n - 1))) adj
+      snd (flat_map_state (map_dest (fun d sigma -> sigma, find_at ms d (n - 1))) adj Evd.empty)
   in find_at (morphisms c) (initial c) i
 
 (*
@@ -428,7 +436,7 @@ let merge_first_n (n : int) (c1 : proof_cat) (c2 : proof_cat) : proof_cat =
   let end2 = context_at_index c2 (n - 1) in
   let _, path2 = arrows_from c2 end2 Evd.empty in
   let os2 = conclusions path2 in
-  let ms2 = List.map (map_source_arrow (fun o -> map_if (fun _ -> end1) (snd (objects_equal end2 o Evd.empty)) o)) path2 in
+  let _, ms2 = map_state (map_source_arrow (fun o sigma -> sigma, map_if (fun _ -> end1) (snd (objects_equal end2 o sigma)) o)) path2 Evd.empty in
   let os = List.append (snd (objects c1 Evd.empty)) os2 in
   let ms = List.append (morphisms c1) ms2 in
   snd (make_category os ms (initial_opt c1) None Evd.empty)
@@ -461,8 +469,8 @@ let merge_conclusions_nonrec (c : proof_cat) : proof_cat =
   match conclusions non_assums with
   | h :: t ->
      let _, os = all_objects_except_those_in t (snd (objects c Evd.empty)) Evd.empty in
-     let merge_h_t o = map_if (fun _ -> h) (snd (contains_object o t Evd.empty)) o in
-     let ms = map_arrows (List.map (map_dest_arrow merge_h_t)) c in
+     let merge_h_t o sigma = map_if (fun _ -> sigma, h) (snd (contains_object o t Evd.empty)) (sigma, o) in
+     let _, ms = map_arrows (map_state (map_dest_arrow merge_h_t)) c Evd.empty in
      snd (make_category os ms (initial_opt c) (Some h) Evd.empty)
   | [] -> c
 
@@ -553,7 +561,7 @@ let bind_inductive_args (args : types array) (cs : proof_cat array) : proof_cat 
  * Get the arrow for binding an optional property
  *)
 let bind_property_arrow (po : types option) (m : arrow) : arrow =
-  let env = map_dest context_env m in
+  let _, env = map_dest (fun o -> ret (context_env o)) m Evd.empty in
   map_ext_arrow (fun e -> Option.default e (Option.map (ext_of_term env) po)) m
 
 (*
@@ -561,7 +569,8 @@ let bind_property_arrow (po : types option) (m : arrow) : arrow =
  * Get the arrows for binding a list of parameters
  *)
 let bind_param_arrows (ps : types list) (ms : arrow list) : arrow list =
-  let envs = Array.of_list (List.map (map_dest context_env) ms) in
+  let _, envs = map_state (map_dest (fun o -> ret (context_env o))) ms Evd.empty in
+  let envs = Array.of_list envs in
   let pes = Array.of_list (List.mapi (fun i p -> ext_of_term envs.(i) p) ps) in
   List.mapi
     (fun i m ->

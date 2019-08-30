@@ -165,7 +165,7 @@ let expand_terminal (c : proof_cat) : proof_cat =
  *)
 let partition_expandable (c : proof_cat) : (arrow list * arrow list) =
   List.partition
-    (map_dest (fun o -> context_is_product o && snd (is_not_hypothesis c o Evd.empty)))
+    (fun m -> snd (map_dest (fun o sigma -> sigma, context_is_product o && snd (is_not_hypothesis c o sigma)) m Evd.empty))
     (morphisms c)
 
 (*
@@ -176,12 +176,12 @@ let expand_inductive_conclusions (ms : arrow list) : proof_cat list =
   List.map
     (fun (s, e, d) ->
       let dc = expand_product_fully d in
-      let map_i_to_src m = if (snd (objects_equal (initial dc) m Evd.empty)) then s else m in
+      let map_i_to_src m sigma = sigma, if (snd (objects_equal (initial dc) m Evd.empty)) then s else m in
       let arity = (List.length (morphisms dc)) - 1 in
       bind_apply_function
         (shift_ext_by arity (substitute_ext_env (context_env (terminal dc)) e))
         arity
-        (snd (apply_functor (fun o -> ret (map_i_to_src o)) (map_source_arrow map_i_to_src) dc Evd.empty)))
+        (snd (apply_functor map_i_to_src (fun a -> snd (map_source_arrow map_i_to_src a Evd.empty)) dc Evd.empty)))
     ms
 
 (*
@@ -238,7 +238,7 @@ let bind_ihs (c : proof_cat) : proof_cat =
     (apply_functor
        (fun o -> ret o)
        (fun m ->
-         if map_dest (applies_ih env Evd.empty p c) m then
+         if snd (map_dest (fun o sigma -> sigma, applies_ih env sigma p c o) m Evd.empty) then
            map_ext_arrow (fun _ -> fresh_ih ()) m
          else
            m)

@@ -62,10 +62,9 @@ struct
     true
 
   let equal (c1 : t) (c2 : t) =
-    ret
-      (let Context (ctx1, i1) = c1 in
-       let Context (ctx2, i2) = c2 in
-       (i1 = i2) && (ctx_equal ctx1 ctx2))
+    let Context (ctx1, i1) = c1 in
+    let Context (ctx2, i2) = c2 in
+    ret ((i1 = i2) && (ctx_equal ctx1 ctx2))
 end
 
 module Extension =
@@ -207,14 +206,14 @@ let not_contains_arrow (m : arrow) (ms : arrow list) =
 (*
  * Map a function on the source of an arrow
  *)
-let map_source (f : context_object -> 'a) (m : arrow) : 'a =
+let map_source (f : context_object -> evar_map -> 'a state) (m : arrow) =
   let (src, _, _) = m in
   f src
 
 (*
  * Map a function on the destination of an arrow
  *)
-let map_dest (f : context_object -> 'a) (m : arrow) : 'a =
+let map_dest (f : context_object -> evar_map -> 'a state) (m : arrow) =
   let (_, _, dst) = m in
   f dst
 
@@ -228,16 +227,16 @@ let map_ext (f : extension -> 'a) (m : arrow) : 'a =
 (*
  * Map a function on the source of an arrow and return a new arrow
  *)
-let map_source_arrow (f : context_object -> context_object) (m : arrow) : arrow =
+let map_source_arrow (f : context_object -> evar_map -> context_object state) (m : arrow) =
   let (src, e, dst) = m in
-  (f src, e, dst)
+  bind (f src) (fun o -> ret (o, e, dst))
 
 (*
  * Map a function on the destination of an arrow and return a new arrow
  *)
-let map_dest_arrow (f : context_object -> context_object) (m : arrow) : arrow =
+let map_dest_arrow (f : context_object -> evar_map -> context_object state) (m : arrow) =
   let (src, e, dst) = m in
-  (src, e, f dst)
+  bind (f dst) (fun o -> ret (src, e, o))
 
 (*
  * Map a function on the extension of an arrow and return a new arrow
@@ -297,8 +296,8 @@ let all_arrows_except_those_in (except : arrow list) (ms : arrow list) =
 (*
  * Return all arrows from ms that start from src
  *)
-let arrows_with_source (src : context_object) (ms : arrow list) =
-  filter_state (maps_from src) ms
+let arrows_with_source (src : context_object) (ms : arrow list) sigma =
+  filter_state (fun m sigma -> maps_from src m sigma) ms sigma
 
 (*
  * Return all arrows from ms that end with dst
