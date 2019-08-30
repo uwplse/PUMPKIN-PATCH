@@ -231,7 +231,7 @@ let applies_ih (env : env) (evd : evar_map) (p : types) (c : proof_cat) (o : con
  * So we should test for that case
  *)
 let bind_ihs (c : proof_cat) : proof_cat =
-  let env_with_p = context_env (context_at_index c 1) in
+  let env_with_p = context_env (snd (context_at_index c 1 Evd.empty)) in
   let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
   let env = pop_rel_context 1 env_with_p in
   snd

@@ -170,14 +170,7 @@ val substitute_categories : proof_cat -> proof_cat -> evar_map -> proof_cat stat
  * Errors if more than one such context exists
  * Assumes there is an initial object
  *)
-val context_at_index : proof_cat -> int -> context_object
-
-(*
- * Assume the first n objects in a category are equal, and merge
- * any objects at that index
- * Assume the category has an initial object
- *)
-val merge_up_to_index : int -> proof_cat -> proof_cat
+val context_at_index : proof_cat -> int -> evar_map -> context_object state
 
 (*
  * Merge an inductive type

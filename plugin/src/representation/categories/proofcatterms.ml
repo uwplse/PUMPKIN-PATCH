@@ -425,10 +425,12 @@ let contexts_at_index (c : proof_cat) (i : int) =
  * Errors if more than one such context exists
  * Assumes c has an initial object
  *)
-let context_at_index (c : proof_cat) (i : int) : context_object =
-  let _, ois = contexts_at_index c i Evd.empty in
-  assert ((List.length ois) = 1);
-  List.hd ois
+let context_at_index (c : proof_cat) (i : int) =
+  bind
+    (contexts_at_index c i)
+    (fun ois ->
+      assert ((List.length ois) = 1);
+      ret (List.hd ois))
 
 (*
  * Merge the first n contexts, and from there on out, include everything from both c1 and c2
@@ -437,30 +439,48 @@ let context_at_index (c : proof_cat) (i : int) : context_object =
  * Assumes the first n contexts are equal
  * Assumes c1 and c2 both have initial contexs
  *)
-let merge_first_n (n : int) (c1 : proof_cat) (c2 : proof_cat) : proof_cat =
+let merge_first_n (n : int) (c1 : proof_cat) (c2 : proof_cat) sigma =
   assert (n > 0);
-  let end1 = context_at_index c1 (n - 1) in
-  let end2 = context_at_index c2 (n - 1) in
-  let _, path2 = arrows_from c2 end2 Evd.empty in
-  let os2 = conclusions path2 in
-  let _, ms2 = map_state (map_source_arrow (fun o sigma -> sigma, map_if (fun _ -> end1) (snd (objects_equal end2 o sigma)) o)) path2 Evd.empty in
-  let os = List.append (snd (objects c1 Evd.empty)) os2 in
+  let sigma, end1 = context_at_index c1 (n - 1) sigma in
+  let sigma, end2 = context_at_index c2 (n - 1) sigma in
+  let sigma, (os2, ms2) =
+    bind
+      (arrows_from c2 end2)
+      (fun path2 ->
+        bind
+          (map_state
+            (map_source_arrow
+               (branch_state (objects_equal end2) (fun _ -> ret end1) ret))
+            path2)
+          (fun ms2 -> ret (conclusions path2, ms2)))
+      sigma
+  in
+  let sigma, (os1, ms1) =
+    bind
+      (objects c1)
+      (fun os1 -> ret (os1, morphisms c1))
+      sigma
+  in
+  let os = List.append os1 os2 in
   let ms = List.append (morphisms c1) ms2 in
-  snd (make_category os ms (initial_opt c1) None Evd.empty)
+  make_category os ms (initial_opt c1) None sigma
 
 (*
  * Assume the first n objects in c are equal, and merge
  * any objects at that index
  * Assume c has an initial object
  *)
-let merge_up_to_index (n : int) (c : proof_cat) : proof_cat =
+let merge_up_to_index (n : int) (c : proof_cat) =
   if n <= 1 then
-    c
+    ret c
   else
     let i = initial c in
-    let _, ps = paths_from c i Evd.empty in
-    let cs = List.map (fun ms -> snd (make_category (i :: conclusions ms) ms (Some i) None Evd.empty)) ps in
-    List.fold_left (merge_first_n n) (List.hd cs) (List.tl cs)
+    bind
+      (bind
+         (paths_from c i)
+         (map_state
+            (fun ms -> make_category (i :: conclusions ms) ms (Some i) None)))
+      (fun cs -> fold_left_state (merge_first_n n) (List.hd cs) (List.tl cs))
 
 (*
  * Merge the conclusions for a non-recursive inductive type
@@ -487,7 +507,7 @@ let merge_conclusions_nonrec (c : proof_cat) : proof_cat =
  * Otherwise, merge the n parameters and also the conclusions
  *)
 let merge_inductive (is_rec : bool) (n : int) (c : proof_cat) : proof_cat =
-  let merged_params_c = merge_up_to_index (n + 1) c in
+  let _, merged_params_c = merge_up_to_index (n + 1) c Evd.empty in
   if is_rec then
     merged_params_c
   else
@@ -692,7 +712,7 @@ let sub_property_params npms pms pb c : proof_cat =
  *)
 let bind_property_and_params (po : types option) (pms : types list) (npms : int) (c : proof_cat) : proof_cat =
   let ms = morphisms c in
-  let p_unbound = List.find (fun m -> snd (maps_to (context_at_index c (npms + 1)) m Evd.empty)) ms in
+  let p_unbound = List.find (fun m -> snd (maps_to (snd (context_at_index c (npms + 1) Evd.empty)) m Evd.empty)) ms in
   let po_shift = Option.map (shift_by npms) po in
   let p_bound = bind_property_arrow po_shift p_unbound in
   let (last_param, p_binding, _) = p_bound in
