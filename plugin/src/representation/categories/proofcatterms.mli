@@ -179,7 +179,7 @@ val context_at_index : proof_cat -> int -> evar_map -> context_object state
  * If the type is recursive, just merge the parameters
  * Otherwise, merge the parameters and also the conclusions
  *)
-val merge_inductive : bool -> int -> proof_cat -> proof_cat
+val merge_inductive : bool -> int -> proof_cat -> evar_map -> proof_cat state
 
 (* --- Binding --- *)
 

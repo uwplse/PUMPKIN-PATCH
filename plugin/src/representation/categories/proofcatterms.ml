@@ -491,27 +491,37 @@ let merge_up_to_index (n : int) (c : proof_cat) =
  *
  * So revisit this later. So far we haven't needed it.
  *)
-let merge_conclusions_nonrec (c : proof_cat) : proof_cat =
-  let non_assums = List.filter (fun m -> snd (map_dest (is_not_hypothesis c) m Evd.empty)) (morphisms c) in
-  match conclusions non_assums with
-  | h :: t ->
-     let _, os = all_objects_except_those_in t (snd (objects c Evd.empty)) Evd.empty in
-     let merge_h_t o sigma = map_if (fun _ -> sigma, h) (snd (contains_object o t Evd.empty)) (sigma, o) in
-     let _, ms = map_arrows (map_state (map_dest_arrow merge_h_t)) c Evd.empty in
-     snd (make_category os ms (initial_opt c) (Some h) Evd.empty)
-  | [] -> c
+let merge_conclusions_nonrec (c : proof_cat) =
+  bind
+    (filter_state (map_dest (is_not_hypothesis c)) (morphisms c))
+    (fun non_assums ->
+      match conclusions non_assums with
+      | h :: t ->
+         let merge_h_t =
+           branch_state (fun o -> contains_object o t) (fun _ -> ret h) ret
+         in
+         bind
+           (bind (objects c) (all_objects_except_those_in t))
+           (fun os ->
+             bind
+               (map_arrows (map_state (map_dest_arrow merge_h_t)) c)
+               (fun ms -> make_category os ms (initial_opt c) (Some h)))
+      | [] ->
+         ret c)
 
 (*
  * Merge an inductive type
  * If is_rec, just merge the parameters
  * Otherwise, merge the n parameters and also the conclusions
  *)
-let merge_inductive (is_rec : bool) (n : int) (c : proof_cat) : proof_cat =
-  let _, merged_params_c = merge_up_to_index (n + 1) c Evd.empty in
-  if is_rec then
-    merged_params_c
-  else
-    merge_conclusions_nonrec merged_params_c
+let merge_inductive (is_rec : bool) (n : int) (c : proof_cat) =
+  bind
+    (merge_up_to_index (n + 1) c)
+    (fun merged_params_c ->
+      if is_rec then
+        ret merged_params_c
+      else
+        merge_conclusions_nonrec merged_params_c)
 
 (* --- Binding --- *)
 
