@@ -37,7 +37,7 @@ let infer_type (env : env) (evd : evar_map) (trm : types) : types =
 let eval_theorem_bind (e : extension) (env : env) (typ : types) : proof_cat =
   let t = Context (Term (typ, env), (fid ())) in
   let _, c = set_terminal (Some t) (snd (add_object t (snd (initial_category Evd.empty)) Evd.empty)) Evd.empty in
-  bind c (initial_context, e, t)
+  snd (bind_cat c (initial_context, e, t) Evd.empty)
 
 (* Evaluate an anonymous proof of typ one step *)
 let eval_theorem (env : env) (typ : types) : proof_cat =
@@ -119,7 +119,7 @@ let bind_constrs_to_args fc cs ncs arg_partition =
   let non_params = Array.of_list arg_partition.non_params in
   let num_non_params = Array.length non_params in
   let cs_params = Array.of_list (List.map (fun c -> snd (substitute_terminal fc c Evd.empty)) cs) in
-  let cs_args = Array.to_list (bind_inductive_args non_params cs_params) in
+  let cs_args = Array.to_list (snd (bind_inductive_args non_params cs_params Evd.empty)) in
   let cs_no_args = List.map (Array.get cs_params) (range num_non_params (List.length cs)) in
   List.append cs_args cs_no_args
 
@@ -149,7 +149,7 @@ let eval_induction (mutind_body : mutual_inductive_body) (fc : proof_cat) (args 
     let c = combine_constrs fc cs_bound in
     let property = arg_partition.property in
     let params = arg_partition.params in
-    let c_bound = bind_property_and_params property params npms c in
+    let _, c_bound = bind_property_and_params property params npms c Evd.empty in
     (c_bound, npms, arg_partition.final_args)
   else
     (fc, npms, [])

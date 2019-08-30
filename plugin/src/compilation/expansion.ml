@@ -49,7 +49,7 @@ let expand_product (env : env) ((n, t, b) : Name.t * types * types) : proof_cat 
   let env' = push_rel CRD.(LocalAssum(n, t)) env in
   let b' = eval_theorem env' b in
   let _, c = substitute_categories t' b' Evd.empty in
-  bind c (initial c, LazyBinding (mkRel 1, env'), terminal t')
+  snd (bind_cat c (initial c, LazyBinding (mkRel 1, env'), terminal t') Evd.empty)
 
 (* Expand a lambda term exactly once *)
 let expand_lambda (env : env) ((n, t, b) : Name.t * types * types) : proof_cat =
@@ -88,7 +88,7 @@ let expand_app (env : env) ((f, args) : types * types array) =
   let arg = args.(0) in
   let f' = eval_proof env (mkApp (f, Array.make 1 arg)) in
   let _, arg' = substitute_categories (eval_proof env arg) f' Evd.empty in
-  bind_apply_function (LazyBinding (f, env)) 1 arg'
+  snd (bind_apply_function (LazyBinding (f, env)) 1 arg' Evd.empty)
 
 (* --- Contexts --- *)
 
@@ -128,7 +128,7 @@ let expand_product_fully (o : context_object) : proof_cat =
        let env' = push_rel CRD.(LocalAssum(n, t)) env in
        let b'' = expand_fully env' (n', t', b') in
        let _, c = substitute_categories t'' b'' Evd.empty in
-       bind c (initial c, LazyBinding (mkRel 1, env'), terminal t'')
+       snd (bind_cat c (initial c, LazyBinding (mkRel 1, env'), terminal t'') Evd.empty)
     | _ ->
        expand_product env (n, t, b)
   in expand_fully (context_env o) (destProd (fst (dest_context_term o)))
@@ -178,10 +178,12 @@ let expand_inductive_conclusions (ms : arrow list) : proof_cat list =
       let dc = expand_product_fully d in
       let map_i_to_src m sigma = sigma, if (snd (objects_equal (initial dc) m Evd.empty)) then s else m in
       let arity = (List.length (morphisms dc)) - 1 in
-      bind_apply_function
-        (shift_ext_by arity (substitute_ext_env (context_env (terminal dc)) e))
-        arity
-        (snd (apply_functor map_i_to_src (map_source_arrow map_i_to_src) dc Evd.empty)))
+      snd
+        (bind_apply_function
+           (shift_ext_by arity (substitute_ext_env (context_env (terminal dc)) e))
+           arity
+           (snd (apply_functor map_i_to_src (map_source_arrow map_i_to_src) dc Evd.empty))
+           Evd.empty))
     ms
 
 (*

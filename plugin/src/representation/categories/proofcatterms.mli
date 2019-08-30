@@ -189,21 +189,21 @@ val merge_inductive : bool -> int -> proof_cat -> evar_map -> proof_cat state
  * then substitute the provided extension
  * Otherwise, add the new binding
  *)
-val bind : proof_cat -> arrow -> proof_cat
+val bind_cat : proof_cat -> arrow -> evar_map -> proof_cat state
 
 (*
  * Build a function application for the last extension in a proof category
  * The provided extension holds the function before it is applied
  * Apply that to the provided number most recent local bindings
  *)
-val bind_apply_function : extension -> int -> proof_cat -> proof_cat
+val bind_apply_function : extension -> int -> proof_cat -> evar_map -> proof_cat state
 
 (*
  * Bind an array of arguments to each category in an array of categories,
  * where each category in the array is an inductive constructor,
  * and each argument is an argument to the respective constructor
  *)
-val bind_inductive_args : types array -> proof_cat array -> proof_cat array
+val bind_inductive_args : types array -> proof_cat array -> evar_map -> (proof_cat array) state
 
 (*
  * Bind an inductive property and inductive parameters
@@ -212,5 +212,5 @@ val bind_inductive_args : types array -> proof_cat array -> proof_cat array
  * Pass the total number of possible params in an int
  *)
 val bind_property_and_params :
-  types option -> types list -> int -> proof_cat -> proof_cat
+  types option -> types list -> int -> proof_cat -> evar_map -> proof_cat state
 

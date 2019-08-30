@@ -529,27 +529,30 @@ let merge_inductive (is_rec : bool) (n : int) (c : proof_cat) =
  * Bind an arrow from src to dst of m in c with extension e of m
  * If an arrow with an anonymous binding exists, then bind that arrow
  * Otherwise, add the arrow if it doesn't exist
- *
- * TODO rename!
  *)
-let bind (c : proof_cat) (m : arrow) : proof_cat =
+let bind_cat (c : proof_cat) (m : arrow) sigma =
   let (src, e, dst) = m in
-  let t = if snd (is_terminal c src Evd.empty) then Some dst else terminal_opt c in
-  let i = if snd (is_initial c dst Evd.empty) then Some src else initial_opt c in
-  let _, c' =
-    apply_functor
-      (fun o -> ret o)
-      (fun m' ->
-        if snd (arrows_equal (src, AnonymousBinding, dst) m' Evd.empty) then
-          ret m
-        else
-          ret m')
-      c
-      Evd.empty
-  in map_if
-    (fun c' -> snd (set_initial_terminal i t (snd (add_arrow m c' Evd.empty)) Evd.empty))
-    (not (snd (category_contains_arrow m c' Evd.empty)))
-    c'
+  let get_i_t is_i_t o1 o2 i_t_opt =
+    branch_state
+      (fun c -> is_i_t c o1)
+      (fun _ -> ret (Some o2))
+      (fun c -> ret (i_t_opt c))
+  in
+  let sigma, t = get_i_t is_terminal src dst terminal_opt c sigma in
+  let sigma, i = get_i_t is_initial dst src initial_opt c sigma in
+  bind
+    (apply_functor
+      ret
+      (branch_state
+         (arrows_equal (src, AnonymousBinding, dst))
+         (fun _ -> ret m)
+         ret)
+      c)
+    (branch_state
+       (category_contains_arrow m)
+       (fun c -> bind (add_arrow m c) (set_initial_terminal i t))
+       ret)
+    sigma
    
 
 (*
@@ -557,66 +560,69 @@ let bind (c : proof_cat) (m : arrow) : proof_cat =
  * The extension e holds the function before it is applied
  * Apply that to the n most recent local bindings
  *)
-let bind_apply_function (e : extension) (n : int) (c : proof_cat) : proof_cat =
+let bind_apply_function (e : extension) (n : int) (c : proof_cat) =
   let args = List.rev (List.map (fun i -> Index i) (from_one_to n)) in
   let binding = List.fold_left (fun b r -> AppBinding (b, r)) e args in
-  snd
-    (apply_functor
-       (fun o -> ret o)
-       (fun m ->
-         ret
-           (map_if
-              (fun (src, _, dst) -> (src, binding, dst))
-              (snd (maps_to (terminal c) m Evd.empty))
-              m))
-       c
-       Evd.empty)
+  apply_functor
+    ret
+    (branch_state
+       (maps_to (terminal c))
+       (fun (src, _, dst) -> ret (src, binding, dst))
+       ret)
+    c
 
 (* Bind an inductive argument arg to the end of c *)
-let bind_inductive_arg (arg : types) (c : proof_cat) : proof_cat =
+let bind_inductive_arg (arg : types) (c : proof_cat) =
   let t = terminal c in
   let bound = ext_of_term (context_env t) arg in
-  snd
-    (apply_functor
-       (fun o -> ret o)
-       (fun m ->
-         ret
-           (map_if
-              (map_ext_arrow (fun _ -> bound))
-              (snd (maps_to t m Evd.empty))
-              m))
-       c
-       Evd.empty)
+  apply_functor
+    ret
+    (branch_state
+      (maps_to t)
+      (fun m -> ret (map_ext_arrow (fun _ -> bound) m))
+      ret)
+    c
 
 (* Bind an array of inductive arguments args to each category in cs *)
-let bind_inductive_args (args : types array) (cs : proof_cat array) : proof_cat array =
-  Array.mapi
-    (fun i arg ->
+let bind_inductive_args (args : types array) (cs : proof_cat array) =
+  map_state_array
+    (fun (i, arg) ->
       let c = cs.(i) in
-      let _, t_index = shortest_path_length c (terminal c) Evd.empty in
-      bind_inductive_arg (shift_by (t_index - 1) arg) c)
-    args
+      bind
+        (shortest_path_length c (terminal c))
+        (fun t_index -> bind_inductive_arg (shift_by (t_index - 1) arg) c))
+    (Array.mapi (fun i arg -> (i, arg)) args)
 
 (*
  * Auxiliary function for binding properties and parameters
  * Get the arrow for binding an optional property
  *)
-let bind_property_arrow (po : types option) (m : arrow) : arrow =
-  let _, env = map_dest (fun o -> ret (context_env o)) m Evd.empty in
-  map_ext_arrow (fun e -> Option.default e (Option.map (ext_of_term env) po)) m
+let bind_property_arrow (po : types option) (m : arrow) =
+  bind
+    (map_dest (fun o -> ret (context_env o)) m)
+    (fun env ->
+      ret
+        (map_ext_arrow
+           (fun e -> Option.default e (Option.map (ext_of_term env) po))
+           m))
 
 (*
  * Auxiliary function for binding properties and parameters
  * Get the arrows for binding a list of parameters
  *)
-let bind_param_arrows (ps : types list) (ms : arrow list) : arrow list =
-  let _, envs = map_state (map_dest (fun o -> ret (context_env o))) ms Evd.empty in
-  let envs = Array.of_list envs in
-  let pes = Array.of_list (List.mapi (fun i p -> ext_of_term envs.(i) p) ps) in
-  List.mapi
-    (fun i m ->
-      map_ext_arrow (fun e -> if i < Array.length pes then pes.(i) else e) m)
-    ms
+let bind_param_arrows (ps : types list) (ms : arrow list) =
+  bind
+    (map_state (map_dest (fun o -> ret (context_env o))) ms)
+    (fun envs ->
+      let envs = Array.of_list envs in
+      let pes = Array.of_list (List.mapi (fun i p -> ext_of_term envs.(i) p) ps) in
+      ret
+        (List.mapi
+           (fun i m ->
+             map_ext_arrow
+               (fun e -> if i < Array.length pes then pes.(i) else e)
+               m)
+           ms))
 
 (*
  * Auxiliary function for binding properties and parameters
@@ -699,38 +705,53 @@ let sub_arr_property_params pi pb subs ds m =
  * Auxiliary function for binding properties and parameters
  * Substitute a property and parameters into an a category c.
  *)
-let sub_property_params npms pms pb c : proof_cat =
-  let _, os = objects c Evd.empty in
-  let ds = List.map (fun o -> (context_index o, snd (shortest_path_length c o Evd.empty))) os in
+let sub_property_params npms pms pb c =
   let pms_es = List.map (map_ext ext_term) pms in
   let pms_shift = List.mapi (fun j t -> shift_by_unconditional (- (npms - j)) t) pms_es in
   let pms_shift_rev = List.rev pms_shift in
   let pms_subs = build_n_substitutions npms pms_shift_rev no_substitutions in
   let pi = npms + 1 in
   let pms_subs_shift = unshift_from_substitutions_by pi pms_subs in
-  snd
-    (apply_functor
-       (fun o -> ret (sub_obj_property_params pi pb pms_subs_shift ds o))
-       (fun a -> ret (sub_arr_property_params pi pb pms_subs_shift ds a))
-       c
-       Evd.empty)
+  bind
+    (bind
+       (objects c)
+       (map_state
+          (fun o ->
+            bind
+              (shortest_path_length c o)
+              (fun n -> ret (context_index o, n)))))
+    (fun ds ->
+      apply_functor
+        (fun o -> ret (sub_obj_property_params pi pb pms_subs_shift ds o))
+        (fun a -> ret (sub_arr_property_params pi pb pms_subs_shift ds a))
+        c)
 
 (*
  * Bind an inductive property p and parameters pms in c
  * c is a proof category for an inductive proof
  * npms is the total number of possible parameters
  *)
-let bind_property_and_params (po : types option) (pms : types list) (npms : int) (c : proof_cat) : proof_cat =
+let bind_property_and_params (po : types option) (pms : types list) (npms : int) (c : proof_cat) sigma =
   let ms = morphisms c in
-  let p_unbound = List.find (fun m -> snd (maps_to (snd (context_at_index c (npms + 1) Evd.empty)) m Evd.empty)) ms in
+  let sigma, p_unbound =
+    bind
+      (context_at_index c (npms + 1))
+      (fun o -> find_state (maps_to o) ms)
+      sigma
+  in
   let po_shift = Option.map (shift_by npms) po in
-  let p_bound = bind_property_arrow po_shift p_unbound in
+  let sigma, p_bound = bind_property_arrow po_shift p_unbound sigma in
   let (last_param, p_binding, _) = p_bound in
-  let _, pms_unbound = arrows_between c (initial c) last_param Evd.empty in
+  let sigma, pms_unbound = arrows_between c (initial c) last_param sigma in
   let pms_shift = List.mapi (fun i p -> shift_by_unconditional (npms - i - 1) p) pms in
-  let pms_bound = bind_param_arrows pms_shift pms_unbound in
-  let _, ms_old = all_arrows_except_those_in (p_unbound :: pms_unbound) ms Evd.empty in
+  let sigma, pms_bound = bind_param_arrows pms_shift pms_unbound sigma in
+  let sigma, ms_old = all_arrows_except_those_in (p_unbound :: pms_unbound) ms sigma in
   let ms' = List.append pms_bound (p_bound :: ms_old) in
-  let _, c' = make_category (snd (objects c Evd.empty)) ms' (initial_opt c) (terminal_opt c) Evd.empty in
-  sub_property_params npms pms_bound p_binding c'
+  bind
+    (objects c)
+    (fun os' ->
+      bind
+        (make_category os' ms' (initial_opt c) (terminal_opt c))
+        (sub_property_params npms pms_bound p_binding))
+    sigma
 
