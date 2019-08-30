@@ -347,17 +347,23 @@ let rec substitute_ext_env (env : env) (e : extension) : extension =
  * Then get the assumption(s) and conclusion(s)
  * (This would be cleaner with a proper opposite category)
  *)
-let partition_initial_terminal (c : proof_cat) (is_initial : bool) : (context_object list) * arrow * (arrow list) =
+let partition_initial_terminal (c : proof_cat) (is_initial : bool) sigma =
   let i_or_t = map_if_else initial terminal is_initial c in
-  let _, os = all_objects_except i_or_t (snd (objects c Evd.empty)) Evd.empty in
-  let maps = map_if_else (fun o -> snd (maps_from i_or_t o Evd.empty)) (fun o -> snd (maps_to i_or_t o Evd.empty)) is_initial in
-  let (c_or_a, as_or_cs) = List.partition maps (morphisms c) in
-  (os, List.hd c_or_a, as_or_cs)
+  let sigma, os = objects c sigma in
+  let sigma, os = all_objects_except i_or_t os sigma in
+  let maps =
+    branch_state
+      (fun _ -> ret is_initial)
+      (maps_from i_or_t)
+      (maps_to i_or_t)
+  in
+  let sigma, (c_or_a, as_or_cs) = partition_state maps (morphisms c) sigma in
+  sigma, (os, List.hd c_or_a, as_or_cs)
 
 (* Substitute in an expanded version exp of the terminal object of c *)
 let substitute_terminal (c : proof_cat) (exp : proof_cat) : proof_cat =
-  let (old_os, old_concl, old_assums) = partition_initial_terminal c false in
-  let (new_os, new_assum, new_concls) = partition_initial_terminal exp true in
+  let _, (old_os, old_concl, old_assums) = partition_initial_terminal c false Evd.empty in
+  let _, (new_os, new_assum, new_concls) = partition_initial_terminal exp true Evd.empty in
   let os = List.append old_os new_os in
   let (s1, e1, _) = old_concl in
   let (_, e2, d2) = new_assum in
