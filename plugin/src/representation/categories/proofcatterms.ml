@@ -203,23 +203,20 @@ let find_ihs (c : proof_cat) : arrow list =
   List.filter arrow_is_ih (morphisms c)
 
 (* Find the distance to the closest IH to m given a list of IHs *)
-(* TODO clean *)
-let closest_ih c (ihs : arrow list) (m : arrow) sigma : (context_object * int) state =
+let closest_ih c (ihs : arrow list) (m : arrow) =
   let (s, _, _) = m in
-  let sigma, ih_distances =
-    map_state
+  bind
+    (map_state
       (map_dest
-         (fun d sigma ->
-           let sigma, path = arrows_between c d s sigma in
-           sigma, (d, List.length path)))
-      ihs
-      sigma
-  in
-  let ih_proxes =
-    List.sort
-      (fun (_, i1) (_, i2) -> Pervasives.compare i1 i2)
-      ih_distances
-  in sigma, List.hd ih_proxes
+         (fun d ->
+           bind (arrows_between c d s) (fun path -> ret (d, List.length path))))
+      ihs)
+    (fun ih_distances ->
+      let ih_distances_sorted =
+        List.sort
+          (fun (_, i1) (_, i2) -> Pervasives.compare i1 i2)
+          ih_distances
+      in ret (List.hd ih_distances_sorted))
 
 (* Determine which arrow is closer to an IH *)
 let closer_to_ih c (ihs : arrow list) (m1 : arrow) (m2 : arrow) : int =
