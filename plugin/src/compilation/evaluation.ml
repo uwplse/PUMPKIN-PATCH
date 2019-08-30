@@ -118,7 +118,7 @@ let partition_args (nparams : int) (nconstrs : int) (args : 'a list) : 'a argume
 let bind_constrs_to_args fc cs ncs arg_partition =
   let non_params = Array.of_list arg_partition.non_params in
   let num_non_params = Array.length non_params in
-  let cs_params = Array.of_list (List.map (substitute_terminal fc) cs) in
+  let cs_params = Array.of_list (List.map (fun c -> snd (substitute_terminal fc c Evd.empty)) cs) in
   let cs_args = Array.to_list (bind_inductive_args non_params cs_params) in
   let cs_no_args = List.map (Array.get cs_params) (range num_non_params (List.length cs)) in
   List.append cs_args cs_no_args

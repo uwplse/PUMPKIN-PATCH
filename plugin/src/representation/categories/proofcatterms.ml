@@ -359,21 +359,27 @@ let partition_initial_terminal (c : proof_cat) (is_init : bool) =
         (fun (c_or_a, as_or_cs)-> ret (os, List.hd c_or_a, as_or_cs)))
 
 (* Substitute in an expanded version exp of the terminal object of c *)
-let substitute_terminal (c : proof_cat) (exp : proof_cat) : proof_cat =
-  let _, (old_os, old_concl, old_assums) = partition_initial_terminal c false Evd.empty in
-  let _, (new_os, new_assum, new_concls) = partition_initial_terminal exp true Evd.empty in
-  let os = List.append old_os new_os in
-  let (s1, e1, _) = old_concl in
-  let (_, e2, d2) = new_assum in
-  let ms =
-    if ext_is_lambda e1 then
-      let (_, _, d3) = List.hd new_concls in
-      let other_concls = List.tl new_concls in
-      let e3 = curry_lambda e1 in
-      List.append old_assums ((s1, e2, d2) :: ((d2, e3, d3) :: other_concls))
-    else
-      List.append old_assums ((s1, e2, d2) :: new_concls)
-  in snd (make_category os ms (initial_opt c) (terminal_opt exp) Evd.empty)
+let substitute_terminal (c : proof_cat) (exp : proof_cat) =
+  bind
+    (partition_initial_terminal c false)
+    (fun (old_os, old_concl, old_assums) ->
+      bind
+        (partition_initial_terminal exp true)
+        (fun (new_os, new_assum, new_concls) ->
+          let os = List.append old_os new_os in
+          let (s1, e1, _) = old_concl in
+          let (_, e2, d2) = new_assum in
+          let concls =
+            if ext_is_lambda e1 then
+              let (_, _, d3) = List.hd new_concls in
+              let other_concls = List.tl new_concls in
+              let e3 = curry_lambda e1 in
+              (s1, e2, d2) :: ((d2, e3, d3) :: other_concls)
+            else
+              (s1, e2, d2) :: new_concls
+          in
+          let ms = List.append old_assums concls in
+          make_category os ms (initial_opt c) (terminal_opt exp)))
 
 (* --- Merging categories --- *)
 

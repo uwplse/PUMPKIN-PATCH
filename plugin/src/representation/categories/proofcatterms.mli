@@ -152,7 +152,7 @@ val substitute_ext_env : env -> extension -> extension
  * The second proof_cat should replace the terminal object in the original
  * This is commonly used to update categories after expansion
  *)
-val substitute_terminal : proof_cat -> proof_cat -> proof_cat
+val substitute_terminal : proof_cat -> proof_cat -> evar_map -> proof_cat state
 
 (* --- Merging categories --- *)
 
