@@ -550,8 +550,8 @@ let bind_cat (c : proof_cat) (m : arrow) sigma =
       c)
     (branch_state
        (category_contains_arrow m)
-       (fun c -> bind (add_arrow m c) (set_initial_terminal i t))
-       ret)
+       ret
+       (fun c -> bind (add_arrow m c) (set_initial_terminal i t)))
     sigma
    
 
