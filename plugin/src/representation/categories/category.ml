@@ -141,7 +141,7 @@ end
 module Functor (Dom : CatT) (Cod : CatT) =
 struct
   type f_obj = Dom.obj -> evar_map -> Cod.obj state
-  type f_arr = Dom.arrow -> Cod.arrow
+  type f_arr = Dom.arrow -> evar_map -> Cod.arrow state
   type f_iterm = Dom.obj option -> evar_map -> (Cod.obj option) state
   type t = Fun of f_obj * f_arr * f_iterm * f_iterm
 
@@ -174,7 +174,7 @@ struct
     let f_o = f_O f in
     let f_a = f_A f in
     let sigma, os = bind (Dom.objects c) (map_state f_o) sigma in
-    let ms = List.map f_a (Dom.morphisms c) in
+    let sigma, ms = map_state f_a (Dom.morphisms c) sigma in
     let sigma, i = (f_I f) (Dom.initial c) sigma in
     let sigma, t = (f_T f) (Dom.terminal c) sigma in
     Cod.make os ms i t sigma

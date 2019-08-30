@@ -56,7 +56,7 @@ end
 module Functor (Dom : CatT) (Cod : CatT):
 sig
   type f_obj = Dom.obj -> evar_map -> Cod.obj state
-  type f_arr = Dom.arrow -> Cod.arrow
+  type f_arr = Dom.arrow -> evar_map -> Cod.arrow state
   type f_iterm = Dom.obj option -> evar_map -> (Cod.obj option) state
   type t = Fun of f_obj * f_arr * f_iterm * f_iterm
 

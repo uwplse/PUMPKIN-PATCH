@@ -300,7 +300,7 @@ let map_ids (f : int -> int) (c : proof_cat) =
     (fun (Context (c, id)) ->
       ret (Context (c, f id)))
     (fun (Context (s, sid), e, Context (d, did)) ->
-      (Context (s, f sid), e, Context (d, f did)))
+      ret (Context (s, f sid), e, Context (d, f did)))
     c
 
 (* Get a map from context identifiers to fresh identifiers *)
@@ -389,20 +389,24 @@ let substitute_terminal (c : proof_cat) (exp : proof_cat) =
  * Assumes that sc has a terminal object and dc has an initial object
  * Creates fresh IDs for dc first to make sure we don't get repetition
  *)
-let substitute_categories (sc : proof_cat) (dc : proof_cat) : proof_cat =
-  let _, dcf = make_all_fresh dc Evd.empty in
+let substitute_categories (sc : proof_cat) (dc : proof_cat) sigma =
+  let sigma, dcf = make_all_fresh dc sigma in
   let t = terminal sc in
   let i = initial dcf in
-  snd
-    (remove_object
-       i
-       (snd
-          (apply_functor
-             (fun o -> ret o)
-             (fun (src, e, dst) -> (map_if (fun _ -> t) (snd (objects_equal i src Evd.empty)) src, e, dst))
-             (snd (combine (initial_opt sc) (terminal_opt dcf) sc dcf Evd.empty))
-             Evd.empty))
-       Evd.empty)
+  bind
+    (apply_functor
+       (fun o -> ret o)
+       (fun (src, e, dst) sigma_old ->
+         let sigma, src =
+           let sigma, eq = objects_equal i src sigma_old in
+           if eq then
+             sigma, t
+           else
+             sigma_old, src
+         in sigma, (src, e, dst))
+       (snd (combine (initial_opt sc) (terminal_opt dcf) sc dcf sigma)))
+    (remove_object i)
+    sigma
 
 (*
  * Find all of the contexts in c where the shortest path is length i
@@ -496,6 +500,8 @@ let merge_inductive (is_rec : bool) (n : int) (c : proof_cat) : proof_cat =
  * Bind an arrow from src to dst of m in c with extension e of m
  * If an arrow with an anonymous binding exists, then bind that arrow
  * Otherwise, add the arrow if it doesn't exist
+ *
+ * TODO rename!
  *)
 let bind (c : proof_cat) (m : arrow) : proof_cat =
   let (src, e, dst) = m in
@@ -506,9 +512,9 @@ let bind (c : proof_cat) (m : arrow) : proof_cat =
       (fun o -> ret o)
       (fun m' ->
         if snd (arrows_equal (src, AnonymousBinding, dst) m' Evd.empty) then
-          m
+          ret m
         else
-          m')
+          ret m')
       c
       Evd.empty
   in map_if
@@ -529,10 +535,11 @@ let bind_apply_function (e : extension) (n : int) (c : proof_cat) : proof_cat =
     (apply_functor
        (fun o -> ret o)
        (fun m ->
-         map_if
-           (fun (src, _, dst) -> (src, binding, dst))
-           (snd (maps_to (terminal c) m Evd.empty))
-           m)
+         ret
+           (map_if
+              (fun (src, _, dst) -> (src, binding, dst))
+              (snd (maps_to (terminal c) m Evd.empty))
+              m))
        c
        Evd.empty)
 
@@ -544,10 +551,11 @@ let bind_inductive_arg (arg : types) (c : proof_cat) : proof_cat =
     (apply_functor
        (fun o -> ret o)
        (fun m ->
-         map_if
-           (map_ext_arrow (fun _ -> bound))
-           (snd (maps_to t m Evd.empty))
-           m)
+         ret
+           (map_if
+              (map_ext_arrow (fun _ -> bound))
+              (snd (maps_to t m Evd.empty))
+              m))
        c
        Evd.empty)
 
@@ -674,7 +682,7 @@ let sub_property_params npms pms pb c : proof_cat =
   snd
     (apply_functor
        (fun o -> ret (sub_obj_property_params pi pb pms_subs_shift ds o))
-       (sub_arr_property_params pi pb pms_subs_shift ds)
+       (fun a -> ret (sub_arr_property_params pi pb pms_subs_shift ds a))
        c
        Evd.empty)
 

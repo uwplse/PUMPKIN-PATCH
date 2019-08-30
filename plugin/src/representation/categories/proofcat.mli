@@ -347,7 +347,7 @@ val shortest_path_length : proof_cat -> context_object -> evar_map -> int state
  *)
 val apply_functor :
   (context_object -> evar_map -> context_object state) ->
-  (arrow -> arrow) ->
+  (arrow -> evar_map -> arrow state) ->
   proof_cat ->
   evar_map ->
   proof_cat state

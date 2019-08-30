@@ -48,7 +48,7 @@ let expand_product (env : env) ((n, t, b) : Name.t * types * types) : proof_cat 
   let t' = eval_theorem env t in
   let env' = push_rel CRD.(LocalAssum(n, t)) env in
   let b' = eval_theorem env' b in
-  let c = substitute_categories t' b' in
+  let _, c = substitute_categories t' b' Evd.empty in
   bind c (initial c, LazyBinding (mkRel 1, env'), terminal t')
 
 (* Expand a lambda term exactly once *)
@@ -87,7 +87,7 @@ let expand_app (env : env) ((f, args) : types * types array) =
   assert (Array.length args > 0);
   let arg = args.(0) in
   let f' = eval_proof env (mkApp (f, Array.make 1 arg)) in
-  let arg' = substitute_categories (eval_proof env arg) f' in
+  let _, arg' = substitute_categories (eval_proof env arg) f' Evd.empty in
   bind_apply_function (LazyBinding (f, env)) 1 arg'
 
 (* --- Contexts --- *)
@@ -127,7 +127,7 @@ let expand_product_fully (o : context_object) : proof_cat =
        let t'' = eval_theorem env t in
        let env' = push_rel CRD.(LocalAssum(n, t)) env in
        let b'' = expand_fully env' (n', t', b') in
-       let c = substitute_categories t'' b'' in
+       let _, c = substitute_categories t'' b'' Evd.empty in
        bind c (initial c, LazyBinding (mkRel 1, env'), terminal t'')
     | _ ->
        expand_product env (n, t, b)
@@ -181,7 +181,7 @@ let expand_inductive_conclusions (ms : arrow list) : proof_cat list =
       bind_apply_function
         (shift_ext_by arity (substitute_ext_env (context_env (terminal dc)) e))
         arity
-        (snd (apply_functor map_i_to_src (fun a -> snd (map_source_arrow map_i_to_src a Evd.empty)) dc Evd.empty)))
+        (snd (apply_functor map_i_to_src (map_source_arrow map_i_to_src) dc Evd.empty)))
     ms
 
 (*
@@ -239,9 +239,9 @@ let bind_ihs (c : proof_cat) : proof_cat =
        (fun o -> ret o)
        (fun m ->
          if snd (map_dest (fun o sigma -> sigma, applies_ih env sigma p c o) m Evd.empty) then
-           map_ext_arrow (fun _ -> fresh_ih ()) m
+           ret (map_ext_arrow (fun _ -> fresh_ih ()) m)
          else
-           m)
+           ret m)
        c
        Evd.empty)
 

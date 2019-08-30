@@ -163,7 +163,7 @@ val substitute_terminal : proof_cat -> proof_cat -> evar_map -> proof_cat state
  * Assumes that the destination has an initial object
  * Assumes contexts are not equal (creates fresh identifiers)
  *)
-val substitute_categories : proof_cat -> proof_cat -> proof_cat
+val substitute_categories : proof_cat -> proof_cat -> evar_map -> proof_cat state
 
 (*
  * Find the context where the shortest path is a given length
