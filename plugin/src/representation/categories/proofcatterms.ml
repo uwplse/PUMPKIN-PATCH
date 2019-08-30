@@ -347,18 +347,16 @@ let rec substitute_ext_env (env : env) (e : extension) : extension =
  * Then get the assumption(s) and conclusion(s)
  * (This would be cleaner with a proper opposite category)
  *)
-let partition_initial_terminal (c : proof_cat) (is_initial : bool) sigma =
-  let i_or_t = map_if_else initial terminal is_initial c in
-  let sigma, os = objects c sigma in
-  let sigma, os = all_objects_except i_or_t os sigma in
-  let maps =
-    branch_state
-      (fun _ -> ret is_initial)
-      (maps_from i_or_t)
-      (maps_to i_or_t)
-  in
-  let sigma, (c_or_a, as_or_cs) = partition_state maps (morphisms c) sigma in
-  sigma, (os, List.hd c_or_a, as_or_cs)
+let partition_initial_terminal (c : proof_cat) (is_init : bool) =
+  let i_t = map_if_else initial terminal is_init c in
+  bind
+    (bind (objects c) (all_objects_except i_t))
+    (fun os ->
+      bind
+        (partition_state
+           (branch_state (fun _ -> ret is_init) (maps_from i_t) (maps_to i_t))
+           (morphisms c))
+        (fun (c_or_a, as_or_cs)-> ret (os, List.hd c_or_a, as_or_cs)))
 
 (* Substitute in an expanded version exp of the terminal object of c *)
 let substitute_terminal (c : proof_cat) (exp : proof_cat) : proof_cat =
