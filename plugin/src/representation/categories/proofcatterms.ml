@@ -219,15 +219,15 @@ let closest_ih c (ihs : arrow list) (m : arrow) =
       in ret (List.hd ih_distances_sorted))
 
 (* Determine which arrow is closer to an IH *)
-let closer_to_ih c (ihs : arrow list) (m1 : arrow) (m2 : arrow) : int =
-  let _, (m1_ih_dst, m1_ih_prox) = closest_ih c ihs m1 Evd.empty in
-  let _, (m2_ih_dst, m2_ih_prox) = closest_ih c ihs m2 Evd.empty in
+let closer_to_ih c (ihs : arrow list) (m1 : arrow) (m2 : arrow) sigma : int state =
+  let sigma, (m1_ih_dst, m1_ih_prox) = closest_ih c ihs m1 sigma in
+  let sigma, (m2_ih_dst, m2_ih_prox) = closest_ih c ihs m2 sigma in
   let ih_1_index = shortest_path_length c m1_ih_dst in
   let ih_2_index = shortest_path_length c m2_ih_dst in
   if m1_ih_prox = m2_ih_prox then
-    Pervasives.compare ih_1_index ih_2_index (* start lower *)
+    sigma, Pervasives.compare ih_1_index ih_2_index (* start lower *)
   else
-    Pervasives.compare m1_ih_prox m2_ih_prox (* start closer to IH *)
+    sigma, Pervasives.compare m1_ih_prox m2_ih_prox (* start closer to IH *)
 
 (*
  * Sort cs so that the base cases are first in the list

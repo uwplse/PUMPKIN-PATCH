@@ -123,7 +123,7 @@ val find_ihs : proof_cat -> arrow list
  * When they are equidistant, prefer ones that are lower in the proof
  * The IHs are only supplied for efficiency, you can get them with find_ihs
  *)
-val closer_to_ih : proof_cat -> arrow list -> arrow -> arrow -> int
+val closer_to_ih : proof_cat -> arrow list -> arrow -> arrow -> evar_map -> int state
 
 (*
  * Sort a list of proof_cats so that the base cases are first in the list

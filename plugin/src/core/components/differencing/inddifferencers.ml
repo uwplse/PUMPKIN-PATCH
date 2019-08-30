@@ -121,7 +121,7 @@ let diff_base_case opts evd diff d_old (d : proof_cat_diff) : candidates =
  * any differently, since the IH does not change.
  *)
 let diff_inductive_case opts evd diff d_old (d : proof_cat_diff) : candidates =
-  let sort c ms = List.stable_sort (closer_to_ih c (find_ihs c)) ms in
+  let sort c ms = List.stable_sort (fun m1 m2 -> snd (closer_to_ih c (find_ihs c) m1 m2 Evd.empty)) ms in
   let change = get_change opts in
   let opts = if is_identity change then opts else set_is_ind opts true in
   diff_sort_ind_case opts evd sort diff d_old d
