@@ -389,24 +389,22 @@ let substitute_terminal (c : proof_cat) (exp : proof_cat) =
  * Assumes that sc has a terminal object and dc has an initial object
  * Creates fresh IDs for dc first to make sure we don't get repetition
  *)
-let substitute_categories (sc : proof_cat) (dc : proof_cat) sigma =
-  let sigma, dcf = make_all_fresh dc sigma in
-  let t = terminal sc in
-  let i = initial dcf in
+let substitute_categories (sc : proof_cat) (dc : proof_cat) =
   bind
-    (apply_functor
-       (fun o -> ret o)
-       (fun (src, e, dst) sigma_old ->
-         let sigma, src =
-           let sigma, eq = objects_equal i src sigma_old in
-           if eq then
-             sigma, t
-           else
-             sigma_old, src
-         in sigma, (src, e, dst))
-       (snd (combine (initial_opt sc) (terminal_opt dcf) sc dcf sigma)))
-    (remove_object i)
-    sigma
+    (make_all_fresh dc)
+    (fun dcf ->
+      let t = terminal sc in
+      let i = initial dcf in
+      bind
+        (combine (initial_opt sc) (terminal_opt dcf) sc dcf)
+        (fun c ->
+          bind
+            (apply_functor
+               ret
+               (map_source_arrow
+                  (branch_state (objects_equal i) (fun _ -> ret t) ret))
+               c)
+            (remove_object i)))
 
 (*
  * Find all of the contexts in c where the shortest path is length i
