@@ -295,26 +295,23 @@ let shift_ext_by (n : int) (e : extension) : extension =
 (* --- Identifiers --- *)
 
 (* Map the identifiers of contexts of c with f *)
-let map_ids (f : int -> int) (c : proof_cat) : proof_cat =
-  snd
-    (apply_functor
-       (fun (Context (c, id)) ->
-         ret (Context (c, f id)))
-       (fun (Context (s, sid), e, Context (d, did)) ->
-         (Context (s, f sid), e, Context (d, f did)))
-       c
-       Evd.empty)
+let map_ids (f : int -> int) (c : proof_cat) =
+  apply_functor
+    (fun (Context (c, id)) ->
+      ret (Context (c, f id)))
+    (fun (Context (s, sid), e, Context (d, did)) ->
+      (Context (s, f sid), e, Context (d, f did)))
+    c
 
 (* Get a map from context identifiers to fresh identifiers *)
-let get_fresh_ids (c : proof_cat) : (int * int) list =
-  List.map (fun (Context (_, id)) -> (id, (fid ()))) (snd (objects c Evd.empty))
+let get_fresh_ids (c : proof_cat) =
+  bind (objects c) (map_state (fun (Context (_, id)) -> ret (id, (fid ()))))
 
 (*
  * Make fresh identifiers for every context in c
  *)
-let make_all_fresh (c : proof_cat) : proof_cat =
-  let fids = get_fresh_ids c in
-  map_ids (fun id -> List.assoc id fids) c
+let make_all_fresh (c : proof_cat) =
+  bind (get_fresh_ids c) (fun fids -> map_ids (fun id -> List.assoc id fids) c)
 
 (* --- Substitution --- *)
 
@@ -383,7 +380,7 @@ let substitute_terminal (c : proof_cat) (exp : proof_cat) : proof_cat =
  * Creates fresh IDs for dc first to make sure we don't get repetition
  *)
 let substitute_categories (sc : proof_cat) (dc : proof_cat) : proof_cat =
-  let dcf = make_all_fresh dc in
+  let _, dcf = make_all_fresh dc Evd.empty in
   let t = terminal sc in
   let i = initial dcf in
   snd
