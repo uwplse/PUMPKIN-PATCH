@@ -1,3 +1,5 @@
+**NOTE: If you came here for DEVOID, it is currently located [here](https://github.com/uwplse/ornamental-search). By ITP, this plugin will include DEVOID as a dependency.**
+
 # PUMPKIN PATCH User Guide
 
 This is a prototype plugin for finding patches for broken Coq proofs.
