@@ -270,7 +270,7 @@ let expand_const_app env (c, u) (f, args) default =
      let mutind_body = lookup_mind mutind env in
      let _, f_c = eval_proof env f Evd.empty in
      let f_exp = expand_inductive_params mutind_body.mind_nparams f_c in
-     eval_induction mutind_body f_exp args
+     snd (eval_induction mutind_body f_exp args Evd.empty)
   | None ->
      (snd (eval_proof env (mkApp (f, args)) Evd.empty), 0, default)
 

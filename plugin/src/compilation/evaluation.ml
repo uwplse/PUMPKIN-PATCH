@@ -153,18 +153,24 @@ let combine_constrs (default : proof_cat) (cs : proof_cat list) =
  * Bind the arguments to the application of the induction principle
  * Return any leftover arguments after induction
  *)
-let eval_induction (mutind_body : mutual_inductive_body) (fc : proof_cat) (args : types array) : proof_cat * int * types list =
+let eval_induction (mutind_body : mutual_inductive_body) (fc : proof_cat) (args : types array) =
   let t = terminal fc in
   let npms = mutind_body.mind_nparams in
   if context_is_product t then
     let ncs = num_constrs mutind_body in
     let arg_partition = partition_args npms ncs (Array.to_list args) in
-    let _, cs = induction_constrs ncs (context_env t) (context_as_product t) Evd.empty in
-    let _, cs_bound = bind_constrs_to_args fc cs ncs arg_partition Evd.empty in
-    let _, c = combine_constrs fc cs_bound Evd.empty in
     let property = arg_partition.property in
     let params = arg_partition.params in
-    let _, c_bound = bind_property_and_params property params npms c Evd.empty in
-    (c_bound, npms, arg_partition.final_args)
+    bind
+      (induction_constrs ncs (context_env t) (context_as_product t))
+      (fun cs ->
+	bind
+	  (bind 
+	     (bind_constrs_to_args fc cs ncs arg_partition)
+	     (combine_constrs fc))
+	  (fun c -> 
+	    bind
+	      (bind_property_and_params property params npms c)
+	      (fun c_bound -> ret (c_bound, npms, arg_partition.final_args))))
   else
-    (fc, npms, [])
+    ret (fc, npms, [])
