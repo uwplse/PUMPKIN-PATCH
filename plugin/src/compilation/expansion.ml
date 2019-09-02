@@ -152,7 +152,7 @@ let expand_terminal (c : proof_cat) : proof_cat =
        else
          AnonymousBinding
      in
-     let exp = expand_term (eval_theorem_bind binding) t in
+     let exp = expand_term (fun env t -> snd (eval_theorem_bind binding env t Evd.empty)) t in
      snd (substitute_terminal c exp Evd.empty)
   | _ ->
       c
