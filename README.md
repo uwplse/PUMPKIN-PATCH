@@ -1,3 +1,5 @@
+**!!! IMPORTANT NOTE: If you came here for DEVOID, it is currently located [here](https://github.com/uwplse/ornamental-search). By ITP, this plugin will include DEVOID as a dependency. !!!**
+
 # PUMPKIN PATCH User Guide
 
 This is a prototype plugin for finding patches for broken Coq proofs.
@@ -26,6 +28,13 @@ longer maintaining.
 cd plugin
 ./build.sh
 ```
+
+If you would like to use PUMPKIN in all of your developments, add this line:
+
+```
+Require Import Patcher.Patch.
+```
+to the beginning of your [coqrc](https://coq.inria.fr/refman/practical-tools/coq-commands.html#by-resource-file) resource file. Otherwise, you will want to write this line whenever you use PUMPKIN within a file.
 
 ## Using PUMPKIN
 
