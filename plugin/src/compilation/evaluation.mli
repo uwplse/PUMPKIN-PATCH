@@ -4,12 +4,14 @@ open Constr
 open Environ
 open Proofcat
 open Declarations
+open Stateutils
+open Evd
 
 (*
  * Evaluate a term one step in an environment
  * Then bind the single anonymous arrow to the extension
  *)
-val eval_theorem_bind : extension -> env -> types -> proof_cat
+val eval_theorem_bind : extension -> env -> types -> evar_map -> proof_cat state
 
 (* Evaluate an anonymous proof (inhabitant) of a theorem (type) one step *)
 val eval_theorem : env -> types -> proof_cat

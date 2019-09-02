@@ -18,6 +18,9 @@ open Contextutils
  * Infer the type of trm in env
  * Note: This does not yet use good evar map hygeine; will fix that
  * during the refactor.
+ *
+ * TODO remove this last. Will likely need good evar discipline everywhere
+ * else first. But can try.
  *)
 let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
@@ -34,19 +37,21 @@ let infer_type (env : env) (evd : evar_map) (trm : types) : types =
  * Evaluate typ one step in env
  * Then bind the single anonymous arrow to e
  *)
-let eval_theorem_bind (e : extension) (env : env) (typ : types) : proof_cat =
+let eval_theorem_bind (e : extension) (env : env) (typ : types) sigma =
   let t = Context (Term (typ, env), (fid ())) in
-  let _, c = set_terminal (Some t) (snd (add_object t (snd (initial_category Evd.empty)) Evd.empty)) Evd.empty in
-  snd (bind_cat c (initial_context, e, t) Evd.empty)
+  let sigma, c = initial_category sigma in
+  let sigma, c = add_object t c sigma in 
+  let sigma, c = set_terminal (Some t) c sigma in
+  bind_cat c (initial_context, e, t) sigma
 
 (* Evaluate an anonymous proof of typ one step *)
 let eval_theorem (env : env) (typ : types) : proof_cat =
-  eval_theorem_bind AnonymousBinding env typ
+  snd (eval_theorem_bind AnonymousBinding env typ Evd.empty)
 
 (* Evaluate a proof trm one step *)
 let eval_proof (env : env) (trm : types) : proof_cat =
   let typ = infer_type env Evd.empty trm in
-  eval_theorem_bind (ext_of_term env trm) env typ
+  snd (eval_theorem_bind (ext_of_term env trm) env typ Evd.empty)
 
 (* Evaluate an arrow as a proof *)
 let eval_proof_arrow (m : arrow) : proof_cat =
@@ -67,7 +72,7 @@ let rec induction_constrs (nc : int) (env : env) ((n, t, b) : Name.t * types * t
     []
   else
     let e = LazyBinding (mkRel 1, push_rel CRD.(LocalAssum(n, t)) env) in
-    let c = eval_theorem_bind e env t in
+    let c = snd (eval_theorem_bind e env t Evd.empty) in
     match kind b with
     | Prod (n', t', b') ->
        let d = List.length (morphisms c) in
