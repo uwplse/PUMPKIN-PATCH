@@ -14,13 +14,13 @@ open Evd
 val eval_theorem_bind : extension -> env -> types -> evar_map -> proof_cat state
 
 (* Evaluate an anonymous proof (inhabitant) of a theorem (type) one step *)
-val eval_theorem : env -> types -> proof_cat
+val eval_theorem : env -> types -> evar_map -> proof_cat state
 
 (* Evaluate a proof (term) one step *)
-val eval_proof : env -> types -> proof_cat
+val eval_proof : env -> types -> evar_map -> proof_cat state
 
 (* Evaluate an arrow as a proof *)
-val eval_proof_arrow : arrow -> proof_cat
+val eval_proof_arrow : arrow -> evar_map -> proof_cat state
 
 (*
  * Evaluate an inductive proof given:

@@ -38,8 +38,8 @@ let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
   | ((h1 :: t1), (h2 :: t2)) ->
      let d_t = add_to_diff d_goal t1 t2 in
      (try
-        let c1 = eval_proof_arrow h1 in
-        let c2 = eval_proof_arrow h2 in
+        let _, c1 = eval_proof_arrow h1 Evd.empty in
+        let _, c2 = eval_proof_arrow h2 Evd.empty in
         let cs = abstract (diff evd (add_to_diff d_goal c1 c2)) in
         if non_empty cs then
           cs

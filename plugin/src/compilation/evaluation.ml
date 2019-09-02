@@ -23,9 +23,9 @@ open Stateutils
  * TODO remove this last. Will likely need good evar discipline everywhere
  * else first. But can try.
  *)
-let infer_type (env : env) (evd : evar_map) (trm : types) : types =
+let infer_type (env : env) (evd : evar_map) (trm : types) =
   let jmt = Typeops.infer env trm in
-  j_type jmt
+  evd, j_type jmt
                
 (* --- End TODO --- *)
 
@@ -45,16 +45,16 @@ let eval_theorem_bind (e : extension) (env : env) (typ : types) =
     (fun c -> bind_cat c (initial_context, e, t))
 
 (* Evaluate an anonymous proof of typ one step *)
-let eval_theorem (env : env) (typ : types) : proof_cat =
-  snd (eval_theorem_bind AnonymousBinding env typ Evd.empty)
+let eval_theorem (env : env) (typ : types) =
+  eval_theorem_bind AnonymousBinding env typ
 
 (* Evaluate a proof trm one step *)
-let eval_proof (env : env) (trm : types) : proof_cat =
-  let typ = infer_type env Evd.empty trm in
-  snd (eval_theorem_bind (ext_of_term env trm) env typ Evd.empty)
+let eval_proof (env : env) (trm : types) sigma =
+  let sigma, typ = infer_type env sigma trm in
+  eval_theorem_bind (ext_of_term env trm) env typ sigma
 
 (* Evaluate an arrow as a proof *)
-let eval_proof_arrow (m : arrow) : proof_cat =
+let eval_proof_arrow (m : arrow) =
   let (_, e, dst) = m in
   eval_proof (context_env dst) (ext_term e)
 

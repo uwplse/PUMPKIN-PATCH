@@ -149,7 +149,7 @@ let proof_to_term (d : goal_proof_diff) : goal_term_diff =
 let eval_with_term f g trm (d : goal_proof_diff) : goal_proof_diff =
   let (goal, _) = f d in
   let env = context_env goal in
-  g (goal, eval_proof env trm) d
+  g (goal, snd (eval_proof env trm Evd.empty)) d
 
 let eval_with_old_term = eval_with_term old_proof with_old_proof
 

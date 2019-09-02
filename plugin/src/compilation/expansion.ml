@@ -45,9 +45,9 @@ type 'a expansion_strategy = 'a -> 'a
 
 (* Expand a product type exactly once *)
 let expand_product (env : env) ((n, t, b) : Name.t * types * types) : proof_cat =
-  let t' = eval_theorem env t in
+  let _, t' = eval_theorem env t Evd.empty in
   let env' = push_rel CRD.(LocalAssum(n, t)) env in
-  let b' = eval_theorem env' b in
+  let _, b' = eval_theorem env' b Evd.empty in
   let _, c = substitute_categories t' b' Evd.empty in
   snd (bind_cat c (initial c, LazyBinding (mkRel 1, env'), terminal t') Evd.empty)
 
@@ -70,7 +70,7 @@ let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
       (fun ci -> mkConstructU (((i, ii), ci), u))
       (from_one_to (Array.length body.mind_consnames))
   in
-  let cs = List.map (eval_proof env_ind) constrs in
+  let cs = List.map (fun t -> snd (eval_proof env_ind t Evd.empty)) constrs in
   List.fold_left
     (fun cind c ->
       let os = (terminal c) :: (snd (objects cind Evd.empty)) in
@@ -86,8 +86,8 @@ let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
 let expand_app (env : env) ((f, args) : types * types array) =
   assert (Array.length args > 0);
   let arg = args.(0) in
-  let f' = eval_proof env (mkApp (f, Array.make 1 arg)) in
-  let _, arg' = substitute_categories (eval_proof env arg) f' Evd.empty in
+  let _, f' = eval_proof env (mkApp (f, Array.make 1 arg)) Evd.empty in
+  let _, arg' = substitute_categories (snd (eval_proof env arg Evd.empty)) f' Evd.empty in
   snd (bind_apply_function (LazyBinding (f, env)) 1 arg' Evd.empty)
 
 (* --- Contexts --- *)
@@ -124,7 +124,7 @@ let expand_product_fully (o : context_object) : proof_cat =
   let rec expand_fully env (n, t, b) =
     match kind b with
     | Prod (n', t', b') ->
-       let t'' = eval_theorem env t in
+       let _, t'' = eval_theorem env t Evd.empty in
        let env' = push_rel CRD.(LocalAssum(n, t)) env in
        let b'' = expand_fully env' (n', t', b') in
        let _, c = substitute_categories t'' b'' Evd.empty in
@@ -268,11 +268,11 @@ let expand_const_app env (c, u) (f, args) default =
   match inductive_of_elim env (c, u) with
   | Some mutind ->
      let mutind_body = lookup_mind mutind env in
-     let f_c = eval_proof env f in
+     let _, f_c = eval_proof env f Evd.empty in
      let f_exp = expand_inductive_params mutind_body.mind_nparams f_c in
      eval_induction mutind_body f_exp args
   | None ->
-     (eval_proof env (mkApp (f, args)), 0, default)
+     (snd (eval_proof env (mkApp (f, args)) Evd.empty), 0, default)
 
 (*
  * Expand an application arrow
@@ -292,7 +292,7 @@ let expand_application (c, n, l) : proof_cat * int * (types list) =
              expand_const_app env (c, u) (f, args) l
           | _ ->
              let c_trm = Context (Term (trm, env), fid ()) in
-             let exp = expand_term eval_theorem c_trm in
+             let exp = expand_term (fun env t -> snd (eval_theorem env t Evd.empty)) c_trm in
              (exp, 0, l))
       | _ -> assert false)
     (only_arrow c)

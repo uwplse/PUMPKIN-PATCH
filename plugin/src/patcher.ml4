@@ -82,8 +82,8 @@ let configure trm1 trm2 cut : goal_proof_diff * options =
   let (evm, env) = Pfedit.get_current_context() in
   let cut_term = Option.map (intern env evm) cut in
   let lemma = Option.map (fun evm, t -> build_cut_lemma env t) cut_term in
-  let c1 = eval_proof env trm1 in
-  let c2 = eval_proof env trm2 in
+  let _, c1 = eval_proof env trm1 Evd.empty in
+  let _, c2 = eval_proof env trm2 Evd.empty in
   let d = add_goals (difference c1 c2 no_assumptions) in
   let change = find_kind_of_change evm lemma d in
   (d, configure_search d change lemma)
@@ -91,7 +91,7 @@ let configure trm1 trm2 cut : goal_proof_diff * options =
 (* Initialize diff & search configuration for optimization *)
 let configure_optimize trm : goal_proof_diff * options =
   let (evm, env) = Pfedit.get_current_context () in
-  let c = eval_proof env trm in
+  let _, c = eval_proof env trm Evd.empty in
   let d = add_goals (difference c c no_assumptions) in
   let change = Identity in
   (d, configure_search d change None)
