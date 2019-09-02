@@ -64,7 +64,7 @@ let expand_lambda (env : env) ((n, t, b) : Name.t * types * types) =
  * Expand an inductive type
  * This is unfinished, and currently unused for any benchmarks
 *)
-let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
+let expand_inductive (env : env) (((i, ii), u) : pinductive) =
   let mbody = lookup_mind i env in
   check_inductive_supported mbody;
   let bodies = mbody.mind_packets in
@@ -75,14 +75,17 @@ let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
       (fun ci -> mkConstructU (((i, ii), ci), u))
       (from_one_to (Array.length body.mind_consnames))
   in
-  let cs = List.map (fun t -> snd (eval_proof env_ind t Evd.empty)) constrs in
-  List.fold_left
-    (fun cind c ->
-      let os = (terminal c) :: (snd (objects cind Evd.empty)) in
-      let ms = List.append (morphisms c) (morphisms cind) in
-      snd (make_category os ms (initial_opt cind) None Evd.empty))
-    (List.hd cs)
-    (List.tl cs)
+  bind
+    (map_state (eval_proof env_ind) constrs)
+    (fun cs ->
+      fold_left_state
+	(fun cind c ->
+	  let ms = List.append (morphisms c) (morphisms cind) in
+	  bind 
+	    (bind (objects cind) (fun tl -> ret (terminal c :: tl)))
+	    (fun os -> make_category os ms (initial_opt cind) None))
+	(List.hd cs)
+	(List.tl cs))
 
 (*
  * Expand application exactly once
@@ -91,9 +94,12 @@ let expand_inductive (env : env) (((i, ii), u) : pinductive) : proof_cat =
 let expand_app (env : env) ((f, args) : types * types array) =
   assert (Array.length args > 0);
   let arg = args.(0) in
-  let _, f' = eval_proof env (mkApp (f, Array.make 1 arg)) Evd.empty in
-  let _, arg' = substitute_categories (snd (eval_proof env arg Evd.empty)) f' Evd.empty in
-  snd (bind_apply_function (LazyBinding (f, env)) 1 arg' Evd.empty)
+  bind
+    (eval_proof env (mkApp (f, Array.make 1 arg)))
+    (fun f' ->
+      bind
+	(bind (eval_proof env arg) (fun c -> substitute_categories c f'))
+	(bind_apply_function (LazyBinding (f, env)) 1))
 
 (* --- Contexts --- *)
 
@@ -110,13 +116,13 @@ let expand_term (default : env -> types -> proof_cat) (o : context_object) : pro
   | Lambda (n, t, b) ->
       snd (expand_lambda env (n, t, b) Evd.empty)
   | Ind ((i, ii), u) ->
-      expand_inductive env ((i, ii), u)
+      snd (expand_inductive env ((i, ii), u) Evd.empty)
   | App (f, args) ->
      (match kind f with
      | Lambda (n, t, b) ->
         (* Does not yet delta-reduce *)
         if Array.length args > 0 then
-          expand_app env (f, args)
+          snd (expand_app env (f, args) Evd.empty)
         else
           default env trm
      | _ ->
