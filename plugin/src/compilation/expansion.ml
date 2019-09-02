@@ -13,6 +13,8 @@ open Debruijn
 open Declarations
 open Indutils
 open Contextutils
+open Convertibility
+open Envutils
 
 (* --- TODO for refactoring without breaking things --- *)
 
@@ -20,20 +22,20 @@ open Contextutils
  * Infer the type of trm in env
  * Note: This does not yet use good evar map hygeine; will fix that
  * during the refactor.
+ *
+ * TODO remove this last, once good evar practice in all callers
  *)
-let infer_type (env : env) (evd : evar_map) (trm : types) : types =
+let infer_type (env : env) (evd : evar_map) (trm : types) : types state =
   let jmt = Typeops.infer env trm in
-  j_type jmt
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
+  evd, j_type jmt
          
 (* Check whether a term has a given type *)
-let has_type (env : env) (evd : evar_map) (typ : types) (trm : types) : bool =
+let has_type (env : env) (evd : evar_map) (typ : types) (trm : types) : bool state =
   try
-    let trm_typ = infer_type env evd trm in
+    let evd, trm_typ = infer_type env evd trm in
     convertible env evd trm_typ typ
-  with _ -> false
+  with _ -> 
+    evd, false
                
 (* --- End TODO --- *)
 
@@ -44,15 +46,18 @@ type 'a expansion_strategy = 'a -> 'a
 (* --- Terms and types --- *)
 
 (* Expand a product type exactly once *)
-let expand_product (env : env) ((n, t, b) : Name.t * types * types) : proof_cat =
-  let _, t' = eval_theorem env t Evd.empty in
-  let env' = push_rel CRD.(LocalAssum(n, t)) env in
-  let _, b' = eval_theorem env' b Evd.empty in
-  let _, c = substitute_categories t' b' Evd.empty in
-  snd (bind_cat c (initial c, LazyBinding (mkRel 1, env'), terminal t') Evd.empty)
+let expand_product (env : env) ((n, t, b) : Name.t * types * types) =
+  bind
+    (eval_theorem env t)
+    (fun t' ->
+      let env' = push_local (n, t) env in
+      bind
+	(bind (eval_theorem env' b) (substitute_categories t'))
+	(fun c ->
+	  bind_cat c (initial c, LazyBinding (mkRel 1, env'), terminal t')))
 
 (* Expand a lambda term exactly once *)
-let expand_lambda (env : env) ((n, t, b) : Name.t * types * types) : proof_cat =
+let expand_lambda (env : env) ((n, t, b) : Name.t * types * types) =
   expand_product env (n, t, b)
 
 (*
@@ -101,9 +106,9 @@ let expand_term (default : env -> types -> proof_cat) (o : context_object) : pro
   let (trm, env) = dest_context_term o in
   match kind trm with
   | Prod (n, t, b) ->
-      expand_product env (n, t, b)
+      snd (expand_product env (n, t, b) Evd.empty)
   | Lambda (n, t, b) ->
-      expand_lambda env (n, t, b)
+      snd (expand_lambda env (n, t, b) Evd.empty)
   | Ind ((i, ii), u) ->
       expand_inductive env ((i, ii), u)
   | App (f, args) ->
@@ -130,7 +135,7 @@ let expand_product_fully (o : context_object) : proof_cat =
        let _, c = substitute_categories t'' b'' Evd.empty in
        snd (bind_cat c (initial c, LazyBinding (mkRel 1, env'), terminal t'') Evd.empty)
     | _ ->
-       expand_product env (n, t, b)
+       snd (expand_product env (n, t, b) Evd.empty)
   in expand_fully (context_env o) (destProd (fst (dest_context_term o)))
 
 (* --- Categories --- *)
@@ -221,7 +226,7 @@ let applies_ih (env : env) (evd : evar_map) (p : types) (c : proof_cat) (o : con
   if context_is_app o then
     let (f, _) = context_as_app o in
     let f = unshift_by (snd (shortest_path_length c o Evd.empty)) f in
-    snd (is_hypothesis c o Evd.empty) && has_type env evd p f
+    snd (is_hypothesis c o Evd.empty) && snd (has_type env evd p f)
   else
     false
 
