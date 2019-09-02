@@ -131,17 +131,22 @@ let expand_term (default : env -> types -> evar_map -> proof_cat state) (o : con
      default env trm
 
 (* Expand a product type as far as its conclusion goes *)
-let expand_product_fully (o : context_object) : proof_cat =
+let expand_product_fully (o : context_object) =
   let rec expand_fully env (n, t, b) =
     match kind b with
     | Prod (n', t', b') ->
-       let _, t'' = eval_theorem env t Evd.empty in
-       let env' = push_rel CRD.(LocalAssum(n, t)) env in
-       let b'' = expand_fully env' (n', t', b') in
-       let _, c = substitute_categories t'' b'' Evd.empty in
-       snd (bind_cat c (initial c, LazyBinding (mkRel 1, env'), terminal t'') Evd.empty)
+       bind
+	 (eval_theorem env t)
+	 (fun t'' ->
+	   let env' = push_local (n, t) env in
+	   bind
+	     (bind (expand_fully env' (n', t', b')) (substitute_categories t''))
+	     (fun c ->
+	       let init_o = initial c in
+	       let term_o = terminal t'' in
+	       bind_cat c (init_o, LazyBinding (mkRel 1, env'), term_o)))
     | _ ->
-       snd (expand_product env (n, t, b) Evd.empty)
+       expand_product env (n, t, b)
   in expand_fully (context_env o) (destProd (fst (dest_context_term o)))
 
 (* --- Categories --- *)
@@ -186,7 +191,7 @@ let partition_expandable (c : proof_cat) : (arrow list * arrow list) =
 let expand_inductive_conclusions (ms : arrow list) : proof_cat list =
   List.map
     (fun (s, e, d) ->
-      let dc = expand_product_fully d in
+      let _, dc = expand_product_fully d Evd.empty in
       let map_i_to_src m sigma = sigma, if (snd (objects_equal (initial dc) m Evd.empty)) then s else m in
       let arity = (List.length (morphisms dc)) - 1 in
       snd

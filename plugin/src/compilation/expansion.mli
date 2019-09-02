@@ -10,15 +10,6 @@ open Stateutils
 
 type 'a expansion_strategy = 'a -> 'a
 
-(* --- Contexts --- *)
-
-(*
- * Expand a product type as far as its conclusion goes
- * Error if the type context doesn't hold any terms
- * Error if the type context isn't newly extended with a product type
- *)
-val expand_product_fully : context_object -> proof_cat
-
 (* --- Categories --- *)
 
 (*
