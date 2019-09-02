@@ -143,7 +143,7 @@ let zoom_search f (d : goal_proof_diff) : candidates =
   zoom_map
     f
     give_up
-    expand_terminal
+    (fun c -> snd (expand_terminal c Evd.empty))
     intro_common
     (erase_goals d)
 

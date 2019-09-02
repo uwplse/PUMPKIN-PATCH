@@ -42,6 +42,7 @@ let has_type (env : env) (evd : evar_map) (typ : types) (trm : types) : bool sta
 (* --- Type definitions --- *)
 
 type 'a expansion_strategy = 'a -> 'a
+type 'a expansion_strategy_todo = 'a -> evar_map -> 'a state
 
 (* --- Terms and types --- *)
 
@@ -155,23 +156,26 @@ let expand_product_fully (o : context_object) =
  * Expand the terminal object of c exactly once
  * Return c if it cannot be expanded
  *)
-let expand_terminal (c : proof_cat) : proof_cat =
+let expand_terminal (c : proof_cat) =
   let t = terminal c in
   match t with
   | Context (Term (trm, env), i) ->
      let ms = morphisms c in
-     let _, concls = arrows_with_dest t ms Evd.empty in
-     let binding =
-       if non_empty concls then
-         let (_, ext, _) = List.hd concls in (* arbitrary for now *)
-         ext
-       else
-         AnonymousBinding
-     in
-     let _, exp = expand_term (eval_theorem_bind binding) t Evd.empty in
-     snd (substitute_terminal c exp Evd.empty)
+     bind
+       (arrows_with_dest t ms)
+       (fun concls ->
+	 let binding =
+	   if non_empty concls then
+             let (_, ext, _) = List.hd concls in (* arbitrary for now *)
+             ext
+	   else
+             AnonymousBinding
+	 in
+	 bind 
+	   (expand_term (eval_theorem_bind binding) t) 
+	   (substitute_terminal c))
   | _ ->
-      c
+     ret c
 
 (*
  * Utility function for expanding inductive proofs
@@ -179,9 +183,15 @@ let expand_terminal (c : proof_cat) : proof_cat =
  * 1. Morphisms that end in a product type that is not a hypothesis
  * 2. Morphisms that do not
  *)
-let partition_expandable (c : proof_cat) : (arrow list * arrow list) =
-  List.partition
-    (fun m -> snd (map_dest (fun o sigma -> sigma, context_is_product o && snd (is_not_hypothesis c o sigma)) m Evd.empty))
+let partition_expandable (c : proof_cat) =
+  partition_state
+    (map_dest 
+       (fun o ->
+	 and_state 
+	   (fun o -> ret (context_is_product o)) 
+	   (is_not_hypothesis c)
+	   o
+	   o))
     (morphisms c)
 
 (*
@@ -214,7 +224,7 @@ let expand_inductive_conclusions (ms : arrow list) : proof_cat list =
  *)
 let expand_inductive_conclusions_fully (c : proof_cat) : proof_cat =
   let _, c_os = objects c Evd.empty in
-  let (ms_to_expand, old_ms) = partition_expandable c in
+  let _, (ms_to_expand, old_ms) = partition_expandable c Evd.empty in
   let _, old_os = all_objects_except_those_in (conclusions ms_to_expand) c_os Evd.empty in
   let expanded = expand_inductive_conclusions ms_to_expand in
   let new_os = flat_map (fun os -> snd (map_objects (fun o sigma -> all_objects_except_those_in c_os o sigma) os Evd.empty)) expanded in
@@ -229,7 +239,7 @@ let expand_inductive_params (n : int) (c : proof_cat) : proof_cat =
     if n' < 0 || (not (context_is_product (terminal c'))) then
       c'
     else
-      expand (n' - 1) (expand_terminal c')
+      expand (n' - 1) (snd (expand_terminal c' Evd.empty))
   in expand n c
 
 (* Check if an o is the type of an applied inductive hypothesis in c *)
