@@ -11,6 +11,7 @@ open Debruijn
 open Declarations
 open Indutils
 open Contextutils
+open Stateutils
 
 (* --- TODO for refactoring without breaking things --- *)
 
@@ -37,12 +38,11 @@ let infer_type (env : env) (evd : evar_map) (trm : types) : types =
  * Evaluate typ one step in env
  * Then bind the single anonymous arrow to e
  *)
-let eval_theorem_bind (e : extension) (env : env) (typ : types) sigma =
+let eval_theorem_bind (e : extension) (env : env) (typ : types) =
   let t = Context (Term (typ, env), (fid ())) in
-  let sigma, c = initial_category sigma in
-  let sigma, c = add_object t c sigma in 
-  let sigma, c = set_terminal (Some t) c sigma in
-  bind_cat c (initial_context, e, t) sigma
+  bind
+    (bind (bind initial_category (add_object t)) (set_terminal (Some t)))
+    (fun c -> bind_cat c (initial_context, e, t))
 
 (* Evaluate an anonymous proof of typ one step *)
 let eval_theorem (env : env) (typ : types) : proof_cat =
