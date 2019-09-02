@@ -67,19 +67,21 @@ let eval_proof_arrow (m : arrow) =
  * we have right now always works, even when constructors have many internal
  * foralls.
  *)
-let rec induction_constrs (nc : int) (env : env) ((n, t, b) : Name.t * types * types) : proof_cat list =
+let rec induction_constrs (nc : int) (env : env) ((n, t, b) : Name.t * types * types) =
   if nc = 0 then
-    []
+    ret []
   else
     let e = LazyBinding (mkRel 1, push_rel CRD.(LocalAssum(n, t)) env) in
-    let c = snd (eval_theorem_bind e env t Evd.empty) in
-    match kind b with
-    | Prod (n', t', b') ->
-       let d = List.length (morphisms c) in
-       let prod' = (n', unshift_by d t', unshift_by d b') in
-       c :: (induction_constrs (nc - 1) env prod')
-    | _ ->
-      [c]
+    bind 
+      (eval_theorem_bind e env t)
+      (fun c ->
+	match kind b with
+	| Prod (n', t', b') ->
+	   let d = List.length (morphisms c) in
+	   let prod' = (n', unshift_by d t', unshift_by d b') in
+	   bind (induction_constrs (nc - 1) env prod') (fun cs -> ret (c :: cs))
+	| _ ->
+	   ret [c])
 
 (*
  * A partitition of arguments to an inductive proof into four parts:
@@ -123,20 +125,28 @@ let partition_args (nparams : int) (nconstrs : int) (args : 'a list) : 'a argume
 let bind_constrs_to_args fc cs ncs arg_partition =
   let non_params = Array.of_list arg_partition.non_params in
   let num_non_params = Array.length non_params in
-  let cs_params = Array.of_list (List.map (fun c -> snd (substitute_terminal fc c Evd.empty)) cs) in
-  let cs_args = Array.to_list (snd (bind_inductive_args non_params cs_params Evd.empty)) in
-  let cs_no_args = List.map (Array.get cs_params) (range num_non_params (List.length cs)) in
-  List.append cs_args cs_no_args
+  bind
+    (map_state (substitute_terminal fc) cs)
+    (fun ps ->
+      let cs_params = Array.of_list ps in
+      bind
+	(bind_inductive_args non_params cs_params)
+	(fun args ->
+	  let cs_args = Array.to_list args in
+	  let cs_no_args = List.map (Array.get cs_params) (range num_non_params (List.length cs)) in
+	  ret (List.append cs_args cs_no_args)))
 
 (*
  * Auxiliary function for eval_induction
  * Combine a list of constructors, defaulting to default
  * Assumes no terminal object
  *)
-let combine_constrs (default : proof_cat) (cs : proof_cat list) : proof_cat =
+let combine_constrs (default : proof_cat) (cs : proof_cat list) =
   match cs with
-  | h :: t -> List.fold_left (fun c1 c2 -> snd (combine (initial_opt h) None c1 c2 Evd.empty)) h t
-  | [] -> default
+  | h :: t -> 
+     fold_left_state (combine (initial_opt h) None) h t
+  | [] -> 
+     ret default
 
 (*
  * Evaluate an inductive proof
@@ -149,9 +159,9 @@ let eval_induction (mutind_body : mutual_inductive_body) (fc : proof_cat) (args 
   if context_is_product t then
     let ncs = num_constrs mutind_body in
     let arg_partition = partition_args npms ncs (Array.to_list args) in
-    let cs = induction_constrs ncs (context_env t) (context_as_product t) in
-    let cs_bound = bind_constrs_to_args fc cs ncs arg_partition in
-    let c = combine_constrs fc cs_bound in
+    let _, cs = induction_constrs ncs (context_env t) (context_as_product t) Evd.empty in
+    let _, cs_bound = bind_constrs_to_args fc cs ncs arg_partition Evd.empty in
+    let _, c = combine_constrs fc cs_bound Evd.empty in
     let property = arg_partition.property in
     let params = arg_partition.params in
     let _, c_bound = bind_property_and_params property params npms c Evd.empty in
