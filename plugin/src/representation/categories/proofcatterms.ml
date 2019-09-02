@@ -162,9 +162,11 @@ let prop (c : proof_cat) (npms : int) =
  * Get the only extension in a proof category as a term
  * Fail if there are no extensions
  * Fail if there are multiple extensions
+ *
+ * Evd.empty is OK here since evar_maps aren't used in ext_term
  *)
 let only_extension_as_term (c : proof_cat) : types =
-  map_ext ext_term (only_arrow c)
+  snd (map_ext (fun t -> ret (ext_term t)) (only_arrow c) Evd.empty)
 
 (*
  * Given a proof category with several paths,
@@ -579,7 +581,7 @@ let bind_inductive_arg (arg : types) (c : proof_cat) =
     ret
     (branch_state
       (maps_to t)
-      (fun m -> ret (map_ext_arrow (fun _ -> bound) m))
+      (fun m -> ret (snd (map_ext_arrow (fun _ -> ret bound) m Evd.empty)))
       ret)
     c
 
@@ -602,9 +604,11 @@ let bind_property_arrow (po : types option) (m : arrow) =
     (map_dest (fun o -> ret (context_env o)) m)
     (fun env ->
       ret
-        (map_ext_arrow
-           (fun e -> Option.default e (Option.map (ext_of_term env) po))
-           m))
+        (snd
+	   (map_ext_arrow
+              (fun e -> ret (Option.default e (Option.map (ext_of_term env) po)))
+              m
+	      Evd.empty)))
 
 (*
  * Auxiliary function for binding properties and parameters
@@ -619,9 +623,11 @@ let bind_param_arrows (ps : types list) (ms : arrow list) =
       ret
         (List.mapi
            (fun i m ->
-             map_ext_arrow
-               (fun e -> if i < Array.length pes then pes.(i) else e)
-               m)
+	     snd
+               (map_ext_arrow
+		  (fun e -> ret (if i < Array.length pes then pes.(i) else e))
+		  m
+		  Evd.empty))
            ms))
 
 (*
@@ -706,7 +712,7 @@ let sub_arr_property_params pi pb subs ds m =
  * Substitute a property and parameters into an a category c.
  *)
 let sub_property_params npms pms pb c =
-  let pms_es = List.map (map_ext ext_term) pms in
+  let pms_es = List.map (fun pm -> snd (map_ext (fun t -> ret (ext_term t)) pm Evd.empty)) pms in
   let pms_shift = List.mapi (fun j t -> shift_by_unconditional (- (npms - j)) t) pms_es in
   let pms_shift_rev = List.rev pms_shift in
   let pms_subs = build_n_substitutions npms pms_shift_rev no_substitutions in

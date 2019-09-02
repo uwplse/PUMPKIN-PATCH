@@ -220,7 +220,7 @@ let map_dest (f : context_object -> evar_map -> 'a state) (m : arrow) =
 (*
  * Map a function on the extension of an arrow
  *)
-let map_ext (f : extension -> 'a) (m : arrow) : 'a =
+let map_ext (f : extension -> evar_map -> 'a state) (m : arrow) =
   let (_, e, _) = m in
   f e
 
@@ -241,9 +241,9 @@ let map_dest_arrow (f : context_object -> evar_map -> context_object state) (m :
 (*
  * Map a function on the extension of an arrow and return a new arrow
  *)
-let map_ext_arrow (f : extension -> extension) (m : arrow) : arrow =
+let map_ext_arrow (f : extension -> evar_map -> extension state) (m : arrow) =
   let (src, e, dst) = m in
-  (src, f e, dst)
+  bind (f e) (fun e' -> ret (src, e', dst))
 
 (*
  * True iff an arrow m maps from o

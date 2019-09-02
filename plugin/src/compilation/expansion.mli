@@ -8,8 +8,7 @@ open Stateutils
 
 (* --- Type definitions --- *)
 
-type 'a expansion_strategy = 'a -> 'a
-type 'a expansion_strategy_todo = 'a -> evar_map -> 'a state
+type 'a expansion_strategy = 'a -> evar_map -> 'a state
 
 (* --- Categories --- *)
 
@@ -17,14 +16,7 @@ type 'a expansion_strategy_todo = 'a -> evar_map -> 'a state
  * Expand the terminal object of a proof category exactly once
  * Return the original category if it cannot be exapnded
  *)
-val expand_terminal : proof_cat expansion_strategy_todo
-
-(*
- * Expand all parameters of an inductive proof
- * Also expand out the node with the induction principle
- * Provide the number of parameters to expand
-  *)
-val expand_inductive_params : int -> proof_cat expansion_strategy
+val expand_terminal : proof_cat expansion_strategy
 
 (*
  * Expand an inductive constructor

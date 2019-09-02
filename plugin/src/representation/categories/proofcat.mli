@@ -119,7 +119,7 @@ val map_dest : (context_object -> evar_map -> 'a state) -> arrow -> evar_map -> 
 (*
  * Map a function on the extension of an arrow
  *)
-val map_ext : (extension -> 'a) -> arrow -> 'a
+val map_ext : (extension -> evar_map -> 'a state) -> arrow -> evar_map -> 'a state
 
 (*
  * Map a function on the destination of an arrow and return a new arrow
@@ -134,7 +134,7 @@ val map_dest_arrow : (context_object -> evar_map -> context_object state) -> arr
 (*
  * Map a function on the extension of an arrow and return a new arrow
  *)
-val map_ext_arrow : (extension -> extension) -> arrow -> arrow
+val map_ext_arrow : (extension -> evar_map -> extension state) -> arrow -> evar_map -> arrow state
 
 (*
  * True iff an arrow maps from the provided object

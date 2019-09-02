@@ -13,9 +13,10 @@ open Debruijn
 
 type search_function = proof_cat_diff -> candidates
 type 'a intro_strategy = 'a proof_diff -> 'a proof_diff option
+type 'a expansion_strategy_old = 'a -> 'a (* TODO remove me *)
 
 type 'a zoomer =
-  'a expansion_strategy ->
+  'a expansion_strategy_old ->
   'a intro_strategy ->
   'a proof_diff ->
   'a proof_diff option
@@ -136,7 +137,7 @@ let zoom_map f a expander introducer d =
     f (Option.get zoomed)
 
 (* Zoom over two inductive proofs that induct over the same hypothesis *)
-let zoom_same_hypos = zoom expand_application (fun d -> Some d)
+let zoom_same_hypos = zoom (fun c -> snd (expand_application c Evd.empty)) (fun d -> Some d)
 
 (* Default zoom for recursive search *)
 let zoom_search f (d : goal_proof_diff) : candidates =

@@ -37,8 +37,10 @@ type 'a intro_strategy = 'a proof_diff -> 'a proof_diff option
  * since that is not possible.
  *)
 
+type 'a expansion_strategy_old = 'a -> 'a (* TODO remove me *)
+
 type 'a zoomer =
-  'a expansion_strategy ->
+  'a expansion_strategy_old ->
   'a intro_strategy ->
   'a proof_diff ->
   'a proof_diff option
@@ -94,7 +96,7 @@ val zoom : 'a zoomer
 val zoom_map :
   ('a proof_diff -> 'b) ->
   'b ->
-  'a expansion_strategy ->
+  'a expansion_strategy_old ->
   'a intro_strategy ->
   'a proof_diff ->
   'b
