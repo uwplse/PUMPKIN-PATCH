@@ -3,19 +3,14 @@
 open Environ
 open Constr
 open Proofcat
+open Evd
+open Stateutils
 
 (* --- Type definitions --- *)
 
 type 'a expansion_strategy = 'a -> 'a
 
 (* --- Contexts --- *)
-
-(*
- * Expand a term exactly once
- * Default to using the provided function when it cannot be expanded further
- * Error if the type context doesn't hold any terms
- *)
-val expand_term : (env -> types -> proof_cat) -> context_object -> proof_cat
 
 (*
  * Expand a product type as far as its conclusion goes

@@ -108,27 +108,27 @@ let expand_app (env : env) ((f, args) : types * types array) =
  * Default to using f when it cannot be expanded further
  * Error if the type context doesn't hold any terms
  *)
-let expand_term (default : env -> types -> proof_cat) (o : context_object) : proof_cat =
+let expand_term (default : env -> types -> evar_map -> proof_cat state) (o : context_object) =
   let (trm, env) = dest_context_term o in
   match kind trm with
   | Prod (n, t, b) ->
-      snd (expand_product env (n, t, b) Evd.empty)
+     expand_product env (n, t, b)
   | Lambda (n, t, b) ->
-      snd (expand_lambda env (n, t, b) Evd.empty)
+     expand_lambda env (n, t, b)
   | Ind ((i, ii), u) ->
-      snd (expand_inductive env ((i, ii), u) Evd.empty)
+     expand_inductive env ((i, ii), u)
   | App (f, args) ->
      (match kind f with
      | Lambda (n, t, b) ->
         (* Does not yet delta-reduce *)
         if Array.length args > 0 then
-          snd (expand_app env (f, args) Evd.empty)
+          expand_app env (f, args)
         else
           default env trm
      | _ ->
         default env trm)
   | _ ->
-      default env trm
+     default env trm
 
 (* Expand a product type as far as its conclusion goes *)
 let expand_product_fully (o : context_object) : proof_cat =
@@ -163,7 +163,7 @@ let expand_terminal (c : proof_cat) : proof_cat =
        else
          AnonymousBinding
      in
-     let exp = expand_term (fun env t -> snd (eval_theorem_bind binding env t Evd.empty)) t in
+     let _, exp = expand_term (eval_theorem_bind binding) t Evd.empty in
      snd (substitute_terminal c exp Evd.empty)
   | _ ->
       c
@@ -303,7 +303,7 @@ let expand_application (c, n, l) : proof_cat * int * (types list) =
              expand_const_app env (c, u) (f, args) l
           | _ ->
              let c_trm = Context (Term (trm, env), fid ()) in
-             let exp = expand_term (fun env t -> snd (eval_theorem env t Evd.empty)) c_trm in
+             let _, exp = expand_term eval_theorem c_trm Evd.empty in
              (exp, 0, l))
       | _ -> assert false)
     (only_arrow c)
