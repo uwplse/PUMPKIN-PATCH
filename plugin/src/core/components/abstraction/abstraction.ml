@@ -20,6 +20,7 @@ open Contextutils
 open Merging
 open Apputils
 open Convertibility
+open Stateutils
 
 (* --- TODO for refactoring without breaking things --- *)
 
@@ -105,9 +106,8 @@ let get_concrete_prop (config : abstraction_config) (concrete : closure) : closu
   (env, p :: (List.tl args))
 
 (* Get the concrete environment and arguments to abstract *)
-let get_concrete config strategy : closure =
+let get_concrete config strategy evd : closure =
   let env = config.env in
-  let evd = config.evd in
   let args = config.args_base in
   let s = reducer_to_specializer reduce_term in
   let evd, base = specialize_using s env config.f_base (Array.of_list args) evd in
@@ -135,9 +135,8 @@ let get_abstraction_args config : closure =
 
 (* Get the abstract arguments that map to concrete arguments
    for a particular strategy, function, and arguments *)
-let get_abstract config concrete strategy : closure =
+let get_abstract config concrete strategy evd : closure =
   let s = reducer_to_specializer reduce_term in
-  let evd = config.evd in
   match kind_of_abstraction strategy with
   | Arguments ->
      let (env_abs, args_abs) = get_abstraction_args config in
@@ -154,9 +153,9 @@ let get_abstract config concrete strategy : closure =
 (* Given a abstraction strategy, get the abstraction options for the
    particular function and arguments *)
 (* TODO num_to_abstract uniformity *)
-let get_abstraction_opts config strategy : abstraction_options =
-  let concrete = get_concrete config strategy in
-  let abstract = get_abstract config concrete strategy in
+let get_abstraction_opts config strategy evd : abstraction_options =
+  let concrete = get_concrete config strategy evd in
+  let abstract = get_abstract config concrete strategy evd in
   match kind_of_abstraction strategy with
   | Arguments ->
      let goal_type = get_arg_abstract_goal_type config in
@@ -169,9 +168,8 @@ let get_abstraction_opts config strategy : abstraction_options =
      { concrete; abstract; goal_type; num_to_abstract }
        
 (* Abstract candidates with a provided abstraction strategy *)
-let abstract_with_strategy (config : abstraction_config) strategy : candidates =
-  let opts = get_abstraction_opts config strategy in
-  let evd = config.evd in
+let abstract_with_strategy (config : abstraction_config) strategy evd : candidates =
+  let opts = get_abstraction_opts config strategy evd in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
   let _, reduced_cs = reduce_all_using strategy env config.cs evd in
@@ -188,12 +186,12 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
  * Return as soon as one is successful
  * If all fail, return the empty list
  *)
-let abstract_with_strategies (config : abstraction_config) : candidates =
+let abstract_with_strategies (config : abstraction_config) evd : candidates =
   let abstract_using = abstract_with_strategy config in
   let rec try_abstract_using strategies =
     match strategies with
     | h :: t ->
-       let abstracted = abstract_using h in
+       let abstracted = abstract_using h evd in
        if (List.length abstracted) > 0 then
          abstracted
        else
@@ -223,11 +221,11 @@ let try_abstract_inductive evd (d : lift_goal_diff) (cs : candidates) : candidat
     let new_goal_type = new_proof d_type in
     let old_goal_type = old_proof d_type in
     if List.for_all2 (fun t1 t2 -> snd (convertible env evd t1 t2)) (unfold_args old_goal_type) (unfold_args new_goal_type) then
-      let config = configure_args env evd d_type cs in
+      let _, config = configure_args env d_type cs evd in
       let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
       List.map
         (unshift_local (num_new_rels - 1) num_new_rels)
-        (abstract_with_strategies config)
+        (abstract_with_strategies config evd)
     else
       give_up
   else

@@ -5,6 +5,7 @@ open Abstracters
 open Candidates
 open Proofdiff
 open Cutlemma
+open Stateutils
 
 (* --- Configuring Abstraction --- *)
 
@@ -12,7 +13,6 @@ open Cutlemma
 type abstraction_config =
   {
     env : env;
-    evd : evar_map;
     args_base : types list;
     args_goal : types list;
     cs : candidates;
@@ -28,7 +28,11 @@ type abstraction_config =
  * configure the default configuration for abstraction of arguments
  *)
 val configure_args :
-  env -> evar_map -> types proof_diff -> candidates -> abstraction_config
+  env ->
+  types proof_diff ->
+  candidates ->
+  evar_map ->
+  abstraction_config state
 
 (*
  * Given an environment, a list of differences between fixpoint cases,
@@ -37,7 +41,11 @@ val configure_args :
  * This produces one configuration for each difference.
  *)
 val configure_fixpoint_cases :
-  env -> evar_map -> types list -> candidates -> abstraction_config list
+  env ->
+  types list ->
+  candidates ->
+  evar_map ->
+  (abstraction_config list) state
 
 (* --- Cut Lemmas --- *)
 
@@ -54,7 +62,11 @@ val configure_fixpoint_cases :
  * configure argument abstraction.
  *)
 val configure_cut_args :
-  env -> evar_map -> cut_lemma -> candidates -> abstraction_config
+  env ->
+  cut_lemma ->
+  candidates ->
+  evar_map ->
+  abstraction_config state
 
 (* --- Goals --- *)
 
@@ -72,4 +84,8 @@ val configure_cut_args :
  * Automatically infer which kind of abstraction to try from the goal type.
  *)
 val configure_from_goal :
-  env -> evar_map -> types -> types -> abstraction_config
+  env ->
+  types ->
+  types ->
+  evar_map ->
+  abstraction_config state

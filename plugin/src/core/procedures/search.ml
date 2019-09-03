@@ -52,19 +52,18 @@ let return_patch opts env evd (patches : types list) : types =
      let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
      let generalized =
        flat_map
-         abstract_with_strategies
-         (configure_fixpoint_cases
+         (fun ss -> abstract_with_strategies ss evd)
+         (snd (configure_fixpoint_cases
             env
-            evd
             (diff_fix_cases env evd (difference old_type new_type no_assumptions))
-            specialized_fs_terms)
+            specialized_fs_terms
+            evd))
      in List.hd generalized (* TODO better failure when none found *)
   | ConclusionCase (Some cut) ->
      let _, patches = reduce_all remove_unused_hypos env evd patches in
-     let generalized =
-       abstract_with_strategies
-         (configure_cut_args env evd cut patches)
-     in List.hd generalized (* TODO better failure when none found *)
+     let evd, strategies = configure_cut_args env cut patches evd in
+     let generalized = abstract_with_strategies strategies evd in
+     List.hd generalized (* TODO better failure when none found *)
   | Hypothesis (_, _) ->
      let _, patches = reduce_all remove_unused_hypos env evd patches in
      List.hd patches

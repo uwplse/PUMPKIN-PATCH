@@ -207,8 +207,8 @@ let abstract n trm goal : unit =
   let c = lookup_definition env def in
   let evm, goal_def = intern env evm goal in
   let goal_type = unwrap_definition env goal_def in
-  let config = configure_from_goal env evm goal_type c in
-  let abstracted = abstract_with_strategies config in
+  let evm, config = configure_from_goal env goal_type c evm in
+  let abstracted = abstract_with_strategies config evm in
   if List.length abstracted > 0 then
     try
       ignore (define_term n evm (List.hd abstracted) false)
