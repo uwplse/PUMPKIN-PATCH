@@ -144,7 +144,7 @@ let apply_factors evd (fs : factors) : types =
   let body =
     List.fold_right
       (fun (en, t) t_app ->
-        specialize_using specialize_no_reduce en evd (shift t) (Array.make 1 t_app))
+        snd (specialize_using specialize_no_reduce en (shift t) (Array.make 1 t_app) evd))
       (List.tl fs)
       base
   in reconstruct_lambda env body

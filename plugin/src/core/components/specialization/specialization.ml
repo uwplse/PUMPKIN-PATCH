@@ -16,13 +16,14 @@ open Reducers
 open Utilities
 open Contextutils
 open Envutils
+open Stateutils
 
-type specializer = env -> evar_map -> types -> types array -> types
+type specializer = env -> types -> types array -> evar_map -> types state
 
 (* --- Top-level --- *)
 
-let specialize_using (s : specializer) env evd f args =
-  s env evd f args
+let specialize_using (s : specializer) env f args =
+  s env f args
 
 (* --- Conversion between specializers and reducers --- *)
 
@@ -37,31 +38,32 @@ let specialize_using (s : specializer) env evd f args =
  * This will delta-reduce the function f if necessary.
  * At the bottom level, it returns betaiota reduction.
  *)
-let rec specialize_body (s : specializer) (env : env) (evd : evar_map) (t : types) =
+let rec specialize_body (s : specializer) (env : env) sigma (t : types) =
   match kind t with
   | Lambda (n, t, b) ->
-     let evd, b = specialize_body s (push_local (n, t) env) evd b in
-     evd, mkLambda (n, t, b)
+     bind
+       (fun sigma -> specialize_body s (push_local (n, t) env) sigma b)
+       (fun b -> ret (mkLambda (n, t, b)))
+       sigma
   | App (f, args) ->
-     let f_body = unwrap_definition env f in
-     evd, s env evd f_body args
+     s env (unwrap_definition env f) args sigma
   | _ ->
      failwith "Term should be of the form (fun args => f args)"
 
 (* Convert a specializer into a reducer by taking arguments *)
 let specialize_to (args : types array) (s : specializer) : reducer =
-  fun env evd f -> evd, s env evd f args
+  fun env sigma f -> s env f args sigma
 
 (*
  * Convert a specializer into a reducer by taking the function
  * This only handles a single argument
  *)
 let specialize_in (f : types) (s : specializer) : reducer =
-  fun env evd arg -> evd, s env evd f (Array.make 1 arg)
+  fun env sigma arg -> s env f (Array.make 1 arg) sigma
 
 (* Convert a reducer into a specializer in the obvious way *)
 let reducer_to_specializer (r : reducer) : specializer =
-  fun env evd f args -> snd (r env evd (mkApp (f, args)))
+  fun env f args sigma -> r env sigma (mkApp (f, args))
 
 (* --- Defaults --- *)
 

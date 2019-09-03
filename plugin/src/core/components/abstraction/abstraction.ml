@@ -27,6 +27,8 @@ open Convertibility
  * Infer the type of trm in env
  * Note: This does not yet use good evar map hygeine; will fix that
  * during the refactor.
+ *
+ * TODO remove once evar_map refactor is done (needs to be last)
  *)
 let infer_type (env : env) (evd : evar_map) (trm : types) : types =
   let jmt = Typeops.infer env trm in
@@ -108,7 +110,7 @@ let get_concrete config strategy : closure =
   let evd = config.evd in
   let args = config.args_base in
   let s = reducer_to_specializer reduce_term in
-  let base = specialize_using s env evd config.f_base (Array.of_list args) in
+  let evd, base = specialize_using s env config.f_base (Array.of_list args) evd in
   let concrete = (env, List.append args [base]) in
   match kind_of_abstraction strategy with
   | Arguments ->
@@ -140,13 +142,13 @@ let get_abstract config concrete strategy : closure =
   | Arguments ->
      let (env_abs, args_abs) = get_abstraction_args config in
      let p = shift_by (List.length args_abs) config.f_base in
-     let base_abs = specialize_using s env_abs evd p (Array.of_list args_abs) in
+     let evd, base_abs = specialize_using s env_abs p (Array.of_list args_abs) evd in
      (env_abs, List.append args_abs [base_abs])
   | Property ->
      let args_abs = config.args_base in
      let (env_p, args_p) = concrete in
      let p = mkRel (nb_rel env_p) in
-     let base_abs = specialize_using s env_p evd p (Array.of_list args_abs) in
+     let evd, base_abs = specialize_using s env_p p (Array.of_list args_abs) evd in
      (env_p, List.append (p :: List.tl args_abs) [base_abs])
 
 (* Given a abstraction strategy, get the abstraction options for the

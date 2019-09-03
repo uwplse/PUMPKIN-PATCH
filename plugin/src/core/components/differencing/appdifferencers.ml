@@ -106,7 +106,7 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
            filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args
       | Kindofchange.Conclusion | Kindofchange.Identity ->
          if List.for_all2 (convertible env evd) (Array.to_list args_o) (Array.to_list args_n) then
-           let specialize = specialize_using specialize_no_reduce env evd in
+           let specialize f args = snd (specialize_using specialize_no_reduce env f args evd) in
            let combine_app = combine_cartesian specialize in
 	   let fs = diff_rec diff_f opts d_f in
 	   let args = Array.map (fun a_o -> [a_o]) args_o in
@@ -165,7 +165,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
               0
          in
          let arity = prop_arity prop_trm in
-         let specialize = specialize_using specialize_no_reduce env_o evd in
+         let specialize f args = snd (specialize_using specialize_no_reduce env_o f args evd) in
          let final_args_o = Array.of_list (fst (split_at arity args_o)) in
 	 if Kindofchange.is_identity (get_change opts) then (* TODO explain *)
 	   List.map 
