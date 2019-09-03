@@ -6,6 +6,7 @@ open Candidates
 open Abstractionconfig
 open Proofdiff
 open Searchopts
+open Stateutils
 
 (*--- Abstraction ---*)
 
@@ -14,7 +15,8 @@ open Searchopts
  * Return as soon as one is successful
  * If all fail, return the empty list
  *)
-val abstract_with_strategies : abstraction_config -> evar_map -> types list
+val abstract_with_strategies :
+  abstraction_config -> evar_map -> candidates state
 
 (*
  * Abstract candidates in a case of an inductive proof.

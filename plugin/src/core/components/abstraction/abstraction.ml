@@ -21,6 +21,7 @@ open Merging
 open Apputils
 open Convertibility
 open Stateutils
+open Envutils
 
 (* --- TODO for refactoring without breaking things --- *)
 
@@ -31,9 +32,9 @@ open Stateutils
  *
  * TODO remove once evar_map refactor is done (needs to be last)
  *)
-let infer_type (env : env) (evd : evar_map) (trm : types) : types =
+let infer_type (env : env) (evd : evar_map) (trm : types) =
   let jmt = Typeops.infer env trm in
-  j_type jmt
+  evd, j_type jmt
                
 (* --- End TODO --- *)
 
@@ -52,15 +53,21 @@ type abstraction_options =
  * Wrap each candidate in a lambda from anonymous terms with the types of args
  * Assumes all arguments are bound in env
  *)
-let generalize (env : env) (evd : evar_map) (num_to_abstract : int) (cs : candidates) : candidates =
-  snd
-    (List.fold_right
-       (fun _ (en, l) ->
-         let typ = unshift (infer_type en evd (mkRel 1)) in
-         let env_pop = Environ.pop_rel_context 1 en in
-         (env_pop, List.map (fun b -> mkLambda (Names.Name.Anonymous, typ, b)) l))
-       (range 1 (num_to_abstract + 1))
-       (env, cs))
+let generalize (env : env) (num_to_abstract : int) (cs : candidates) =
+  bind
+    (fold_left_state
+       (fun (en, l) _ ->
+         bind
+           (bind
+              (fun sigma -> infer_type en sigma (mkRel 1))
+              (fun t -> ret (unshift t)))
+           (fun t ->
+             let env_pop = Environ.pop_rel_context 1 en in
+             let l = List.map (fun b -> mkLambda (Names.Name.Anonymous, t, b)) l in
+             ret (env_pop, l)))
+       (env, cs)
+       (List.rev (range 1 (num_to_abstract + 1))))
+    (fun p -> ret (snd p))
 
 (*
  * Get goals for abstraction by a function
@@ -106,17 +113,19 @@ let get_concrete_prop (config : abstraction_config) (concrete : closure) : closu
   (env, p :: (List.tl args))
 
 (* Get the concrete environment and arguments to abstract *)
-let get_concrete config strategy evd : closure =
+let get_concrete config strategy =
   let env = config.env in
   let args = config.args_base in
   let s = reducer_to_specializer reduce_term in
-  let evd, base = specialize_using s env config.f_base (Array.of_list args) evd in
-  let concrete = (env, List.append args [base]) in
-  match kind_of_abstraction strategy with
-  | Arguments ->
-     concrete
-  | Property ->
-     get_concrete_prop config concrete
+  bind
+    (specialize_using s env config.f_base (Array.of_list args))
+    (fun base ->
+      let concrete = (env, List.append args [base]) in
+      match kind_of_abstraction strategy with
+      | Arguments ->
+         ret concrete
+      | Property ->
+         ret (get_concrete_prop config concrete))
 
 (* Get abstract arguments for a function *)
 let get_abstraction_args config : closure =
@@ -126,7 +135,7 @@ let get_abstraction_args config : closure =
     else
       match kind g with
       | Lambda (n, t, b) ->
-	 let en' = push_rel CRD.(LocalAssum(n, t)) en in
+	 let en' = push_local (n, t) en in
 	 let (en'', b') = infer_args (i - 1) en' b in
 	 (en'', (mkRel i) :: b')
       | _ ->
@@ -135,69 +144,79 @@ let get_abstraction_args config : closure =
 
 (* Get the abstract arguments that map to concrete arguments
    for a particular strategy, function, and arguments *)
-let get_abstract config concrete strategy evd : closure =
+let get_abstract config concrete strategy =
   let s = reducer_to_specializer reduce_term in
   match kind_of_abstraction strategy with
   | Arguments ->
      let (env_abs, args_abs) = get_abstraction_args config in
      let p = shift_by (List.length args_abs) config.f_base in
-     let evd, base_abs = specialize_using s env_abs p (Array.of_list args_abs) evd in
-     (env_abs, List.append args_abs [base_abs])
+     bind
+       (specialize_using s env_abs p (Array.of_list args_abs))
+       (fun base_abs ->
+         ret (env_abs, List.append args_abs [base_abs]))
   | Property ->
      let args_abs = config.args_base in
      let (env_p, args_p) = concrete in
      let p = mkRel (nb_rel env_p) in
-     let evd, base_abs = specialize_using s env_p p (Array.of_list args_abs) evd in
-     (env_p, List.append (p :: List.tl args_abs) [base_abs])
+     bind
+       (specialize_using s env_p p (Array.of_list args_abs))
+       (fun base_abs ->
+         ret (env_p, List.append (p :: List.tl args_abs) [base_abs]))
 
 (* Given a abstraction strategy, get the abstraction options for the
    particular function and arguments *)
 (* TODO num_to_abstract uniformity *)
-let get_abstraction_opts config strategy evd : abstraction_options =
-  let concrete = get_concrete config strategy evd in
-  let abstract = get_abstract config concrete strategy evd in
-  match kind_of_abstraction strategy with
-  | Arguments ->
-     let goal_type = get_arg_abstract_goal_type config in
-     let num_to_abstract = List.length config.args_base in
-     { concrete; abstract; goal_type; num_to_abstract }
-  | Property ->
-     let goal_type = get_prop_abstract_goal_type config in
-     let (env, _) = concrete in
-     let num_to_abstract = nb_rel env in
-     { concrete; abstract; goal_type; num_to_abstract }
+let get_abstraction_opts config strategy =
+  bind
+    (get_concrete config strategy)
+    (fun concrete ->
+      bind
+        (get_abstract config concrete strategy)
+        (fun abstract ->
+          match kind_of_abstraction strategy with
+          | Arguments ->
+             let goal_type = get_arg_abstract_goal_type config in
+             let num_to_abstract = List.length config.args_base in
+             ret { concrete; abstract; goal_type; num_to_abstract }
+          | Property ->
+             let goal_type = get_prop_abstract_goal_type config in
+             let (env, _) = concrete in
+             let num_to_abstract = nb_rel env in
+             ret { concrete; abstract; goal_type; num_to_abstract }))
        
 (* Abstract candidates with a provided abstraction strategy *)
-let abstract_with_strategy (config : abstraction_config) strategy evd : candidates =
-  let opts = get_abstraction_opts config strategy evd in
+let abstract_with_strategy (config : abstraction_config) strategy sigma =
+  let sigma, opts = get_abstraction_opts config strategy sigma in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
-  let _, reduced_cs = reduce_all_using strategy env config.cs evd in
+  let sigma, reduced_cs = reduce_all_using strategy env config.cs sigma in
   let shift_concrete = List.map (shift_by (nb_rel env_abs - nb_rel env)) in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
-  let _, bs = substitute_using strategy env_abs args_adj args_abs cs_adj evd in
-  let lambdas = generalize env_abs evd opts.num_to_abstract bs in
+  let sigma, bs = substitute_using strategy env_abs args_adj args_abs cs_adj sigma in
+  let sigma, lambdas = generalize env_abs opts.num_to_abstract bs sigma in
   Printf.printf "%d abstracted candidates\n" (List.length lambdas);
-  snd (filter_using strategy env opts.goal_type lambdas evd)
+  filter_using strategy env opts.goal_type lambdas sigma
 
 (*
  * Try to abstract candidates with an ordered list of abstraction strategies
  * Return as soon as one is successful
  * If all fail, return the empty list
  *)
-let abstract_with_strategies (config : abstraction_config) evd : candidates =
+let abstract_with_strategies (config : abstraction_config) =
   let abstract_using = abstract_with_strategy config in
   let rec try_abstract_using strategies =
     match strategies with
     | h :: t ->
-       let abstracted = abstract_using h evd in
-       if (List.length abstracted) > 0 then
-         abstracted
-       else
-         try_abstract_using t
+       bind
+         (abstract_using h)
+         (fun abstracted ->
+           if (List.length abstracted) > 0 then
+             ret abstracted
+           else
+             try_abstract_using t)
     | _ ->
-       []
+       ret []
   in try_abstract_using config.strategies
 
 (*
@@ -212,8 +231,10 @@ let abstract_with_strategies (config : abstraction_config) evd : candidates =
  * specialized, so we have nothing to abstract, and we return the original list.
  *
  * If the goal types are both specialized, then we abstract.
+ *
+ * TODO left off here
  *)
-let try_abstract_inductive evd (d : lift_goal_diff) (cs : candidates) : candidates =
+let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) evd : candidates =
   let goals = goal_types d in
   let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
   if goals_are_apps && non_empty cs then
@@ -225,7 +246,7 @@ let try_abstract_inductive evd (d : lift_goal_diff) (cs : candidates) : candidat
       let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
       List.map
         (unshift_local (num_new_rels - 1) num_new_rels)
-        (abstract_with_strategies config evd)
+        (snd (abstract_with_strategies config evd))
     else
       give_up
   else
@@ -251,7 +272,7 @@ let abstract_case (opts : options) evd (d : goal_case_diff) cs : candidates =
   | Kindofchange.FixpointCase ((_, _), cut) when snd (are_cut env cut cs evd) ->
      cs
   | _ ->
-     try_abstract_inductive evd d_goal cs
+     try_abstract_inductive d_goal cs evd
                             
 (* 
  * Replace all occurrences of the first term in the second term with Rel 1,
