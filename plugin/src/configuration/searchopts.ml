@@ -13,23 +13,20 @@ open Cutlemma
 open Catzooming
 open Indutils
 open Contextutils
+open Stateutils
+open Convertibility
 
 (*
  * Note: Evar discipline is not good here yet, but will change when
  * we merge PUMPKIN with DEVOID and refactor.
  *)
 
-(* --- TODO for backwards compatibility during refactor, fix w/ evar_map updates --- *)
-
-let convertible env sigma t1 t2 = snd (Convertibility.convertible env sigma t1 t2)
-let types_convertible env sigma t1 t2 = snd (Convertibility.types_convertible env sigma t1 t2)
-
-(* --- End TODO --- *)
-
 (* --- Auxiliary --- *)
 
-let terms_convertible env_o env_n evd src_o src_n dst_o dst_n =
-  convertible env_o evd src_o dst_o && convertible env_n evd src_n dst_n
+let terms_convertible env_o env_n src_o src_n =
+  and_state
+    (fun dst_o sigma -> convertible env_o sigma src_o dst_o)
+    (fun dst_n sigma -> convertible env_n sigma src_n dst_n)
 
 let context_envs = map_tuple context_env
 let context_terms = map_tuple context_term
@@ -102,9 +99,9 @@ let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
    let env_n' = push_rel rel_n env_n in
    let (_, _, t_o) = CRD.to_tuple @@ rel_o in
    let (_, _, t_n) = CRD.to_tuple @@ rel_n in
-   let trim = terms_convertible env_o' env_n' Evd.empty t_o t_n in
+   let trim = terms_convertible env_o' env_n' t_o t_n in
    match map_tuple kind (g_o, g_n) with
-   | (Prod (_, t_g_o, b_o), Prod (_, t_g_n, b_n)) when trim t_g_o t_g_n ->
+   | (Prod (_, t_g_o, b_o), Prod (_, t_g_n, b_n)) when snd (trim t_g_o t_g_n Evd.empty) ->
       (Term (b_o, env_o'), Term (b_n, env_n'))
    | _ ->
       (Term (shift g_o, env_o'), Term (shift g_n, env_n'))
