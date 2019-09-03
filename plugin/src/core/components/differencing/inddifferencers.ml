@@ -17,6 +17,7 @@ open Expansion
 open Environ
 open Evd
 open Higherdifferencers
+open Stateutils
 
 (* --- Cases --- *)
 
@@ -189,13 +190,15 @@ let diff_inductive diff d_old opts evd (d : (proof_cat * int) proof_diff) : cand
   if not (nparams_o = nparams_n) then
     give_up
   else
-    zoom_map
-      (fun d ->
-        let sort c = base_cases_first (List.map (fun c -> snd (expand_constr c Evd.empty)) (snd (split c Evd.empty))) in
-        let d_sorted = map_diffs sort id d in
-        let ds = dest_cases d_sorted in
-        List.map (unshift_by nparams_o) (diff_ind_cases opts evd diff d_old ds))
-      []
-      id
-      (intro_params nparams_o)
-      (difference o n (assumptions d))
+    snd
+      (zoom_map
+	 (fun d ->
+           let sort c = base_cases_first (List.map (fun c -> snd (expand_constr c Evd.empty)) (snd (split c Evd.empty))) in
+           let d_sorted = map_diffs sort id d in
+           let ds = dest_cases d_sorted in
+           List.map (unshift_by nparams_o) (diff_ind_cases opts evd diff d_old ds))
+	 []
+	 ret
+	 (intro_params nparams_o)
+	 (difference o n (assumptions d))
+	 Evd.empty)

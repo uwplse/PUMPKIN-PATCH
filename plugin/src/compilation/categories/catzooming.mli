@@ -5,11 +5,13 @@ open Proofcat
 open Candidates
 open Names
 open Constr
+open Stateutils
+open Evd
 
 (* --- Zooming --- *)
 
 type search_function = proof_cat_diff -> candidates
-type 'a intro_strategy = 'a proof_diff -> 'a proof_diff option
+type 'a intro_strategy = 'a proof_diff -> evar_map -> ('a proof_diff option) state
 
 (*
  * Zooming is what we call an operation that involves:
@@ -37,13 +39,12 @@ type 'a intro_strategy = 'a proof_diff -> 'a proof_diff option
  * since that is not possible.
  *)
 
-type 'a expansion_strategy_old = 'a -> 'a (* TODO remove me *)
-
 type 'a zoomer =
-  'a expansion_strategy_old ->
+  'a expansion_strategy ->
   'a intro_strategy ->
   'a proof_diff ->
-  'a proof_diff option
+  evar_map ->
+  ('a proof_diff option) state
 
 (* --- Introduction strategies --- *)
 
@@ -96,36 +97,37 @@ val zoom : 'a zoomer
 val zoom_map :
   ('a proof_diff -> 'b) ->
   'b ->
-  'a expansion_strategy_old ->
+  'a expansion_strategy ->
   'a intro_strategy ->
   'a proof_diff ->
-  'b
+  evar_map ->
+  'b state
 
 (*
  * Zoom over two inductive proofs that induct over the same hypothesis
  * Return the leftover arguments that aren't applied to the inductive type
  *)
-val zoom_same_hypos : induction_diff -> induction_diff option
+val zoom_same_hypos : induction_diff -> evar_map -> (induction_diff option) state
 
 (*
  * Default zoom for recursive search
  *)
-val zoom_search : search_function -> goal_proof_diff -> candidates
+val zoom_search : search_function -> goal_proof_diff -> evar_map -> candidates state
 
 (*
  * Zoom in, search, and wrap the result in a lambda
  *)
 val zoom_wrap_lambda :
-  search_function -> Name.t -> types -> goal_proof_diff -> candidates
+  search_function -> Name.t -> types -> goal_proof_diff -> evar_map -> candidates state
 
 (*
  * Zoom in, search, and wrap the result in a product
  *)
 val zoom_wrap_prod :
-  search_function -> Name.t -> types -> goal_proof_diff -> candidates
+  search_function -> Name.t -> types -> goal_proof_diff -> evar_map -> candidates state
 
 (*
  * Zoom in, search, and unshift the result
  *)
-val zoom_unshift : search_function -> goal_proof_diff -> candidates
+val zoom_unshift : search_function -> goal_proof_diff -> evar_map -> candidates state
 

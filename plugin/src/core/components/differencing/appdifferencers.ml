@@ -130,7 +130,7 @@ let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
   let o = old_proof d_proofs in
   let n = new_proof d_proofs in
   let d_ind = difference (o, 0, []) (n, 0, []) (assumptions d) in
-  let d_opt = zoom_same_hypos d_ind in
+  let _, d_opt = zoom_same_hypos d_ind Evd.empty in
   if Option.has_some d_opt then
     let d_zoom = Option.get d_opt in
     let assums = assumptions d_zoom in
