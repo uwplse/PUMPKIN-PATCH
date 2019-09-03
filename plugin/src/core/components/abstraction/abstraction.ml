@@ -174,14 +174,14 @@ let abstract_with_strategy (config : abstraction_config) strategy : candidates =
   let evd = config.evd in
   let (env, args) = opts.concrete in
   let (env_abs, args_abs) = opts.abstract in
-  let _, reduced_cs = reduce_all_using strategy env evd config.cs in
+  let _, reduced_cs = reduce_all_using strategy env config.cs evd in
   let shift_concrete = List.map (shift_by (nb_rel env_abs - nb_rel env)) in
   let args_adj = shift_concrete args in
   let cs_adj = shift_concrete reduced_cs in
-  let bs = substitute_using strategy env_abs evd args_adj args_abs cs_adj in
+  let _, bs = substitute_using strategy env_abs args_adj args_abs cs_adj evd in
   let lambdas = generalize env_abs evd opts.num_to_abstract bs in
   Printf.printf "%d abstracted candidates\n" (List.length lambdas);
-  snd (filter_using strategy env evd opts.goal_type lambdas)
+  snd (filter_using strategy env opts.goal_type lambdas evd)
 
 (*
  * Try to abstract candidates with an ordered list of abstraction strategies

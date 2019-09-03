@@ -17,22 +17,36 @@ type abstraction_strategy
  * using a strategy to determine when to substitute.
  *)
 val substitute_using :
- abstraction_strategy -> env -> evar_map -> types list -> types list -> candidates ->
- candidates
+  abstraction_strategy ->
+  env ->
+  types list ->
+  types list ->
+  candidates ->
+  evar_map ->
+  candidates state
 
 (*
  * Reduce candidates, using the abstraction strategy to determine
  * how to reduce
  *)
 val reduce_all_using :
-  abstraction_strategy -> env -> evar_map -> candidates -> candidates state
+  abstraction_strategy ->
+  env ->
+  candidates ->
+  evar_map ->
+  candidates state
 
 (*
  * Filter candidates, using the abstraction strategy to determine
  * how to filter
  *)
 val filter_using :
-  abstraction_strategy -> env -> evar_map -> types -> candidates -> candidates state
+  abstraction_strategy ->
+  env ->
+  types ->
+  candidates ->
+  evar_map ->
+  candidates state
 
 (* --- Recover options from an abstraction strategy --- *)
 
