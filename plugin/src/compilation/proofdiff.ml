@@ -14,11 +14,7 @@ open Utilities
 open Merging
 open Indutils
 open Convertibility
-
-(*
- * Note: Evar discipline here is not good yet, but will change
- * when we refactor later.
- *)
+open Stateutils
 
 (* --- Types --- *)
 
@@ -146,17 +142,21 @@ let proof_to_term (d : goal_proof_diff) : goal_term_diff =
  * Retain the same goals and assumptions,
  * but update the term in a goal proof diff
  *)
-let eval_with_term f g trm (d : goal_proof_diff) : goal_proof_diff =
+let eval_with_term f g trm (d : goal_proof_diff) =
   let (goal, _) = f d in
   let env = context_env goal in
-  g (goal, snd (eval_proof env trm Evd.empty)) d
+  bind
+    (eval_proof env trm)
+    (fun p -> g (goal, p) d)
 
-let eval_with_old_term = eval_with_term old_proof with_old_proof
+let eval_with_old_term = 
+  eval_with_term old_proof (fun o p -> ret (with_old_proof o p))
 
-let eval_with_new_term = eval_with_term new_proof with_new_proof
+let eval_with_new_term = 
+  eval_with_term new_proof (fun n p -> ret (with_new_proof n p))
 
 let eval_with_terms o n d =
-  eval_with_old_term o (eval_with_new_term n d)
+  bind (eval_with_new_term n d) (eval_with_old_term o)
 
 (* Destruct the contexts in a diff and return a new diff *)
 let dest_goals (d : 'a goal_diff) =
@@ -182,10 +182,13 @@ let dest_cases (d : case_diff) : proof_cat_diff list =
   List.map2 (fun o n -> difference o n assums) os ns
 
 (* Expand constructors in a proof_cat_diff *)
-let expand_constrs (d : proof_cat_diff) : proof_cat_diff =
-  let o = snd (expand_constr (old_proof d) Evd.empty) in
-  let n = snd (expand_constr (new_proof d) Evd.empty) in
-  difference o n (assumptions d)
+let expand_constrs (d : proof_cat_diff) =
+  bind
+    (expand_constr (old_proof d))
+    (fun o ->
+      bind
+	(expand_constr (new_proof d))
+	(fun n -> ret (difference o n (assumptions d))))
 
 (* --- Construction and destruction --- *)
 
@@ -226,13 +229,6 @@ let merge_diff_closures (d : goal_type_term_diff) (trms : types list) =
     (old_goal_env, List.append [old_goal_type; old_term] trms)
     assums
 
-(* Get the reduced proof terms for a proof diff *)
-let reduced_proof_terms (r : reducer) (d : goal_proof_diff) : env * types * types =
-  let (env, ns, os) = merge_diff_closures (dest_goals (proof_to_term d)) [] in
-  let [new_goal_type; new_term] = ns in
-  let [old_goal_type; old_term] = os in
-  (env, snd (r env Evd.empty old_term), snd (r env Evd.empty new_term))
-
 (* Get the goal types for a lift goal diff *)
 let goal_types (d : lift_goal_diff) : types * types =
   let d_type_env = dest_lift_goals d in
@@ -243,42 +239,50 @@ let goal_types (d : lift_goal_diff) : types * types =
 (* --- Reduction and Simplification --- *)
 
 (* Reduce the terms inside of a goal_proof_diff *)
-let reduce_diff (r : reducer) (d : goal_proof_diff) : goal_proof_diff =
+let reduce_diff (r : reducer) (d : goal_proof_diff) =
   let (o, n) = proof_terms d in
   let (goal_o, _) = old_proof d in
   let (goal_n, _) = new_proof d in
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
-  eval_with_terms (snd (r env_o Evd.empty o)) (snd (r env_n Evd.empty n)) d
+  bind
+    (fun sigma -> r env_o sigma o)
+    (fun o ->
+      bind
+	(fun sigma -> r env_n sigma n)
+	(fun n -> eval_with_terms o n d))
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
-let rec reduce_casts (d : goal_proof_diff) : goal_proof_diff =
+let rec reduce_casts (d : goal_proof_diff) =
   match map_tuple kind (proof_terms d) with
   | (Cast (t, _, _), _) ->
-     reduce_casts (eval_with_old_term t d)
+     bind (eval_with_old_term t d) reduce_casts
   | (_, Cast (t, _, _)) ->
-     reduce_casts (eval_with_new_term t d)
+     bind (eval_with_new_term t d) reduce_casts
   | _ ->
-     d
+     ret d
 
 (*
  * Given a difference in proofs, substitute the head let ins
  * Fail silently
  *)
-let reduce_letin (d : goal_proof_diff) : goal_proof_diff =
+let reduce_letin (d : goal_proof_diff) =
   let (o, n) = proof_terms d in
   try
     if isLetIn o || isLetIn n then
       let d_dest = dest_goals d in
       let ((_, old_env), _) = old_proof d_dest in
       let ((_, new_env), _) = new_proof d_dest in
-      let o' = snd (reduce_whd_if_let_in old_env Evd.empty o) in
-      let n' = snd (reduce_whd_if_let_in new_env Evd.empty n) in
-      eval_with_terms o' n' d
+      bind
+	(fun sigma -> reduce_whd_if_let_in old_env sigma o)
+	(fun o' ->
+	  bind
+	    (fun sigma -> reduce_whd_if_let_in new_env sigma n)
+	    (fun n' -> eval_with_terms o' n' d))
     else
-      d
+      ret d
   with _ ->
-    d
+    ret d
 
 (* Given a term, trim off the IH, assuming it's an application *)
 let trim_ih (trm : types) : types =
@@ -288,7 +292,7 @@ let trim_ih (trm : types) : types =
   mkApp (f, args_trim)
 
 (* Given a diff, trim off the IHs, assuming the terms are applications *)
-let reduce_trim_ihs (d : goal_proof_diff) : goal_proof_diff =
+let reduce_trim_ihs (d : goal_proof_diff) =
   let (old_term, new_term) = map_tuple trim_ih (proof_terms d) in
   eval_with_terms old_term new_term d
 
@@ -299,18 +303,23 @@ let reduce_trim_ihs (d : goal_proof_diff) : goal_proof_diff =
  * Shift by the number of morphisms in the case,
  * assuming they are equal when they are convertible
  *)
-let update_case_assums (d_ms : (arrow list) proof_diff) : equal_assumptions =
-  List.fold_left2
-    (fun assums dst_o dst_n ->
+let update_case_assums (d_ms : (arrow list) proof_diff) =
+  fold_left_state
+    (fun assums (dst_o, dst_n) ->
       let d = difference dst_o dst_n assums in
       let (env, d_goal, _) = merge_lift_diff_envs d [] in
-      if snd (convertible env Evd.empty (old_proof d_goal) (new_proof d_goal)) then
-        assume_local_equal assums
-      else
-        shift_assumptions assums)
+      branch_state
+	(fun d_goal sigma -> 
+	  convertible env sigma (old_proof d_goal) (new_proof d_goal))
+	(fun _ -> ret (assume_local_equal assums))
+	(fun _ -> ret (shift_assumptions assums))
+	d_goal)
     (assumptions d_ms)
-    (conclusions (all_but_last (old_proof d_ms)))
-    (conclusions (all_but_last (new_proof d_ms)))
+    (List.fold_right2
+       (fun dst_o dst_n combined -> (dst_o, dst_n) :: combined)
+       (conclusions (all_but_last (old_proof d_ms)))
+       (conclusions (all_but_last (new_proof d_ms)))
+       [])
 
 (* --- Questions about differences between proofs --- *)
 

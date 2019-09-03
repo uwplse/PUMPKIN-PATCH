@@ -87,7 +87,7 @@ let diff_sort_ind_case opts evd sort diff d_old (d : proof_cat_diff) : candidate
       d_old
       (map_diffs
          (fun (o, ms) -> (terminal o, ms))
-         (fun _ -> (update_case_assums d_ms))
+         (fun _ -> snd (update_case_assums d_ms Evd.empty))
          (add_to_diff d (sort o ms_o) (sort n ms_n)))
   in
   if is_hypothesis (get_change opts) then

@@ -6,6 +6,8 @@ open Proofcat
 open Assumptions
 open Reducers
 open Merging
+open Stateutils
+open Evd
 
 (* --- Types --- *)
 
@@ -67,9 +69,6 @@ val diff_proofs : 'a goal_diff -> 'a * 'a
 (* Get the proof terms for a proof diff *)
 val proof_terms : goal_proof_diff -> (types * types)
 
-(* Get the reduced proof terms for a proof diff *)
-val reduced_proof_terms : reducer -> goal_proof_diff -> env * types * types
-
 (* Get the goal types for a lift goal diff *)
 val goal_types : lift_goal_diff -> (types * types)
 
@@ -125,19 +124,19 @@ val proof_to_term : goal_proof_diff -> goal_term_diff
  * Retain the same goals and assumptions, but update the old proof
  * with a term in a goal proof diff
  *)
-val eval_with_old_term : types -> goal_proof_diff -> goal_proof_diff
+val eval_with_old_term : types -> goal_proof_diff -> evar_map -> goal_proof_diff state
 
 (*
  * Retain the same goals and assumptions, but update the new proof
  * with a term in a goal proof diff
  *)
-val eval_with_new_term : types -> goal_proof_diff -> goal_proof_diff
+val eval_with_new_term : types -> goal_proof_diff -> evar_map -> goal_proof_diff state
 
 (*
  * Retain the same goals and assumptions, but update the old and new
  * terms with the terms in a goal proof diff
  *)
-val eval_with_terms : types -> types -> goal_proof_diff -> goal_proof_diff
+val eval_with_terms : types -> types -> goal_proof_diff -> evar_map -> goal_proof_diff state
 
 (*
  * Destruct the contexts in a goal_diff and return a new diff
@@ -157,7 +156,7 @@ val dest_cases : case_diff -> proof_cat_diff list
 (*
  * Expand constructors in a proof_cat_diff
  *)
-val expand_constrs : proof_cat_diff -> proof_cat_diff
+val expand_constrs : proof_cat_diff -> evar_map -> proof_cat_diff state
 
 (* --- Merging environments for diffs --- *)
 
@@ -180,19 +179,19 @@ val merge_diff_closures :
 (* --- Reduction and Simplification --- *)
 
 (* Reduce the terms inside of a goal_proof_diff *)
-val reduce_diff : reducer -> goal_proof_diff -> goal_proof_diff
+val reduce_diff : reducer -> goal_proof_diff -> evar_map -> goal_proof_diff state
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
-val reduce_casts : goal_proof_diff -> goal_proof_diff
+val reduce_casts : goal_proof_diff -> evar_map -> goal_proof_diff state
 
 (*
  * Given a differrence in proofs, weak head reduce any let-ins
  * If this fails because of a substituted assumption, then fail silently
  *)
-val reduce_letin : goal_proof_diff -> goal_proof_diff
+val reduce_letin : goal_proof_diff -> evar_map -> goal_proof_diff state
 
 (* Given a difference in proofs, trim applications of the IH *)
-val reduce_trim_ihs : goal_proof_diff -> goal_proof_diff
+val reduce_trim_ihs : goal_proof_diff -> evar_map -> goal_proof_diff state
 
 (* --- Assumptions --- *)
 
@@ -200,7 +199,7 @@ val reduce_trim_ihs : goal_proof_diff -> goal_proof_diff
  * Update the assumptions in the difference between a case of an inductive proof
  * Assume terms are equal when they are convertible, and offset accordingly
  *)
-val update_case_assums : (arrow list) proof_diff -> equal_assumptions
+val update_case_assums : (arrow list) proof_diff -> evar_map -> equal_assumptions state
 
 (* --- Questions about a difference between proofs --- *)
 

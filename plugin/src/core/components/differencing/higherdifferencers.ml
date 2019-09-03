@@ -30,7 +30,7 @@ let rec try_chain_diffs diffs d =
  *)
 let diff_reduced diff d =
   let (o, n) = proof_terms d in
-  let d_red = reduce_diff reduce_term d in
+  let d_red = snd (reduce_diff reduce_term d Evd.empty) in
   let (o_red, n_red) = proof_terms d_red in
   if not ((equal o o_red) && (equal n n_red)) then
     diff d_red

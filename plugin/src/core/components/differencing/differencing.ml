@@ -83,7 +83,7 @@ let debug_search (d : goal_proof_diff) : unit =
  *    recursively. (Support for this is preliminary.)
  *)
 let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidates =
-  let d = reduce_letin (reduce_casts d) in
+  let d = snd (reduce_letin (snd (reduce_casts d Evd.empty)) Evd.empty) in
   if no_diff evd opts d then
     (*1*) identity_candidates d
   else if induct_over_same_h (same_h opts) d then
@@ -93,7 +93,7 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
       d
   else if applies_ih opts d then
     let diff opts = diff opts evd in
-    (*3*) diff_app evd diff diff opts (reduce_trim_ihs d)
+    (*3*) diff_app evd diff diff opts (snd (reduce_trim_ihs d Evd.empty))
   else
     let diff opts = diff opts evd in
     match map_tuple kind (proof_terms d) with
@@ -101,7 +101,7 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
        let change = get_change opts in
        let ind = is_ind opts in
        let opts_hypos = if is_identity change then set_change opts Conclusion else opts in
-       if no_diff evd opts_hypos (eval_with_terms t_o t_n d) then
+       if no_diff evd opts_hypos (snd (eval_with_terms t_o t_n d Evd.empty)) then
          (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
        else if ind || not (is_conclusion change || is_identity change) then
          (*5*) zoom_unshift (to_search_function diff opts d) d
@@ -123,6 +123,6 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
 let get_differencer (opts : options) (evd : evar_map) =
   let should_reduce = is_inductive_type (get_change opts) in
   if should_reduce then
-    (fun d -> diff opts evd (reduce_diff reduce_term d))
+    (fun d -> diff opts evd (snd (reduce_diff reduce_term d Evd.empty)))
   else
     diff opts evd

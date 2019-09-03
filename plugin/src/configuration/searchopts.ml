@@ -275,7 +275,7 @@ let is_ind opts = opts.is_ind
 (* Keep the same assumptions, but update the goals and terms for a diff *)
 let update_terms_goals opts t_o t_n d =
   let update = update_search_goals opts d in
-  update (erase_goals (eval_with_terms t_o t_n d))
+  update (erase_goals (snd (eval_with_terms t_o t_n d Evd.empty)))
 
 (* Convert search to a search_function for zooming *)
 let to_search_function search opts d : search_function =
