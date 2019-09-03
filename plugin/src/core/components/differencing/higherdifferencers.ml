@@ -45,7 +45,7 @@ let diff_reduced diff d =
  * 2. Apply the differencing function to the new diff
  *)
 let diff_terms (diff : proof_differencer) d opts d_t : candidates =
-  diff (update_terms_goals opts (old_proof d_t) (new_proof d_t) d)
+  diff (snd (update_terms_goals opts (old_proof d_t) (new_proof d_t) d Evd.empty))
 
 (*
  * Recursively difference each term in a diff of arrays

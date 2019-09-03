@@ -83,7 +83,7 @@ let search_for_patch evd (default : types) (opts : options) (d : goal_proof_diff
   let change = get_change opts in
   let start_backwards = is_fixpoint_case change || is_hypothesis change in
   let d = if start_backwards then reverse d else d in (* explain *)
-  let d = update_search_goals opts d (erase_goals d) in
+  let d = snd (update_search_goals opts d (erase_goals d) Evd.empty) in
   let diff = get_differencer opts evd in
   let patches = diff d in
   let ((_, env), _) = old_proof (dest_goals d) in
