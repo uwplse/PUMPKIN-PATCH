@@ -6,6 +6,8 @@ open Cutlemma
 open Kindofchange
 open Candidates
 open Catzooming
+open Evd
+open Stateutils
 
 (* --- Options for search --- *)
 
@@ -30,7 +32,7 @@ val set_change : options -> kind_of_change -> options
 
 (* Update the goals of search *)
 val update_search_goals :
-  (goal_proof_diff -> proof_cat_diff -> goal_proof_diff) configurable
+  (goal_proof_diff -> proof_cat_diff -> evar_map -> goal_proof_diff state) configurable
 
 (* Swap the goals of search *)
 val swap_search_goals : (goal_term_diff -> goal_term_diff) configurable
@@ -62,7 +64,7 @@ val is_ind : bool configurable
  * and replace the terms with the supplied old and new types.
  *)
 val update_terms_goals :
-  (types -> types -> goal_proof_diff -> goal_proof_diff) configurable
+  (types -> types -> goal_proof_diff -> evar_map -> goal_proof_diff state) configurable
 
 (*
  * Convert a search function that takes a set of options to a

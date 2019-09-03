@@ -12,7 +12,7 @@ open Evd
 
 (* --- Zooming --- *)
 
-type search_function = proof_cat_diff -> candidates
+type search_function = proof_cat_diff -> evar_map -> candidates state
 type 'a intro_strategy = 'a proof_diff -> evar_map -> ('a proof_diff option) state
 
 type 'a zoomer =
@@ -154,7 +154,7 @@ let zoom_map f a expander introducer d =
       if not (Option.has_some zoomed) then
 	ret a
       else
-	ret (f (Option.get zoomed)))
+	f (Option.get zoomed))
 
 (* Zoom over two inductive proofs that induct over the same hypothesis *)
 let zoom_same_hypos = zoom expand_application (fun d -> ret (Some d))
@@ -171,17 +171,17 @@ let zoom_search f (d : goal_proof_diff) =
 (* Zoom in, search, and wrap the result in a lambda from binding (n : t)  *)
 let zoom_wrap_lambda f n t (d : goal_proof_diff) =
   zoom_search
-    (fun d -> List.map (fun c -> mkLambda (n, t, c)) (f d))
+    (fun d -> bind (f d) (map_state (fun c -> ret (mkLambda (n, t, c)))))
     d
 
 (* Zoom in, search, and wrap the result in a prod from binding (n : t) *)
 let zoom_wrap_prod f n t (d : goal_proof_diff) =
   zoom_search
-    (fun d -> List.map (fun c -> mkProd (n, t, c)) (f d))
+    (fun d -> bind (f d) (map_state (fun c -> ret (mkProd (n, t, c)))))
     d
 
 (* Zoom in, search, and unshift the result *)
 let zoom_unshift f (d : goal_proof_diff) =
   zoom_search
-    (fun d -> List.map unshift (f d))
+    (fun d -> bind (f d) (map_state (fun t -> ret (unshift t))))
     d

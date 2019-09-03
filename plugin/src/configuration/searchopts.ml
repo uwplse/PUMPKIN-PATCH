@@ -15,6 +15,7 @@ open Indutils
 open Contextutils
 open Stateutils
 open Convertibility
+open Evd
 
 (*
  * Note: Evar discipline is not good here yet, but will change when
@@ -55,7 +56,7 @@ type options =
     is_ind : bool;
     change : kind_of_change;
     same_h : types -> types -> bool;
-    update_goals : goal_proof_diff -> proof_cat_diff -> goal_proof_diff;
+    update_goals : goal_proof_diff -> proof_cat_diff -> evar_map -> goal_proof_diff state;
     swap_goals : goal_term_diff -> goal_term_diff;
     reset_goals : goal_proof_diff -> goal_case_diff -> goal_case_diff;
     is_app : goal_proof_diff -> bool;
@@ -101,10 +102,14 @@ let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
    let (_, _, t_n) = CRD.to_tuple @@ rel_n in
    let trim = terms_convertible env_o' env_n' t_o t_n in
    match map_tuple kind (g_o, g_n) with
-   | (Prod (_, t_g_o, b_o), Prod (_, t_g_n, b_n)) when snd (trim t_g_o t_g_n Evd.empty) ->
-      (Term (b_o, env_o'), Term (b_n, env_n'))
+   | (Prod (_, t_g_o, b_o), Prod (_, t_g_n, b_n)) ->
+      branch_state
+	(trim t_g_o)
+	(fun _ -> ret (Term (b_o, env_o'), Term (b_n, env_n')))
+	(fun _ -> ret (Term (shift g_o, env_o'), Term (shift g_n, env_n')))
+	t_g_n
    | _ ->
-      (Term (shift g_o, env_o'), Term (shift g_n, env_n'))
+      ret (Term (shift g_o, env_o'), Term (shift g_n, env_n'))
 
 (* Search for a difference in the changed constructor *)
 let set_inductive_goals typ_o typ_n (d : 'a goal_diff) : 'a goal_diff =
@@ -129,14 +134,16 @@ let update_goals_types d_old (d : proof_cat_diff) =
   | (Lambda (n_o, t_o, _), Lambda (n_n, t_n, _)) ->
      let rel_o = CRD.LocalAssum(n_o, t_o) in
      let rel_n = CRD.LocalAssum(n_n, t_n) in
-     let (g_o, g_n) = update_goal_terms (old_goal, new_goal) rel_o rel_n in
-     let o = (Context (g_o, fid ()), old_proof d) in
-     let n = (Context (g_n, fid ()), new_proof d) in
-     difference o n (assumptions d)
+     bind
+       (update_goal_terms (old_goal, new_goal) rel_o rel_n)
+       (fun (g_o, g_n) ->
+	 let o = (Context (g_o, fid ()), old_proof d) in
+	 let n = (Context (g_n, fid ()), new_proof d) in
+	 ret (difference o n (assumptions d)))
   | _ ->
      let o = (old_goal, old_proof d) in
      let n = (new_goal, new_proof d) in
-     difference o n (assumptions d)
+     ret (difference o n (assumptions d))
 
 (* Set goals for search for a difference in hypothesis *)
 let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
@@ -167,11 +174,11 @@ let configure_update_goals change d_old d =
      let (g_o, g_n) = context_terms old_goals in
      let (g_o', g_n') = context_terms default_goals in
      if equal g_o g_o' && equal g_n g_n' then (* set initial goals *)
-       set_hypothesis_goals t_old t_new d_def
+       ret (set_hypothesis_goals t_old t_new d_def)
      else (* update goals *)
        update_goals_types d_old d
   | _ ->
-     add_goals d
+     ret (add_goals d)
 
 (*
  * Given a change, determine how to test whether a proof might apply
@@ -272,12 +279,15 @@ let is_ind opts = opts.is_ind
 (* Keep the same assumptions, but update the goals and terms for a diff *)
 let update_terms_goals opts t_o t_n d =
   let update = update_search_goals opts d in
-  update (erase_goals (snd (eval_with_terms t_o t_n d Evd.empty)))
+  bind
+    (eval_with_terms t_o t_n d)
+    (fun d -> update (erase_goals d))
 
 (* Convert search to a search_function for zooming *)
-let to_search_function search opts d : search_function =
-  let update_goals = update_search_goals opts d in
-  (fun d -> search opts (update_goals d))
+let to_search_function search opts d =
+  ret 
+    (fun d' -> 
+      bind (update_search_goals opts d d') (fun _ -> ret (search opts)))
 
 (*
  * Check if a term applies the inductive hypothesis

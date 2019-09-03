@@ -10,7 +10,7 @@ open Evd
 
 (* --- Zooming --- *)
 
-type search_function = proof_cat_diff -> candidates
+type search_function = proof_cat_diff -> evar_map -> candidates state
 type 'a intro_strategy = 'a proof_diff -> evar_map -> ('a proof_diff option) state
 
 (*
@@ -95,7 +95,7 @@ val zoom : 'a zoomer
  * Otherwise, default to a default element
  *)
 val zoom_map :
-  ('a proof_diff -> 'b) ->
+  ('a proof_diff -> evar_map -> 'b state) ->
   'b ->
   'a expansion_strategy ->
   'a intro_strategy ->
