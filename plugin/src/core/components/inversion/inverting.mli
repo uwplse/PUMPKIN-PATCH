@@ -3,6 +3,7 @@
 open Constr
 open Environ
 open Evd
+open Stateutils
 
 type inverter
 
@@ -18,4 +19,5 @@ val invert_factor : inverter
  * Recursively invert function composition
  * Use the supplied inverter to handle low-level inverses
  *)
-val invert_terms : inverter -> env -> evar_map -> types list -> types list
+val invert_terms :
+  inverter -> env -> types list -> evar_map -> (types list) state

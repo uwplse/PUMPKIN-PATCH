@@ -253,8 +253,8 @@ let combinations_of_arguments (args : types array) : swap_map =
 (*
  * Map a function on two types along a swap map and return a list
  *)
-let map_swaps f (s : swap_map) : 'a list =
-  List.map f s
+let map_swaps f (s : swap_map) =
+ map_state f s
 
 (*
  * Flatten a list of swap maps into one swap map with no duplicates

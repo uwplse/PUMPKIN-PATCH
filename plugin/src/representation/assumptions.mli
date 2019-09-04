@@ -166,7 +166,11 @@ val filter_swaps :
 (*
  * Map a function on two types along a swap map and return a list
  *)
-val map_swaps : ((types * types) -> 'a) -> swap_map -> 'a list
+val map_swaps :
+  ((types * types) -> evar_map -> 'a state) ->
+  swap_map ->
+  evar_map ->
+  ('a list) state
 
 (*
  * Flatten a list of swap maps into one swap map with no duplicates

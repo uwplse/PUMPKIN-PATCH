@@ -92,7 +92,7 @@ let search_for_patch evd (default : types) (opts : options) (d : goal_proof_diff
     let rev_patches = diff (reverse d) in
     Printf.printf "%s\n" "searched backwards";
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
-    let inverted = invert_terms invert_factor env evd rev_patches in
+    let inverted = snd (invert_terms invert_factor env rev_patches evd) in
     if non_empty inverted then
       return_patch opts env evd inverted
     else

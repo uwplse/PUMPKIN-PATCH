@@ -98,7 +98,7 @@ let configure_optimize trm : goal_proof_diff * options =
 
 (* Common inversion functionality *)
 let invert_patch n env evm patch =
-  let inverted = invert_terms invert_factor env evm [patch] in
+  let evm, inverted = invert_terms invert_factor env [patch] evm in
   try
     let patch_inv = List.hd inverted in
     let _ = infer_type env evm patch_inv in
