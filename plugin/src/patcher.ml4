@@ -229,7 +229,7 @@ let factor n trm : unit =
   let (evm, env) = Pfedit.get_current_context() in
   let evm, def = intern env evm trm in
   let body = lookup_definition env def in
-  let fs = reconstruct_factors (factor_term env evm body) in
+  let fs = reconstruct_factors (snd (factor_term env body evm)) in
   let prefix = Id.to_string n in
   try
     List.iteri

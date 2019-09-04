@@ -48,7 +48,7 @@ let return_patch opts env evd (patches : types list) : types =
      let reduction_condition en evd tr = has_cut_type_strict_sym en cut tr evd in
      let reducer = reduce_body_if reduction_condition body_reducer in
      let _, specialized = reduce_all reducer env evd patches in
-     let specialized_fs = List.map (factor_term env evd) specialized in
+     let specialized_fs = List.map (fun t -> snd (factor_term env t evd)) specialized in
      let specialized_fs_terms = flat_map reconstruct_factors specialized_fs in
      let generalized =
        flat_map

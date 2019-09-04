@@ -185,10 +185,10 @@ let invert_factor evd (env, rp) : (env * types) option =
  * Use the supplied inverter to handle factors
  *)
 let invert_using (invert : inverter) env evd (trm : types) : types option =
-  let fs = factor_term env evd trm in
+  let fs = snd (factor_term env trm evd) in
   let inv_fs = invert_factors evd invert fs in
   if List.length inv_fs > 0 then
-    Some (apply_factors evd inv_fs)
+    Some (snd (apply_factors inv_fs evd))
   else
     None
 
