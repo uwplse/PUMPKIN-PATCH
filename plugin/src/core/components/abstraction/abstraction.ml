@@ -231,26 +231,36 @@ let abstract_with_strategies (config : abstraction_config) =
  * specialized, so we have nothing to abstract, and we return the original list.
  *
  * If the goal types are both specialized, then we abstract.
- *
- * TODO left off here
  *)
-let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) evd : candidates =
+let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) =
   let goals = goal_types d in
   let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
   if goals_are_apps && non_empty cs then
     let (env, d_type, cs) = merge_lift_diff_envs d cs in
     let new_goal_type = new_proof d_type in
     let old_goal_type = old_proof d_type in
-    if List.for_all2 (fun t1 t2 -> snd (convertible env evd t1 t2)) (unfold_args old_goal_type) (unfold_args new_goal_type) then
-      let _, config = configure_args env d_type cs evd in
-      let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
-      List.map
-        (unshift_local (num_new_rels - 1) num_new_rels)
-        (snd (abstract_with_strategies config evd))
-    else
-      give_up
+    branch_state
+      (fun env ->
+        forall_state
+          (fun (t1, t2) sigma -> convertible env sigma t1 t2)
+          (List.map2
+             (fun t1 t2 -> (t1, t2))
+             (unfold_args old_goal_type)
+             (unfold_args new_goal_type)))
+      (fun env ->
+        bind
+          (configure_args env d_type cs)
+          (fun config ->
+            let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
+            bind
+              (abstract_with_strategies config)
+              (map_state
+                 (fun t ->
+                   ret (unshift_local (num_new_rels - 1) num_new_rels t)))))
+      (fun _ -> ret give_up)
+      env
   else
-    cs
+    ret cs
 
 (*
  * Abstract candidates in a case of an inductive proof.
@@ -259,20 +269,20 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) evd : candidat
  * If there is nothing to abstract or if we cannot determine what to
  * abstract, then return the original list.
  *)
-let abstract_case (opts : options) evd (d : goal_case_diff) cs : candidates =
+let abstract_case (opts : options) (d : goal_case_diff) cs sigma =
   let d_goal = erase_proofs d in
   let old_goal = old_proof d_goal in
   let env = context_env old_goal in
   match get_change opts with
   | Kindofchange.Hypothesis (_, _) ->
      let (g_o, g_n) = map_tuple context_term (old_goal, new_proof d_goal) in
-     snd (filter_by_type (mkProd (Names.Name.Anonymous, g_n, shift g_o)) env evd cs)
+     filter_by_type (mkProd (Names.Name.Anonymous, g_n, shift g_o)) env sigma cs
   | Kindofchange.InductiveType (_, _) ->
-     cs
-  | Kindofchange.FixpointCase ((_, _), cut) when snd (are_cut env cut cs evd) ->
-     cs
+     sigma, cs
+  | Kindofchange.FixpointCase ((_, _), cut) ->
+     branch_state (are_cut env cut) ret (try_abstract_inductive d_goal) cs sigma
   | _ ->
-     try_abstract_inductive d_goal cs evd
+     try_abstract_inductive d_goal cs sigma
                             
 (* 
  * Replace all occurrences of the first term in the second term with Rel 1,

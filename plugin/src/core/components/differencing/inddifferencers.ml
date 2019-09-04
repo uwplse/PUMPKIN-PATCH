@@ -67,7 +67,7 @@ let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
  * principle for the constructor version to get a more general patch.
  *)
 let diff_ind_case opts evd diff (d : goal_case_diff) : candidates =
-  diff_case (abstract_case opts evd d) diff evd d
+  diff_case (fun c -> snd (abstract_case opts d c evd)) diff evd d
 
 (*
  * Search a case of a difference in proof categories.
