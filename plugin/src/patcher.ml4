@@ -85,7 +85,7 @@ let configure trm1 trm2 cut : goal_proof_diff * options =
   let _, c1 = eval_proof env trm1 Evd.empty in
   let _, c2 = eval_proof env trm2 Evd.empty in
   let d = add_goals (difference c1 c2 no_assumptions) in
-  let change = find_kind_of_change evm lemma d in
+  let _, change = find_kind_of_change lemma d evm in
   (d, configure_search d change lemma)
 
 (* Initialize diff & search configuration for optimization *)
