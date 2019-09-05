@@ -32,7 +32,7 @@ val diff_terms :
 (*
  * Using some term differencer, recursively difference an array
  *)
-val diff_map : term_differencer -> arr_list_differencer
+val diff_map : term_differencer -> Constr.types array proof_diff -> evar_map -> candidates list (* TODO fix type after refactor *)
 
 (*
  * Using some term differencer, recursively difference an array

@@ -50,10 +50,10 @@ let diff_terms (diff : proof_differencer) d opts d_t sigma =
 (*
  * Recursively difference each term in a diff of arrays
  *)
-let diff_map (diff : term_differencer) d_arr =
+let diff_map (diff : term_differencer) d_arr sigma =
   let assums = assumptions d_arr in
   List.map2
-    (fun t_o t_n -> snd (diff (difference t_o t_n assums) Evd.empty))
+    (fun t_o t_n -> snd (diff (difference t_o t_n assums) sigma))
     (Array.to_list (old_proof d_arr))
     (Array.to_list (new_proof d_arr))
 
@@ -62,7 +62,7 @@ let diff_map (diff : term_differencer) d_arr =
  * Flatten the result
  *)
 let diff_map_flat (diff : term_differencer) d_arr sigma =
-  Evd.empty, List.flatten (diff_map diff d_arr)
+  Evd.empty, List.flatten (diff_map diff d_arr sigma)
 
 (*
  * Apply some differencing function

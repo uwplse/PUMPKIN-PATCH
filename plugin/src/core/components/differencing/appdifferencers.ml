@@ -185,7 +185,8 @@ let diff_app_ind (diff_ind : Differencers.ind_proof_differencer configurable) (d
                     let apply p = specialize p (Array.make 1 arg_n) in
                     let diff_apply = filter_diff (List.map apply) in
                     diff_terms (fun ts sigma -> sigma, diff_apply (fun d -> snd (diff_arg opts d evd)) ts) d opts d_a sigma)
-                  d_args)
+                  d_args
+                  evd)
 	   in evd, combine_cartesian specialize f (combine_cartesian_append args)
        else
          evd, f
