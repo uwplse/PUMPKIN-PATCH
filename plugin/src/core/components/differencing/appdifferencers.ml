@@ -76,7 +76,7 @@ let diff_app (diff_f : Differencers.proof_differencer configurable) (diff_arg : 
          diff_rec diff_f opts d_f evd
       | Kindofchange.FixpointCase ((_, _), cut) ->
          let filter_diff_cut diff = filter_diff (fun trms -> snd (filter_cut env cut trms evd)) diff in
-         let fs = filter_diff_cut (fun l -> snd (diff_rec diff_f opts l evd)) d_f in
+         let fs = filter_diff_cut (fun l -> snd (diff_rec diff_f opts l Evd.empty)) d_f in
          if non_empty fs then
            evd, fs
          else
@@ -100,7 +100,7 @@ let diff_app (diff_f : Differencers.proof_differencer configurable) (diff_arg : 
          let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
          let filter_goal trms = snd (filter_by_type goal_type env evd trms) in
          let filter_diff_h diff = filter_diff filter_goal diff in
-         let fs = filter_diff_h (fun l -> snd (diff_rec diff_f opts l evd)) d_f in
+         let fs = filter_diff_h (fun l -> snd (diff_rec diff_f opts l Evd.empty)) d_f in
          if non_empty fs then
            evd, fs
          else
@@ -147,7 +147,7 @@ let diff_app_ind (diff_ind : Differencers.ind_proof_differencer configurable) (d
        if non_empty f then
          evd, f
        else
-	 let diff_rec diff opts = diff_terms (diff opts) d opts in
+	 let diff_rec diff opts = diff_terms (fun d _ -> diff opts d evd) d opts in
 	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
          let d_args_rev = reverse d_args in
          evd, filter_diff_cut (fun d -> snd (diff_map_flat (fun t sigma -> diff_rec diff_arg opts t Evd.empty) d Evd.empty)) d_args_rev
@@ -183,8 +183,8 @@ let diff_app_ind (diff_ind : Differencers.ind_proof_differencer configurable) (d
 		  (fun d_a sigma ->
                     let arg_n = new_proof d_a in
                     let apply p = specialize p (Array.make 1 arg_n) in
-                    let diff_apply di d : candidates = filter_diff (List.map apply) di d in
-                    diff_terms (fun ts sigma -> sigma, diff_apply (fun d -> snd (diff_arg opts d Evd.empty)) ts) d opts d_a sigma)
+                    let diff_apply = filter_diff (List.map apply) in
+                    diff_terms (fun ts sigma -> sigma, diff_apply (fun d -> snd (diff_arg opts d evd)) ts) d opts d_a sigma)
                   d_args)
 	   in evd, combine_cartesian specialize f (combine_cartesian_append args)
        else
