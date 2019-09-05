@@ -33,9 +33,9 @@ let diff_reduced diff d sigma =
   let d_red = snd (reduce_diff reduce_term d Evd.empty) in
   let (o_red, n_red) = proof_terms d_red in
   if not ((equal o o_red) && (equal n n_red)) then
-    diff d_red Evd.empty
+    diff d_red sigma
   else
-    Evd.empty, give_up
+    sigma, give_up
 
 (*
  * Convert a differencing function that takes a diff into one between two terms
@@ -45,7 +45,7 @@ let diff_reduced diff d sigma =
  * 2. Apply the differencing function to the new diff
  *)
 let diff_terms (diff : proof_differencer) d opts d_t sigma =
-  diff (snd (update_terms_goals opts (old_proof d_t) (new_proof d_t) d Evd.empty)) Evd.empty
+  diff (snd (update_terms_goals opts (old_proof d_t) (new_proof d_t) d Evd.empty)) sigma
 
 (*
  * Recursively difference each term in a diff of arrays
