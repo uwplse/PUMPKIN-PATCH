@@ -17,7 +17,7 @@ type term_differencer = types candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
 
 type arr_differencer = (types array) candidate_differencer
-type 'a candidate_list_differencer = ('a, candidates list) differencer
+type 'a candidate_list_differencer = ('a, candidates list) differencer_todo
 type arr_list_differencer = (types array) candidate_list_differencer
 
 type 'a change_detector = ('a, kind_of_change) differencer_todo

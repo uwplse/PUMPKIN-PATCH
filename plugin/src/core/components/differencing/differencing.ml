@@ -89,11 +89,12 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
   if snd (no_diff opts d evd) then
     (*1*) snd (identity_candidates d (Evd.from_env (Proofcatterms.context_env (fst (new_proof d)))))
   else if induct_over_same_h (same_h opts) d then
-    try_chain_diffs
-      [(diff_app_ind (diff_inductive diff d) diff opts); (* 2a *)
-       (find_difference opts)]                           (* 2b *)
-      d
-      evd
+    snd
+      (try_chain_diffs
+         [(diff_app_ind (diff_inductive diff d) diff opts); (* 2a *)
+          (find_difference opts)]                           (* 2b *)
+         d
+         evd)
   else if applies_ih opts d then
     (*3*) snd (diff_app diff diff opts (snd (reduce_trim_ihs d Evd.empty)) evd)
   else
@@ -110,12 +111,13 @@ let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidate
          give_up
     | _ ->
        if is_app opts d then
-         try_chain_diffs
-           [(find_difference opts);     (* 6a *)
-            (diff_app diff diff opts);  (* 6b *)
-            (diff_reduced (diff opts))]     (* 6c *)
-           d
-           evd
+         snd
+           (try_chain_diffs
+              [(find_difference opts);     (* 6a *)
+               (diff_app diff diff opts);  (* 6b *)
+               (diff_reduced (diff opts))]     (* 6c *)
+              d
+              evd)
        else
          give_up
 

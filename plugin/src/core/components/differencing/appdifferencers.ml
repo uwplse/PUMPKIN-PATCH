@@ -75,36 +75,37 @@ let diff_app (diff_f : Differencers.proof_differencer configurable) (diff_arg : 
       | Kindofchange.InductiveType (_, _) ->
          diff_rec diff_f opts d_f evd
       | Kindofchange.FixpointCase ((_, _), cut) ->
-         let filter_diff_cut diff = filter_diff (fun trms -> snd (filter_cut env cut trms evd)) diff in
-         let fs = filter_diff_cut (fun l -> snd (diff_rec diff_f opts l evd)) d_f in
+         let filter_diff_cut diff d = filter_diff (fun trms _ -> filter_cut env cut trms evd) diff d evd in
+         let _, fs = filter_diff_cut (fun l _ -> diff_rec diff_f opts l evd) d_f in
          if non_empty fs then
            evd, fs
          else
            let d_args_rev = reverse d_args in
-           evd, filter_diff_cut (fun ts -> snd (diff_map_flat (fun ts -> diff_rec diff_arg opts ts) ts evd)) d_args_rev
+           evd, snd (filter_diff_cut (fun ts _ -> diff_map_flat (fun ts -> diff_rec diff_arg opts ts) ts evd) d_args_rev)
       | Kindofchange.ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          let diff_arg o d evd = if snd (no_diff o d evd) then evd, give_up else diff_arg o d evd in
-         evd, filter_diff
-           (fun args ->
+         filter_diff
+           (fun args _ ->
              if Option.has_some cut then
                let args_lambdas = List.map (reconstruct_lambda env) args in
-               snd (filter_applies_cut env (Option.get cut) args_lambdas evd)
+               evd, snd (filter_applies_cut env (Option.get cut) args_lambdas evd)
              else
-               args)
-           (fun l -> snd (diff_map_flat (diff_rec diff_arg (set_change opts Kindofchange.Conclusion)) l evd))
+               evd, args)
+           (fun l _ -> diff_map_flat (diff_rec diff_arg (set_change opts Kindofchange.Conclusion)) l evd)
 	   d_args
+           evd
       | Kindofchange.Hypothesis (_, _) ->
          let old_goal = fst (old_proof d) in
          let new_goal = fst (new_proof d) in
          let (g_o, g_n) = map_tuple context_term (old_goal, new_goal) in
          let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
-         let filter_goal trms = snd (filter_by_type goal_type env evd trms) in
+         let filter_goal trms evd = filter_by_type goal_type env evd trms in
          let filter_diff_h diff = filter_diff filter_goal diff in
-         let fs = filter_diff_h (fun l -> snd (diff_rec diff_f opts l Evd.empty)) d_f in
+         let _, fs = filter_diff_h (fun l _ -> diff_rec diff_f opts l Evd.empty) d_f evd in
          if non_empty fs then
            evd, fs
          else
-           evd, filter_diff_h (fun d_args -> snd (diff_map_flat (fun t -> diff_rec diff_arg opts t) d_args Evd.empty)) d_args
+           evd, snd (filter_diff_h (fun d_args _ -> diff_map_flat (fun t -> diff_rec diff_arg opts t) d_args Evd.empty) d_args evd)
       | Kindofchange.Conclusion | Kindofchange.Identity ->
          if List.for_all2 (convertible env evd) (Array.to_list args_o) (Array.to_list args_n) then
            let specialize f args = snd (specialize_using specialize_no_reduce env f args evd) in
@@ -143,14 +144,14 @@ let diff_app_ind (diff_ind : Differencers.ind_proof_differencer configurable) (d
        evd, f
     | Kindofchange.FixpointCase ((_, _), cut) ->
        let env = context_env (fst (old_proof d)) in
-       let filter_diff_cut diff d : candidates = filter_diff (fun trms -> snd (filter_cut env cut trms evd)) diff d in
+       let filter_diff_cut diff d = filter_diff (fun trms _ -> filter_cut env cut trms evd) diff d evd in
        if non_empty f then
          evd, f
        else
 	 let diff_rec diff opts = diff_terms (fun d _ -> diff opts d evd) d opts in
 	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
          let d_args_rev = reverse d_args in
-         evd, filter_diff_cut (fun d -> snd (diff_map_flat (fun t sigma -> diff_rec diff_arg opts t evd) d Evd.empty)) d_args_rev
+         filter_diff_cut (fun d _ -> diff_map_flat (fun t sigma -> diff_rec diff_arg opts t evd) d Evd.empty) d_args_rev
      | _ ->
        if non_empty args_o then
          let env_o = context_env (fst (old_proof d)) in
@@ -179,14 +180,14 @@ let diff_app_ind (diff_ind : Differencers.ind_proof_differencer configurable) (d
            let d_args = difference final_args_n final_args_o no_assumptions in
 	   let args =
 	     Array.of_list
-               (diff_map
+               (snd (diff_map
 		  (fun d_a sigma ->
                     let arg_n = new_proof d_a in
-                    let apply p = specialize p (Array.make 1 arg_n) in
-                    let diff_apply = filter_diff (List.map apply) in
-                    diff_terms (fun ts sigma -> sigma, diff_apply (fun d -> snd (diff_arg opts d evd)) ts) d opts d_a sigma)
+                    let apply p = ret (specialize p (Array.make 1 arg_n)) in
+                    let diff_apply = filter_diff (map_state apply) in
+                    diff_terms (fun ts sigma -> diff_apply (fun d _ -> diff_arg opts d evd) ts Evd.empty) d opts d_a sigma)
                   d_args
-                  evd)
+                  evd))
 	   in evd, combine_cartesian specialize f (combine_cartesian_append args)
        else
          evd, f
