@@ -73,15 +73,15 @@ let diff_app (diff_f : Differencers.proof_differencer configurable) (diff_arg : 
      let d_args = difference args_o args_n no_assumptions in
      (match get_change opts with
       | Kindofchange.InductiveType (_, _) ->
-         diff_rec diff_f opts d_f Evd.empty
+         diff_rec diff_f opts d_f evd
       | Kindofchange.FixpointCase ((_, _), cut) ->
          let filter_diff_cut diff = filter_diff (fun trms -> snd (filter_cut env cut trms evd)) diff in
-         let fs = filter_diff_cut (fun l -> snd (diff_rec diff_f opts l Evd.empty)) d_f in
+         let fs = filter_diff_cut (fun l -> snd (diff_rec diff_f opts l evd)) d_f in
          if non_empty fs then
            evd, fs
          else
            let d_args_rev = reverse d_args in
-           evd, filter_diff_cut (fun ts -> snd (diff_map_flat (fun ts -> diff_rec diff_arg opts ts) ts Evd.empty)) d_args_rev
+           evd, filter_diff_cut (fun ts -> snd (diff_map_flat (fun ts -> diff_rec diff_arg opts ts) ts evd)) d_args_rev
       | Kindofchange.ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          let diff_arg o d evd = if snd (no_diff o d evd) then evd, give_up else diff_arg o d evd in
          evd, filter_diff
