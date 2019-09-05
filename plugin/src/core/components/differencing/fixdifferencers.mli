@@ -10,4 +10,4 @@ open Evd
  * This operates at the term level, since compilation currently
  * doesn't model fixpoints.
  *)
-val diff_fix_cases : env -> evar_map -> term_differencer
+val diff_fix_cases : env -> term_differencer

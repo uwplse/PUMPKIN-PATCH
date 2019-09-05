@@ -33,7 +33,7 @@ open Stateutils
  * To improve this, we need benchmarks for which the head is not the patch,
  * but another arrow is.
  *)
-let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
+let rec diff_case abstract (diff : Differencers.proof_differencer) evd (d : goal_case_diff) : candidates =
   let d_goal = erase_proofs d in
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
@@ -41,7 +41,7 @@ let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
      (try
         let _, c1 = eval_proof_arrow h1 Evd.empty in
         let _, c2 = eval_proof_arrow h2 Evd.empty in
-        let cs = abstract (diff evd (add_to_diff d_goal c1 c2)) in
+        let cs = abstract (snd (diff (add_to_diff d_goal c1 c2) evd)) in
         if non_empty cs then
           cs
         else
@@ -66,7 +66,7 @@ let rec diff_case abstract diff evd (d : goal_case_diff) : candidates =
  * we don't lift, but we could eventually try to apply the induction
  * principle for the constructor version to get a more general patch.
  *)
-let diff_ind_case opts evd diff (d : goal_case_diff) : candidates =
+let diff_ind_case opts evd (diff : Differencers.proof_differencer) (d : goal_case_diff) : candidates =
   diff_case (fun c -> snd (abstract_case opts d c evd)) diff evd d
 
 (*
@@ -76,7 +76,7 @@ let diff_ind_case opts evd diff (d : goal_case_diff) : candidates =
  * This breaks it up into arrows and then searches those
  * in the order of the sort function.
  *)
-let diff_sort_ind_case opts evd sort diff d_old (d : proof_cat_diff) : candidates =
+let diff_sort_ind_case opts evd sort (diff : Differencers.proof_differencer configurable) d_old (d : proof_cat_diff) : candidates =
   let o = old_proof d in
   let n = new_proof d in
   let ms_o = morphisms o in
@@ -106,7 +106,7 @@ let diff_sort_ind_case opts evd sort diff d_old (d : proof_cat_diff) : candidate
 (*
  * Base case: Prefer arrows later in the proof
  *)
-let diff_base_case opts evd diff d_old (d : proof_cat_diff) : candidates =
+let diff_base_case opts evd (diff : Differencers.proof_differencer configurable) d_old (d : proof_cat_diff) : candidates =
   let sort _ ms = List.rev ms in
   diff_sort_ind_case (set_is_ind opts false) evd sort diff d_old d
 
@@ -121,7 +121,7 @@ let diff_base_case opts evd diff d_old (d : proof_cat_diff) : candidates =
  * For optimization, we don't bother treating the inductive case
  * any differently, since the IH does not change.
  *)
-let diff_inductive_case opts evd diff d_old (d : proof_cat_diff) : candidates =
+let diff_inductive_case opts evd (diff : Differencers.proof_differencer configurable) d_old (d : proof_cat_diff) : candidates =
   let sort c ms = List.stable_sort (fun m1 m2 -> snd (closer_to_ih c (find_ihs c) m1 m2 Evd.empty)) ms in
   let change = get_change opts in
   let opts = if is_identity change then opts else set_is_ind opts true in
@@ -132,7 +132,7 @@ let diff_inductive_case opts evd diff d_old (d : proof_cat_diff) : candidates =
  * it treating it either like a base case (no inductive hypotheses)
  * or an inductive case (some inductive hypotheses).
  *)
-let diff_base_or_inductive_case opts evd diff d_old (d : proof_cat_diff) : candidates =
+let diff_base_or_inductive_case opts evd (diff : Differencers.proof_differencer configurable) d_old (d : proof_cat_diff) : candidates =
   let o = old_proof d in
   if has_ihs o then
     diff_inductive_case opts evd diff d_old d
@@ -146,7 +146,7 @@ let diff_base_or_inductive_case opts evd diff d_old (d : proof_cat_diff) : candi
  * If there is a bug here, then the offset we unshift by may not generalize
  * for all cases.
  *)
-let diff_and_unshift_case opts evd diff d_old (d : proof_cat_diff) : candidates =
+let diff_and_unshift_case opts evd (diff : Differencers.proof_differencer configurable) d_old (d : proof_cat_diff) : candidates =
   List.map
     (fun trm ->
       if is_conclusion (get_change opts) then
@@ -162,7 +162,7 @@ let diff_and_unshift_case opts evd diff d_old (d : proof_cat_diff) : candidates 
  * For now, we only return the first patch we find.
  * We may want to return more later.
  *)
-let rec diff_ind_cases opts evd diff d_old (ds : proof_cat_diff list) : candidates =
+let rec diff_ind_cases opts evd (diff : Differencers.proof_differencer configurable) d_old (ds : proof_cat_diff list) : candidates =
   match ds with
   | d :: tl ->
      let patches = diff_and_unshift_case opts evd diff d_old d in
@@ -184,21 +184,20 @@ let rec diff_ind_cases opts evd diff d_old (ds : proof_cat_diff list) : candidat
  * This does not yet handle the case when the inductive parameters
  * are lists of different lengths, or where there is a change in hypothesis.
  *)
-let diff_inductive diff d_old opts evd (d : (proof_cat * int) proof_diff) : candidates =
+let diff_inductive (diff : Differencers.proof_differencer configurable) d_old opts (d : (proof_cat * int) proof_diff) evd =
   let (o, nparams_o) = old_proof d in
   let (n, nparams_n) = new_proof d in
   if not (nparams_o = nparams_n) then
-    give_up
+    Evd.empty, give_up
   else
-    snd
-      (zoom_map
-	 (fun d sigma ->
-           let sort c = base_cases_first (List.map (fun c -> snd (expand_constr c Evd.empty)) (snd (split c Evd.empty))) in
-           let d_sorted = map_diffs sort id d in
-           let ds = dest_cases d_sorted in
-           map_state (fun d -> ret (unshift_by nparams_o d)) (diff_ind_cases opts evd diff d_old ds) Evd.empty)
-	 []
-	 ret
-	 (intro_params nparams_o)
-	 (difference o n (assumptions d))
-	 Evd.empty)
+    zoom_map
+      (fun d sigma ->
+        let sort c = base_cases_first (List.map (fun c -> snd (expand_constr c Evd.empty)) (snd (split c Evd.empty))) in
+        let d_sorted = map_diffs sort id d in
+        let ds = dest_cases d_sorted in
+        map_state (fun d -> ret (unshift_by nparams_o d)) (diff_ind_cases opts evd diff d_old ds) Evd.empty)
+      []
+      ret
+      (intro_params nparams_o)
+      (difference o n (assumptions d))
+      Evd.empty

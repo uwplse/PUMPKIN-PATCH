@@ -55,7 +55,7 @@ let return_patch opts env evd (patches : types list) : types =
          (fun ss -> snd (abstract_with_strategies ss evd))
          (snd (configure_fixpoint_cases
             env
-            (diff_fix_cases env evd (difference old_type new_type no_assumptions))
+            (snd (diff_fix_cases env  (difference old_type new_type no_assumptions) evd))
             specialized_fs_terms
             evd))
      in List.hd generalized (* TODO better failure when none found *)
@@ -83,13 +83,13 @@ let search_for_patch evd (default : types) (opts : options) (d : goal_proof_diff
   let start_backwards = is_fixpoint_case change || is_hypothesis change in
   let d = if start_backwards then reverse d else d in (* explain *)
   let d = snd (update_search_goals opts d (erase_goals d) Evd.empty) in
-  let diff = get_differencer opts evd in
-  let patches = diff d in
+  let diff = get_differencer opts in
+  let _, patches = diff d evd in
   let ((_, env), _) = old_proof (dest_goals d) in
   if non_empty patches then
     return_patch opts env evd patches
   else
-    let rev_patches = diff (reverse d) in
+    let _, rev_patches = diff (reverse d) evd in
     Printf.printf "%s\n" "searched backwards";
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
     let inverted = snd (invert_terms invert_factor env rev_patches evd) in

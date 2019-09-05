@@ -12,14 +12,14 @@ open Searchopts
  * Try to difference with one differencer
  * If that fails, then try the next one
  *)
-let rec try_chain_diffs diffs d =
+let rec try_chain_diffs diffs d evd =
   match diffs with
   | diff_h :: diff_t ->
-     let cs = diff_h d in
+     let cs = snd (diff_h d evd) in
      if non_empty cs then
        cs
      else
-       try_chain_diffs diff_t d
+       try_chain_diffs diff_t d evd
   | _ ->
      give_up
 
@@ -28,14 +28,14 @@ let rec try_chain_diffs diffs d =
  * If reducing does not change the term, then give_up to prevent
  * inifinite recursion
  *)
-let diff_reduced diff d =
+let diff_reduced diff d sigma =
   let (o, n) = proof_terms d in
   let d_red = snd (reduce_diff reduce_term d Evd.empty) in
   let (o_red, n_red) = proof_terms d_red in
   if not ((equal o o_red) && (equal n n_red)) then
-    diff d_red
+    diff d_red Evd.empty
   else
-    give_up
+    Evd.empty, give_up
 
 (*
  * Convert a differencing function that takes a diff into one between two terms
@@ -44,8 +44,8 @@ let diff_reduced diff d =
  * 1. Update the terms and goals of the diff d to use those terms
  * 2. Apply the differencing function to the new diff
  *)
-let diff_terms (diff : proof_differencer) d opts d_t : candidates =
-  diff (snd (update_terms_goals opts (old_proof d_t) (new_proof d_t) d Evd.empty))
+let diff_terms (diff : proof_differencer) d opts d_t sigma =
+  diff (snd (update_terms_goals opts (old_proof d_t) (new_proof d_t) d Evd.empty)) Evd.empty
 
 (*
  * Recursively difference each term in a diff of arrays
@@ -53,7 +53,7 @@ let diff_terms (diff : proof_differencer) d opts d_t : candidates =
 let diff_map (diff : term_differencer) d_arr =
   let assums = assumptions d_arr in
   List.map2
-    (fun t_o t_n -> diff (difference t_o t_n assums))
+    (fun t_o t_n -> snd (diff (difference t_o t_n assums) Evd.empty))
     (Array.to_list (old_proof d_arr))
     (Array.to_list (new_proof d_arr))
 
@@ -61,8 +61,8 @@ let diff_map (diff : term_differencer) d_arr =
  * Recursively difference each term in a diff of arrays
  * Flatten the result
  *)
-let diff_map_flat (diff : term_differencer) d_arr =
-  List.flatten (diff_map diff d_arr)
+let diff_map_flat (diff : term_differencer) d_arr sigma =
+  Evd.empty, List.flatten (diff_map diff d_arr)
 
 (*
  * Apply some differencing function

@@ -2,6 +2,7 @@ open Searchopts
 open Proofdiff
 open Candidates
 open Differencers
+open Evd
 
 (* --- Recursive differencing --- *)
 
@@ -10,7 +11,7 @@ open Differencers
  * If that fails, then try the next one, and so on
  *)
 val try_chain_diffs :
-  ('a candidate_differencer) list -> 'a proof_diff -> candidates
+  ('a candidate_differencer) list -> 'a proof_diff -> evar_map -> candidates
 
 (*
  * Reduce and then diff

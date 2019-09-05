@@ -11,7 +11,6 @@ open Evd
  * Use the options to determine how to combine the results.
  *)
 val diff_app :
-  evar_map ->
   proof_differencer configurable -> (* diff f *)
   proof_differencer configurable -> (* diff each arg *)
   proof_differencer configurable
@@ -24,8 +23,7 @@ val diff_app :
  * Use the options to determine how to combine the results.
  *)
 val diff_app_ind :
-  evar_map ->
-  (evar_map -> ind_proof_differencer) configurable -> (* diff f *)
-  (evar_map -> proof_differencer) configurable -> (* diff each arg *)
+  ind_proof_differencer configurable -> (* diff f *)
+  proof_differencer configurable -> (* diff each arg *)
   proof_differencer configurable
 
