@@ -73,7 +73,7 @@ let diff_app (diff_f : Differencers.proof_differencer configurable) (diff_arg : 
      let d_args = difference args_o args_n no_assumptions in
      (match get_change opts with
       | Kindofchange.InductiveType (_, _) ->
-         diff_rec diff_f opts d_f evd
+         diff_rec diff_f opts d_f Evd.empty
       | Kindofchange.FixpointCase ((_, _), cut) ->
          let filter_diff_cut diff = filter_diff (fun trms -> snd (filter_cut env cut trms evd)) diff in
          let fs = filter_diff_cut (fun l -> snd (diff_rec diff_f opts l Evd.empty)) d_f in
@@ -150,7 +150,7 @@ let diff_app_ind (diff_ind : Differencers.ind_proof_differencer configurable) (d
 	 let diff_rec diff opts = diff_terms (fun d _ -> diff opts d evd) d opts in
 	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
          let d_args_rev = reverse d_args in
-         evd, filter_diff_cut (fun d -> snd (diff_map_flat (fun t sigma -> diff_rec diff_arg opts t Evd.empty) d Evd.empty)) d_args_rev
+         evd, filter_diff_cut (fun d -> snd (diff_map_flat (fun t sigma -> diff_rec diff_arg opts t evd) d Evd.empty)) d_args_rev
      | _ ->
        if non_empty args_o then
          let env_o = context_env (fst (old_proof d)) in
