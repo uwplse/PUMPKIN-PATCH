@@ -91,7 +91,7 @@ let diff_app (diff_f : Differencers.proof_differencer configurable) (diff_arg : 
                snd (filter_applies_cut env (Option.get cut) args_lambdas evd)
              else
                args)
-           (fun l -> snd (diff_map_flat (fun t -> diff_rec diff_arg (set_change opts Kindofchange.Conclusion) t) l Evd.empty))
+           (fun l -> snd (diff_map_flat (diff_rec diff_arg (set_change opts Kindofchange.Conclusion)) l evd))
 	   d_args
       | Kindofchange.Hypothesis (_, _) ->
          let old_goal = fst (old_proof d) in
