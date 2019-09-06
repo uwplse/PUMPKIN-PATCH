@@ -183,7 +183,7 @@ let patch_theorem n d_old d_new t =
     (fun env evm t ->
       let evm, theorem = intern env evm t in
       let t_trm = lookup_definition env theorem in
-      update_theorem env evm old_term new_term t_trm)
+      snd (update_theorem env old_term new_term t_trm evm))
 
 (* Invert a term *)
 let invert n trm : unit =

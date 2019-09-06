@@ -6,3 +6,4 @@ coqc coq/divide.v
 coqc coq/Induction.v
 coqc coq/IntegersNew.v
 coqc coq/Optimization.v
+coqc coq/Theorem.v
