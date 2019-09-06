@@ -78,8 +78,11 @@ type goal_case_diff = (arrow list) goal_diff
 (* --- Transformations between proof diffs --- *)
 
 (* Map a function on the old and new proofs of a diff and update assumptions *)
-let map_diffs f g (d : 'a proof_diff) : 'b proof_diff =
-  difference (f (old_proof d)) (f (new_proof d)) (g (assumptions d))
+let map_diffs f g d =
+  bind
+    (map_tuple_state f (old_proof d, new_proof d))
+    (fun (o, n) ->
+      bind (g (assumptions d))(fun assums -> ret (difference o n assums)))
 
 (*
  * Add extra information to the old and new proofs, respectively

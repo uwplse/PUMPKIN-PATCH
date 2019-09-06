@@ -73,5 +73,5 @@ let diff_map_flat (diff : term_differencer) d_arr =
  * Apply some differencing function
  * Filter the result using the supplied modifier
  *)
-let filter_diff filter (diff : ('a, 'b) differencer_todo) d =
+let filter_diff filter (diff : ('a, 'b) differencer) d =
   bind (diff d) filter

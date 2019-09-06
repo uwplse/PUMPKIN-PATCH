@@ -76,10 +76,11 @@ val goal_types : lift_goal_diff -> (types * types)
 
 (* Map a function on the old and new proofs of a diff and update assumptions *)
 val map_diffs :
-  ('a -> 'b) ->
-  (equal_assumptions -> equal_assumptions) ->
+  ('a -> evar_map -> 'b state) ->
+  (equal_assumptions -> evar_map -> equal_assumptions state) ->
   'a proof_diff ->
-  'b proof_diff
+  evar_map ->
+  'b proof_diff state
 
 (*
  * Add extra information to the old and new proofs, respectively

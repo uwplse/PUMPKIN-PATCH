@@ -50,5 +50,5 @@ val diff_map_flat : term_differencer -> arr_differencer
  *)
 val filter_diff :
   ('b -> evar_map -> 'b state) ->
-  ('a, 'b) differencer_todo ->
-  ('a, 'b) differencer_todo
+  ('a, 'b) differencer ->
+  ('a, 'b) differencer
