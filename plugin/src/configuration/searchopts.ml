@@ -286,7 +286,7 @@ let update_terms_goals opts t_o t_n d =
 (* Convert search to a search_function for zooming *)
 let to_search_function search opts d =
   (fun d' -> 
-    bind (update_search_goals opts d d') (fun d -> ret (search opts d)))
+    bind (update_search_goals opts d d') (search opts))
 
 (*
  * Check if a term applies the inductive hypothesis

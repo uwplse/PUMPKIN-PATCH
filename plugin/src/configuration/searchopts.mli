@@ -72,7 +72,7 @@ val update_terms_goals :
  * can be used by zooming.
  *)
 val to_search_function :
-  ((goal_proof_diff -> candidates) configurable) ->
+  ((goal_proof_diff -> evar_map -> candidates state) configurable) ->
   (goal_proof_diff -> search_function) configurable
 
 (*
