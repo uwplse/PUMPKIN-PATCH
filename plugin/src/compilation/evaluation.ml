@@ -12,22 +12,7 @@ open Declarations
 open Indutils
 open Contextutils
 open Stateutils
-
-(* --- TODO for refactoring without breaking things --- *)
-
-(*
- * Infer the type of trm in env
- * Note: This does not yet use good evar map hygeine; will fix that
- * during the refactor.
- *
- * TODO remove this last. Will likely need good evar discipline everywhere
- * else first. But can try.
- *)
-let infer_type (env : env) (evd : evar_map) (trm : types) =
-  let jmt = Typeops.infer env trm in
-  evd, j_type jmt
-               
-(* --- End TODO --- *)
+open Inference
 
 (*
  * Note: Evar discipline is not good yet, but should wait until after

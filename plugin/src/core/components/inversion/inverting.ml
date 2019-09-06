@@ -17,23 +17,9 @@ open Equtils
 open Convertibility
 open Stateutils
 open Envutils
+open Inference
        
 type inverter = (env * types) -> evar_map -> ((env * types) option) state
-
-(* --- TODO for refactoring without breaking things --- *)
-
-(*
- * Infer the type of trm in env
- * Note: This does not yet use good evar map hygeine; will fix that
- * during the refactor.
- *
- * TODO port this one last
- *)
-let infer_type (env : env) (sigma : evar_map) (trm : types) =
-  let jmt = Typeops.infer env trm in
-  sigma, j_type jmt
-               
-(* --- End TODO --- *)
 
 (* --- Inverting type paths --- *)
 

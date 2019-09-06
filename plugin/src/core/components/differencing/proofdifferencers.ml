@@ -19,21 +19,7 @@ open Idutils
 open Stateutils
 open Convertibility
 open Envutils
-
-(* --- TODO for refactoring without breaking things --- *)
-
-(*
- * Infer the type of trm in env
- * Note: This does not yet use good evar map hygeine; will fix that
- * during the refactor.
- *
- * TODO fix this last
- *)
-let infer_type (env : env) (evd : evar_map) (trm : types) =
-  let jmt = Typeops.infer env trm in
-  evd, j_type jmt
-               
-(* --- End TODO --- *)
+open Inference
 
 (* --- Utilities --- *)
 

@@ -15,29 +15,8 @@ open Indutils
 open Contextutils
 open Convertibility
 open Envutils
-
-(* --- TODO for refactoring without breaking things --- *)
-
-(*
- * Infer the type of trm in env
- * Note: This does not yet use good evar map hygeine; will fix that
- * during the refactor.
- *
- * TODO remove this last, once good evar practice in all callers
- *)
-let infer_type (env : env) (evd : evar_map) (trm : types) : types state =
-  let jmt = Typeops.infer env trm in
-  evd, j_type jmt
-         
-(* Check whether a term has a given type *)
-let has_type (env : env) (evd : evar_map) (typ : types) (trm : types) : bool state =
-  try
-    let evd, trm_typ = infer_type env evd trm in
-    convertible env evd trm_typ typ
-  with _ -> 
-    evd, false
-               
-(* --- End TODO --- *)
+open Inference
+open Checking
 
 (* --- Type definitions --- *)
 
