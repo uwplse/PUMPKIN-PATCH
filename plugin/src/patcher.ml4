@@ -147,7 +147,7 @@ let patch_proof n d_old d_new cut =
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   patch env evm n try_invert ()
     (fun env evm _ ->
-      search_for_patch evm old_term opts d)
+      snd (search_for_patch old_term opts d evm))
 
 (*
  * Command functionality for optimizing proofs.
@@ -166,7 +166,7 @@ let optimize_proof n d =
   let (d, opts) = configure_optimize trm in
   patch env evm n false ()
     (fun env evm _ ->
-      search_for_patch evm trm opts d)
+      snd (search_for_patch trm opts d evm))
 
 (*
  * The Patch Theorem command functionality
