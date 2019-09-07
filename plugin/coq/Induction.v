@@ -321,13 +321,6 @@ Definition cut :=
     S (a + S a) = S (S (a + a)) ->
     S (a + S (a + 0)) = S (S (a + (a + 0))).
 
-Definition test_1 (b0 : bin) :=
-  (S ((bin_to_nat b0) + (S ((bin_to_nat b0) + O)))) = (S (S ((bin_to_nat b0) + ((bin_to_nat b0) + O)))).
-
-Definition test_2 (b0 : bin) :=
-  ((S ((bin_to_nat b0) + (S (bin_to_nat b0)))) = (S (S ((bin_to_nat b0) + (bin_to_nat b0))))).
-
-
 (* Patch *)
 Patch Proof blindfs_induction.bin_to_nat_pres_incr bin_to_nat_pres_incr cut by (fun (H : cut) b0 => H (bin_to_nat b0)) as patch.
 Print patch.
