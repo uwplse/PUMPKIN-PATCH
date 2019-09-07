@@ -227,7 +227,7 @@ Definition add_0_r_5_expected (n : nat) : n + 0 = n :=
  * PUMPKIN manages to find the most efficient proof, probably because
  * there are no inductive hypotheses of the form A -> B.
  *
- * TODO: Broken. Fix before merging back into master. Not sure what changed.
+ * NOTE: Broken. Fix soon. Not crucial to release.
  *)
 Fail Theorem test_opt_7 : 
    add_0_r_5 = add_0_r_5_expected.
@@ -258,7 +258,7 @@ Optimize Proof Term add_0_r_slow_6' as add_0_r_6.
 (*
  * This gives us the same result:
  *
- * TODO broken. Fix before merging back into master.
+ * NOTE: Broken. Fix soon. Not crucial to release.
  *)
 Fail Theorem test_opt_8 : 
    add_0_r_6 = add_0_r_5_expected.
