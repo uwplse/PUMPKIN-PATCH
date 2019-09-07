@@ -137,9 +137,6 @@ let diff_app diff_f diff_arg opts d =
  * then specialize to any final arguments.
  *
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
- *
- * TODO: Revisit when to use sigma_f once we have the recursers threading
- * evar_maps correctly, before merging to master. Clean when you do that.
  *)
 let diff_app_ind diff_ind diff_arg opts d =
   let d_proofs = erase_goals d in
