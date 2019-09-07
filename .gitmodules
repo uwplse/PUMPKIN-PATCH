@@ -7,4 +7,3 @@
 [submodule "plugin/deps/ornamental-search"]
 	path = plugin/deps/ornamental-search
 	url = https://github.com/uwplse/ornamental-search.git
-	branch = 0.1
