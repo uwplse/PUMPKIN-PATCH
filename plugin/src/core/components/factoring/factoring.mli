@@ -3,6 +3,7 @@
 open Constr
 open Environ
 open Evd
+open Stateutils
 
 (*
  * Factors are a list of environment-type pairs, where the environment
@@ -22,7 +23,7 @@ type factors = (env * types) list
  * X -> Z, find factors through which it passes
  * (e.g., [H : X, F : X -> Y, G : Y -> Z] where trm = G o F)
  *)
-val factor_term : env -> evar_map -> types -> factors
+val factor_term : env -> types -> evar_map -> factors state
 
 (*
  * Reconstruct factors as a user-friendly list of terms
@@ -32,4 +33,4 @@ val reconstruct_factors : factors -> types list
 (*
  * Apply factors to reconstruct a single term
  *)
-val apply_factors : evar_map -> factors -> types
+val apply_factors : factors -> evar_map -> types state

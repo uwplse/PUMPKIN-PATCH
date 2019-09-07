@@ -5,8 +5,10 @@ open Proofdiff
 open Candidates
 open Proofcat
 open Kindofchange
+open Evd
+open Stateutils
 
-type ('a, 'b) differencer = 'a proof_diff -> 'b
+type ('a, 'b) differencer = 'a proof_diff -> evar_map -> 'b state
 
 type 'a candidate_differencer = ('a, candidates) differencer
 type proof_differencer = (context_object * proof_cat) candidate_differencer

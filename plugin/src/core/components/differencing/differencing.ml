@@ -2,12 +2,11 @@
 
 open Searchopts
 open Proofdiff
-open Coqterms
 open Reducers
 open Candidates
 open Kindofchange
 open Printing
-open Zooming
+open Catzooming
 open Proofdifferencers
 open Higherdifferencers
 open Appdifferencers
@@ -16,6 +15,7 @@ open Term
 open Evd
 open Utilities
 open Constr
+open Stateutils
 
 (* --- Debugging --- *)
 
@@ -83,47 +83,55 @@ let debug_search (d : goal_proof_diff) : unit =
  * 6c. When 6b doesn't produce anything, try reducing the diff and calling
  *    recursively. (Support for this is preliminary.)
  *)
-let rec diff (opts : options) (evd : evar_map) (d : goal_proof_diff) : candidates =
-  let d = reduce_letin (reduce_casts d) in
-  if no_diff evd opts d then
-    (*1*) identity_candidates d
-  else if induct_over_same_h (same_h opts) d then
-    try_chain_diffs
-      [(diff_app_ind evd (diff_inductive diff d) diff opts); (* 2a *)
-       (find_difference evd opts)]                           (* 2b *)
-      d
-  else if applies_ih opts d then
-    let diff opts = diff opts evd in
-    (*3*) diff_app evd diff diff opts (reduce_trim_ihs d)
-  else
-    let diff opts = diff opts evd in
-    match map_tuple kind (proof_terms d) with
-    | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
-       let change = get_change opts in
-       let ind = is_ind opts in
-       let opts_hypos = if is_identity change then set_change opts Conclusion else opts in
-       if no_diff evd opts_hypos (eval_with_terms t_o t_n d) then
-         (*4*) zoom_wrap_lambda (to_search_function diff opts d) n_o t_o d
-       else if ind || not (is_conclusion change || is_identity change) then
-         (*5*) zoom_unshift (to_search_function diff opts d) d
-       else
-         give_up
-    | _ ->
-       if is_app opts d then
-         try_chain_diffs
-           [(find_difference evd opts);     (* 6a *)
-            (diff_app evd diff diff opts);  (* 6b *)
-            (diff_reduced (diff opts))]     (* 6c *)
-           d
-       else
-         give_up
-
+let rec diff (opts : options) (d : goal_proof_diff) =
+  bind
+    (bind (reduce_casts d) reduce_letin)
+    (branch_state
+       (no_diff opts)
+       identity_candidates (* 1 *)
+       (fun d ->
+         if induct_over_same_h (same_h opts) d then
+           try_chain_diffs
+             [(diff_app_ind (diff_inductive diff d) diff opts); (* 2a *)
+              (find_difference opts)]                           (* 2b *)
+             d
+         else if applies_ih opts d then
+           bind (reduce_trim_ihs d) (diff_app diff diff opts) (* 3 *)
+         else
+           match map_tuple kind (proof_terms d) with
+           | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
+              let change = get_change opts in
+              let ind = is_ind opts in
+              let is_id = is_identity change in
+              let search_body = to_search_function diff opts d in
+              bind
+                (eval_with_terms t_o t_n d)
+                (branch_state
+                   (no_diff
+                      (if is_id then set_change opts Conclusion else opts))
+                   (fun _ -> zoom_wrap_lambda search_body n_o t_o d) (* 4 *)
+                   (fun _ ->
+                     let is_concl = is_conclusion change in
+                     if ind || not (is_concl || is_id) then
+                       zoom_unshift search_body d (* 5 *)
+                     else
+                       ret give_up))
+           | _ ->
+              if is_app opts d then
+                try_chain_diffs
+                  [(find_difference opts);     (* 6a *)
+                   (diff_app diff diff opts);  (* 6b *)
+                   (diff_reduced (diff opts))] (* 6c *)
+                  d
+              else
+                ret give_up))
+               
 (* --- Top-level differencer --- *)
 
 (* Given a configuration, return the appropriate differencer *)
-let get_differencer (opts : options) (evd : evar_map) =
+let get_differencer (opts : options) =
   let should_reduce = is_inductive_type (get_change opts) in
   if should_reduce then
-    (fun d -> diff opts evd (reduce_diff reduce_term d))
+    (fun d -> bind (reduce_diff reduce_term d) (diff opts))
   else
-    diff opts evd
+    diff opts

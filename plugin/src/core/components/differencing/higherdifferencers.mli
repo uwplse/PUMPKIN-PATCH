@@ -2,6 +2,8 @@ open Searchopts
 open Proofdiff
 open Candidates
 open Differencers
+open Evd
+open Stateutils
 
 (* --- Recursive differencing --- *)
 
@@ -10,7 +12,10 @@ open Differencers
  * If that fails, then try the next one, and so on
  *)
 val try_chain_diffs :
-  ('a candidate_differencer) list -> 'a proof_diff -> candidates
+  ('a candidate_differencer) list ->
+  'a proof_diff ->
+  evar_map ->
+  candidates state
 
 (*
  * Reduce and then diff
@@ -43,4 +48,7 @@ val diff_map_flat : term_differencer -> arr_differencer
  * Apply some differencing function
  * Filter the result using the supplied modifier
  *)
-val filter_diff : ('b -> 'b) -> ('a, 'b) differencer -> ('a, 'b) differencer
+val filter_diff :
+  ('b -> evar_map -> 'b state) ->
+  ('a, 'b) differencer ->
+  ('a, 'b) differencer

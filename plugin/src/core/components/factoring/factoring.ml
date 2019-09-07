@@ -3,18 +3,19 @@
 open Constr
 open Environ
 open Evd
-open Coqterms
 open Reducers
 open Specialization
 open Names
 open Utilities
 open Debruijn
-
-module CRD = Context.Rel.Declaration
+open Reducers
+open Contextutils
+open Convertibility
+open Stateutils
+open Zooming
+open Envutils
 
 type factors = (env * types) list
-
-open Zooming
 
 (* --- Assumptions for path finding --- *)
 
@@ -32,15 +33,15 @@ let apply_assumption (fs : factors) (trm : types) : types =
 (*
  * Check if the term is the assumption (last term in the environment)
  *)
-let is_assumption (env : env) (evd : evar_map) (trm : types) : bool =
-  convertible env evd trm assumption
+let is_assumption (env : env) (trm : types) sigma =
+  convertible env sigma trm assumption
 
 (*
  * Assume a term of type typ in an environment
  *)
 let assume (env : env) (n : Name.t) (typ : types) : env =
   let env_pop = pop_rel_context 1 env in
-  push_rel CRD.(LocalAssum(n, typ)) env_pop
+  push_local (n, typ) env_pop
 
 (* --- Path-finding auxiliary functionality --- *)
 
@@ -76,30 +77,38 @@ let assume (env : env) (n : Name.t) (typ : types) : env =
  * fail for inveresion, but we might want it if we use factoring for other
  * purposes, like to simplify abstraction.
  *)
-let rec find_path (env : env) (evd : evar_map) (trm : types) : factors =
-  if is_assumption env evd trm then
-    [(env, trm)]
-  else
-    match kind trm with
-    | App (f, args) ->
-       let paths = Array.map (find_path env evd) args in
-       let nonempty_paths = List.filter non_empty (Array.to_list paths) in
-       if List.length nonempty_paths > 1 then
-	 [(env, trm)]
-       else if List.length nonempty_paths = 1 then
-	 let path = List.hd nonempty_paths in
-	 let (env_arg, arg) = List.hd path in
-         let assume_arg i a = apply_assumption (Array.get paths i) a in
-         let args_assumed = Array.mapi assume_arg args in
-	 try
-           let t = unshift (reduce_type env_arg evd arg) in
-	   (assume env Anonymous t, mkApp (f, args_assumed)) :: path
-	 with _ ->
-	   []
-       else
-	 []
-    | _ -> (* other terms not yet implemented *)
-       []
+let rec find_path (env : env) (trm : types) =
+  branch_state
+    (fun (env, trm) -> is_assumption env trm)
+    (fun (env, trm) -> ret [(env, trm)])
+    (fun (env, trm) ->
+      match kind trm with
+      | App (f, args) ->
+         bind
+           (map_state_array (find_path env) args)
+           (fun paths ->
+             let nonempty_paths = List.filter non_empty (Array.to_list paths) in
+             if List.length nonempty_paths > 1 then
+	       ret [(env, trm)]
+             else if List.length nonempty_paths = 1 then
+	       let path = List.hd nonempty_paths in
+	       let (env_arg, arg) = List.hd path in
+               let assume_arg i a = apply_assumption (Array.get paths i) a in
+               let args_assumed = Array.mapi assume_arg args in
+	       try
+                 bind
+                   (fun sigma -> reduce_type env_arg sigma arg)
+                   (fun arg_typ ->
+                     let t = unshift arg_typ in
+                     let env_t = assume env Anonymous t in
+	             ret ((env_t, mkApp (f, args_assumed)) :: path))
+	       with _ ->
+	         ret []
+             else
+	       ret [])
+      | _ -> (* other terms not yet implemented *)
+         ret [])
+    (env, trm)
 
 (* --- Top-level factoring --- *)
 
@@ -111,17 +120,22 @@ let rec find_path (env : env) (evd : evar_map) (trm : types) : factors =
  * First zoom in all the way, then use the auxiliary path-finding
  * function.
  *)
-let factor_term (env : env) (evd : evar_map) (trm : types) : factors =
-  let (env_zoomed, trm_zoomed) = zoom_lambda_term env (reduce_term env evd trm) in
-  let path_body = find_path env_zoomed evd trm_zoomed in
-  List.map
-    (fun (env, body) ->
-      if is_assumption env evd body then
-	(env, body)
-      else
-	let (n, _, t) = CRD.to_tuple @@ lookup_rel 1 env in
-	(pop_rel_context 1 env, mkLambda (n, t, body)))
-    path_body
+let factor_term (env : env) (trm : types) =
+  bind
+    (fun sigma -> reduce_term env sigma trm)
+    (fun trm ->
+      let (env_zoomed, trm_zoomed) = zoom_lambda_term env trm in
+      bind
+        (find_path env_zoomed trm_zoomed)
+        (map_state
+           (fun (env, body) ->
+             branch_state
+               (is_assumption env)
+               (fun body -> ret (env, body))
+               (fun body ->
+	         let (n, _, t) = CRD.to_tuple @@ lookup_rel 1 env in
+	         ret (pop_rel_context 1 env, mkLambda (n, t, body)))
+               body)))
 
 (* --- Using factors --- *)
 
@@ -138,13 +152,13 @@ let reconstruct_factors (fs : factors) : types list =
     (List.tl (List.rev fs))
 
 (* Apply factors to reconstruct a single term *)
-let apply_factors evd (fs : factors) : types =
+let apply_factors (fs : factors) =
   let (env, base) = List.hd fs in
-  let body =
-    List.fold_right
-      (fun (en, t) t_app ->
-        specialize_using specialize_no_reduce en evd (shift t) (Array.make 1 t_app))
-      (List.tl fs)
-      base
-  in reconstruct_lambda env body
+  let specialize = specialize_using specialize_no_reduce in
+  bind
+    (fold_left_state
+       (fun t_app (env, t) -> specialize env (shift t) (Array.make 1 t_app))
+       base
+       (List.rev (List.tl fs)))
+    (fun body -> ret (reconstruct_lambda env body))
 

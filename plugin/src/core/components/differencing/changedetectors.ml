@@ -2,7 +2,6 @@
 
 open Constr
 open Environ
-open Coqterms
 open Proofdiff
 open Proofcatterms
 open Cutlemma
@@ -11,8 +10,10 @@ open Reducers
 open Assumptions
 open Utilities
 open Zooming
-
-module CRD = Context.Rel.Declaration
+open Contextutils
+open Convertibility
+open Stateutils
+open Envutils
 
 (*
  * If the kind of change is a change in conclusion, then
@@ -53,50 +54,72 @@ let find_kind_of_conclusion cut (d : goal_proof_diff) =
  *
  * Otherwise, search for a change in conclusion.
  *)
-let find_kind_of_change evd (cut : cut_lemma option) (d : goal_proof_diff) =
+let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
   let d_goals = erase_proofs d in
-  let goals = goal_types d_goals in
   let env = context_env (old_proof d_goals) in
-  let r = reduce_remove_identities env evd in
-  let old_goal = r (fst goals) in
-  let new_goal = r (snd goals) in
+  let r t sigma = reduce_remove_identities env sigma t in
+  let not_convertible =
+    not_state (fun (t_o, t_n) sigma -> convertible env sigma t_o t_n)
+  in
+  let all_convertible =
+    fold_tuple_state
+      (forall2_state (fun t1 t2 sigma -> convertible env sigma t1 t2))
+  in
   let rec diff env typ_o typ_n =
     match map_tuple kind (typ_o, typ_n) with
     | (Prod (n_o, t_o, b_o), Prod (_, t_n, b_n)) ->
-       if (not (convertible env evd t_o t_n)) then
-         let d_typs = difference t_o t_n no_assumptions in
-         if same_shape env d_typs then
-           InductiveType (t_o, t_n)
-         else
-           let (t_o', t_n') = map_tuple (reconstruct_product env) (t_o, t_n) in
-           Hypothesis (t_o', t_n')
-       else
-         diff (push_rel CRD.(LocalAssum(n_o, t_o)) env) b_o b_n
+       branch_state
+         not_convertible
+         (fun (t_o, t_n) ->
+           let d_typs = difference t_o t_n no_assumptions in
+           if same_shape env d_typs then
+             ret (InductiveType (t_o, t_n))
+           else
+             let (t_o, t_n) = map_tuple (reconstruct_product env) (t_o, t_n) in
+             ret (Hypothesis (t_o, t_n)))
+         (fun (t_o, t_n) ->
+           diff (push_local (n_o, t_o) env) b_o b_n)
+         (t_o, t_n)
     | (App (f_o, args_o), App (f_n, args_n)) ->
        if (not (Array.length args_o = Array.length args_n)) then
-         Conclusion
+         ret Conclusion
        else
          let args_o = Array.to_list args_o in
          let args_n = Array.to_list args_n in
-         if isConst f_o && isConst f_n && (not (convertible env evd f_o f_n)) then
-           if List.for_all2 (convertible env evd) args_o args_n then
-             if not (Option.has_some cut) then
-               failwith "Must supply cut lemma for change in fixpoint"
-             else
-               FixpointCase ((f_o, f_n), Option.get cut)
-           else
-             Conclusion
-         else
-           let arg_confs = List.map2 (diff env) args_o args_n in
-           if List.for_all is_conclusion arg_confs then
-             Conclusion
-           else
-             List.find (fun change -> not (is_conclusion change)) arg_confs
+         branch_state
+           (and_state_fold
+              (fun (f_o, f_n) -> ret (isConst f_o && isConst f_n))
+              not_convertible)
+           (fun (f_o, f_n) ->
+             branch_state
+               all_convertible
+               (fun _ ->
+                 if not (Option.has_some cut) then
+                   failwith "Must supply cut lemma for change in fixpoint"
+                 else
+                   ret (FixpointCase ((f_o, f_n), Option.get cut)))
+               (fun _ ->
+                 ret Conclusion)
+               (args_o, args_n))
+           (fun (f_o, f_n) ->
+             bind
+               (map2_state (diff env) args_o args_n)
+               (fun confs ->
+                 if List.for_all is_conclusion confs then
+                   ret Conclusion
+                 else
+                   ret (List.find (fun ch -> not (is_conclusion ch)) confs)))
+           (f_o, f_n)
     | _ ->
-       Conclusion
+       ret Conclusion
   in
-  let change = diff env old_goal new_goal in
-  if is_conclusion change then
-    find_kind_of_conclusion cut d
-  else
-    change
+  bind
+    (map_tuple_state r (goal_types d_goals))
+    (fun (old_goal, new_goal) ->
+      bind
+        (diff env old_goal new_goal)
+        (fun change ->
+          if is_conclusion change then
+            ret (find_kind_of_conclusion cut d)
+          else
+            ret change))

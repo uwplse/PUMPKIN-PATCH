@@ -169,7 +169,7 @@ Qed.
 (** [] *)
 
 Theorem bin_to_nat_nat_to_bin : forall n : nat,
-  bin_to_nat(nat_to_bin(n)) = n.
+  bin_to_nat (nat_to_bin n) = n.
 Proof.
   induction n as [|n'].
   - reflexivity.
@@ -547,7 +547,7 @@ Print patch_inv.
 (* Talia: Now we have an isomorphism. *)
 
 Theorem bin_to_nat_nat_to_bin : forall n : nat,
-  bin_to_nat(nat_to_bin(n)) = n.
+  bin_to_nat (nat_to_bin n) = n.
 Proof.
   induction n as [|n'].
   - reflexivity.

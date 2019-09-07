@@ -3,9 +3,10 @@
 open Constr
 open Environ
 open Evd
+open Stateutils
        
 (* 
  * Subtitute a term into a simple theorem
  * Try to update dependent types appropriately
  *)
-val update_theorem : env -> evar_map -> types -> types -> types -> types
+val update_theorem : env -> types -> types -> types -> evar_map -> types state

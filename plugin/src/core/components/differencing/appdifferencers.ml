@@ -1,21 +1,24 @@
 (* --- Recursive Differencers for Application --- *)
 
+open Utilities
 open Constr
 open Proofcatterms
 open Proofdiff
 open Candidates
 open Searchopts
-open Coqterms
 open Evd
-open Utilities
 open Proofdifferencers
 open Higherdifferencers
 open Assumptions
 open Cutlemma
 open Specialization
 open Zooming
+open Catzooming
 open Debruijn
 open Filters
+open Stateutils
+open Convertibility
+open Kindofchange
 
 (*
  * Given a search function and a difference between terms,
@@ -56,60 +59,77 @@ open Filters
  *
  * TODO: clean up
  *)
-let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candidates =
+let diff_app diff_f diff_arg opts d =
   let (_, env) = fst (old_proof (dest_goals d)) in
   match map_tuple kind (proof_terms d) with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
-     let diff_rec diff opts = diff_terms (diff opts) d opts in
+     let diff_rec diff opts ts = diff_terms (diff opts) d opts ts in
      let d_f = difference f_o f_n no_assumptions in
      let d_args = difference args_o args_n no_assumptions in
      (match get_change opts with
-      | Kindofchange.InductiveType (_, _) ->
+      | InductiveType (_, _) ->
          diff_rec diff_f opts d_f
-      | Kindofchange.FixpointCase ((_, _), cut) ->
-         let filter_diff_cut diff = filter_diff (filter_cut env evd cut) diff in
-         let fs = filter_diff_cut (diff_rec diff_f opts) d_f in
-         if non_empty fs then
-           fs
-         else
-           let d_args_rev = reverse d_args in
-           filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
-      | Kindofchange.ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
-         let diff_arg o d = if no_diff evd o d then give_up else diff_arg o d in
+      | FixpointCase ((_, _), cut) ->
+         let filter_diff_cut diff d = filter_diff (filter_cut env cut) diff d in
+         bind
+           (filter_diff_cut (diff_rec diff_f opts) d_f)
+           (fun fs ->
+             if non_empty fs then
+               ret fs
+             else
+               filter_diff_cut
+                 (diff_map_flat (diff_rec diff_arg opts))
+                 (reverse d_args))
+      | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          filter_diff
            (fun args ->
              if Option.has_some cut then
                let args_lambdas = List.map (reconstruct_lambda env) args in
-               filter_applies_cut env evd (Option.get cut) args_lambdas
+               filter_applies_cut env (Option.get cut) args_lambdas
              else
-               args)
-           (diff_map_flat (diff_rec diff_arg (set_change opts Kindofchange.Conclusion)))
+               ret args)
+           (diff_map_flat
+              (diff_rec
+                 (fun o ->
+                   branch_state (no_diff o) (fun _ -> ret give_up) (diff_arg o))
+                 (set_change opts Conclusion)))
 	   d_args
-      | Kindofchange.Hypothesis (_, _) ->
+      | Hypothesis (_, _) ->
          let old_goal = fst (old_proof d) in
          let new_goal = fst (new_proof d) in
          let (g_o, g_n) = map_tuple context_term (old_goal, new_goal) in
          let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
-         let filter_goal = filter_by_type goal_type env evd in
+         let filter_goal trms evd = filter_by_type goal_type env evd trms in
          let filter_diff_h diff = filter_diff filter_goal diff in
-         let fs = filter_diff_h (diff_rec diff_f opts) d_f in
-         if non_empty fs then
-           fs
-         else
-           filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args
-      | Kindofchange.Conclusion | Kindofchange.Identity ->
-         if List.for_all2 (convertible env evd) (Array.to_list args_o) (Array.to_list args_n) then
-           let specialize = specialize_using specialize_no_reduce env evd in
-           let combine_app = combine_cartesian specialize in
-	   let fs = diff_rec diff_f opts d_f in
-	   let args = Array.map (fun a_o -> [a_o]) args_o in
-           combine_app fs (combine_cartesian_append args)
-         else
-           give_up
+         bind
+           (filter_diff_h (diff_rec diff_f opts) d_f)
+           (fun fs ->
+             if non_empty fs then
+               ret fs
+             else
+               filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args)
+      | Conclusion | Identity ->
+         branch_state
+           (fun (args_o, args_n) ->
+             forall2_state
+               (fun t1 t2 sigma -> convertible env sigma t1 t2)
+               (Array.to_list args_o)
+               (Array.to_list args_n))
+           (fun (args_o, args_n) ->
+             let app f args =
+               snd (specialize_using specialize_no_reduce env f args Evd.empty)
+             in
+             let combine_app = combine_cartesian app in
+	     let args = Array.map (fun a_o -> [a_o]) args_o in
+             bind
+               (diff_rec diff_f opts d_f)
+               (fun fs -> ret (combine_app fs (combine_cartesian_append args))))
+           (fun _ -> ret give_up)
+           (args_o, args_n)
       | _ ->
-         give_up)
+         ret give_up)
   | _ ->
-     give_up
+     ret give_up
 
 (*
  * Search an application of an induction principle.
@@ -118,68 +138,73 @@ let diff_app (evd : evar_map) diff_f diff_arg opts (d : goal_proof_diff) : candi
  *
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *)
-let diff_app_ind evd diff_ind diff_arg opts (d : goal_proof_diff) : candidates =
+let diff_app_ind diff_ind diff_arg opts d =
   let d_proofs = erase_goals d in
   let o = old_proof d_proofs in
   let n = new_proof d_proofs in
   let d_ind = difference (o, 0, []) (n, 0, []) (assumptions d) in
-  let d_opt = zoom_same_hypos d_ind in
-  if Option.has_some d_opt then
-    let d_zoom = Option.get d_opt in
-    let assums = assumptions d_zoom in
-    let (o, npms_old, args_o) = old_proof d_zoom in
-    let (n, npms_new, args_n) = new_proof d_zoom in
-    let f = diff_ind opts evd (difference (o, npms_old) (n, npms_new) assums) in
-    match get_change opts with
-    | (Kindofchange.InductiveType (_, _)) | (Kindofchange.Hypothesis (_, _)) ->
-       f
-    | Kindofchange.FixpointCase ((_, _), cut) ->
-       let env = context_env (fst (old_proof d)) in
-       let filter_diff_cut diff = filter_diff (filter_cut env evd cut) diff in
-       if non_empty f then
-         f
-       else
-	 let diff_rec diff opts = diff_terms (diff opts evd) d opts in
-	 let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
-         let d_args_rev = reverse d_args in
-         filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev
-     | _ ->
-       if non_empty args_o then
-         let env_o = context_env (fst (old_proof d)) in
-         let (_, prop_trm_ext, _) = prop o npms_old in
-         let prop_trm = ext_term prop_trm_ext in
-         let rec prop_arity p =
-           match kind p with
-           | Lambda (_, _, b) ->
-              1 + prop_arity b
-           | Prod (_, _, b) ->
-              1 + prop_arity b
-           | _ ->
-              0
-         in
-         let arity = prop_arity prop_trm in
-         let specialize = specialize_using specialize_no_reduce env_o evd in
-         let final_args_o = Array.of_list (fst (split_at arity args_o)) in
-	 if Kindofchange.is_identity (get_change opts) then (* TODO explain *)
-	   List.map 
-	     (fun f -> 
-	       let dummy_arg = mkRel 1 in
-	       specialize (specialize f final_args_o) (Array.make 1 dummy_arg)) 
-	     f
-	 else
-           let final_args_n = Array.of_list (fst (split_at arity args_n)) in
-           let d_args = difference final_args_n final_args_o no_assumptions in
-	   let args =
-	     Array.of_list
-               (diff_map
-		  (fun d_a ->
-                    let arg_n = new_proof d_a in
-                    let apply p = specialize p (Array.make 1 arg_n) in
-                    let diff_apply = filter_diff (List.map apply) in
-                    diff_terms (diff_apply (diff_arg opts evd)) d opts d_a)
-                  d_args)
-	   in combine_cartesian specialize f (combine_cartesian_append args)
-       else
-         f
-  else
-    give_up
+  bind
+    (zoom_same_hypos d_ind)
+    (fun d_opt sigma ->
+      if Option.has_some d_opt then
+        let d_zoom = Option.get d_opt in
+        let assums = assumptions d_zoom in
+        let (o, npms_old, args_o) = old_proof d_zoom in
+        let (n, npms_new, args_n) = new_proof d_zoom in
+        let sigma_f, f  = diff_ind opts (difference (o, npms_old) (n, npms_new) assums) sigma in
+        match get_change opts with
+        | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
+           sigma_f, f
+        | FixpointCase ((_, _), cut) ->
+           let env = context_env (fst (old_proof d)) in
+           let filter_diff_cut diff d = filter_diff (filter_cut env cut) diff d in
+           if non_empty f then
+             sigma_f, f
+           else
+             (* Note that state is relevant here; don't use sigma_f *)
+	     let diff_rec diff opts = diff_terms (diff opts) d opts in
+	     let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
+             let d_args_rev = reverse d_args in
+             filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev sigma
+        | _ ->
+           if non_empty args_o then
+             let env_o = context_env (fst (old_proof d)) in
+             let _, (_, prop_trm_ext, _) = prop o npms_old sigma in
+             let prop_trm = ext_term prop_trm_ext in
+             let rec prop_arity p =
+               match kind p with
+               | Lambda (_, _, b) ->
+                  1 + prop_arity b
+               | Prod (_, _, b) ->
+                  1 + prop_arity b
+               | _ ->
+                  0
+             in
+             let arity = prop_arity prop_trm in
+             let app f args = snd (specialize_using specialize_no_reduce env_o f args Evd.empty) in
+             let final_args_o = Array.of_list (fst (split_at arity args_o)) in
+	     if is_identity (get_change opts) then (* TODO explain *)
+	       sigma, List.map 
+	                (fun f -> 
+	                  let dummy_arg = mkRel 1 in
+	                  app (app f final_args_o) (Array.make 1 dummy_arg)) 
+	                f
+	     else
+               let final_args_n = Array.of_list (fst (split_at arity args_n)) in
+               let d_args = difference final_args_n final_args_o no_assumptions in
+	       let sigma, args =
+                 Util.on_snd
+	           Array.of_list
+                   (diff_map
+		      (fun d_a ->
+                        let arg_n = new_proof d_a in
+                        let apply p = ret (app p (Array.make 1 arg_n)) in
+                        let diff_apply = filter_diff (map_state apply) in
+                        diff_terms (diff_apply (diff_arg opts)) d opts d_a)
+                      d_args
+                      sigma)
+	       in sigma, combine_cartesian app f (combine_cartesian_append args)
+           else
+             sigma_f, f
+      else
+        sigma, give_up)

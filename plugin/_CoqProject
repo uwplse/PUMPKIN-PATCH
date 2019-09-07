@@ -1,9 +1,19 @@
--I src/library/utilities
--I src/library/categories
--I src/library/coq
--I src/library/proofsearch/representation
--I src/library/proofsearch/compilation
--I src/core/configuration
+-I src/coq-plugin-lib/src/utilities
+-I src/coq-plugin-lib/src/coq
+-I src/coq-plugin-lib/src/coq/termutils
+-I src/coq-plugin-lib/src/coq/constants
+-I src/coq-plugin-lib/src/coq/logicutils
+-I src/coq-plugin-lib/src/coq/logicutils/contexts
+-I src/coq-plugin-lib/src/coq/logicutils/typesandequality
+-I src/coq-plugin-lib/src/coq/logicutils/hofs
+-I src/coq-plugin-lib/src/coq/logicutils/inductive
+-I src/coq-plugin-lib/src/coq/devutils
+-I src/coq-plugin-lib/src/coq/representationutils
+-I src/representation
+-I src/representation/categories
+-I src/configuration
+-I src/compilation
+-I src/compilation/categories
 -I src/core/components/abstraction
 -I src/core/components/specialization
 -I src/core/components/inversion
@@ -14,53 +24,90 @@
 -R src Patcher
 -Q theories Patcher
 
-src/library/utilities/utilities.mli
-src/library/utilities/utilities.ml
+src/coq-plugin-lib/src/utilities/utilities.ml
+src/coq-plugin-lib/src/utilities/utilities.mli
 
-src/library/categories/category.mli
-src/library/categories/category.ml
+src/coq-plugin-lib/src/coq/termutils/apputils.mli
+src/coq-plugin-lib/src/coq/termutils/apputils.ml
+src/coq-plugin-lib/src/coq/termutils/funutils.mli
+src/coq-plugin-lib/src/coq/termutils/funutils.ml
 
-src/library/coq/coqterms.mli
-src/library/coq/coqterms.ml
-src/library/coq/printing.mli
-src/library/coq/printing.ml
-src/library/coq/hofs.mli
-src/library/coq/hofs.ml
-src/library/coq/debruijn.mli
-src/library/coq/debruijn.ml
-src/library/coq/substitution.mli
-src/library/coq/substitution.ml
-src/library/coq/filters.mli
-src/library/coq/filters.ml
-src/library/coq/reducers.mli
-src/library/coq/reducers.ml
+src/coq-plugin-lib/src/coq/representationutils/defutils.mli
+src/coq-plugin-lib/src/coq/representationutils/defutils.ml
 
-src/library/proofsearch/representation/candidates.mli
-src/library/proofsearch/representation/candidates.ml
-src/library/proofsearch/representation/assumptions.mli
-src/library/proofsearch/representation/assumptions.ml
-src/library/proofsearch/representation/merging.mli
-src/library/proofsearch/representation/merging.ml
-src/library/proofsearch/representation/proofcat.mli
-src/library/proofsearch/representation/proofcat.ml
-src/library/proofsearch/representation/proofcatterms.mli
-src/library/proofsearch/representation/proofcatterms.ml
-src/library/proofsearch/representation/cutlemma.mli
-src/library/proofsearch/representation/cutlemma.ml
-src/library/proofsearch/representation/kindofchange.mli
-src/library/proofsearch/representation/kindofchange.ml
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.mli
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.ml
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/convertibility.mli
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/convertibility.ml
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/checking.mli
+src/coq-plugin-lib/src/coq/logicutils/typesandequality/checking.ml
 
-src/library/proofsearch/compilation/evaluation.mli
-src/library/proofsearch/compilation/evaluation.ml
-src/library/proofsearch/compilation/expansion.mli
-src/library/proofsearch/compilation/expansion.ml
-src/library/proofsearch/compilation/proofdiff.mli
-src/library/proofsearch/compilation/proofdiff.ml
-src/library/proofsearch/compilation/zooming.mli
-src/library/proofsearch/compilation/zooming.ml
+src/coq-plugin-lib/src/coq/constants/equtils.mli
+src/coq-plugin-lib/src/coq/constants/equtils.ml
+src/coq-plugin-lib/src/coq/constants/sigmautils.mli
+src/coq-plugin-lib/src/coq/constants/sigmautils.ml
+src/coq-plugin-lib/src/coq/constants/idutils.mli
+src/coq-plugin-lib/src/coq/constants/idutils.ml
 
-src/core/configuration/searchopts.mli
-src/core/configuration/searchopts.ml
+src/coq-plugin-lib/src/coq/logicutils/contexts/stateutils.mli
+src/coq-plugin-lib/src/coq/logicutils/contexts/stateutils.ml
+src/coq-plugin-lib/src/coq/logicutils/contexts/envutils.mli
+src/coq-plugin-lib/src/coq/logicutils/contexts/envutils.ml
+src/coq-plugin-lib/src/coq/logicutils/contexts/contextutils.mli
+src/coq-plugin-lib/src/coq/logicutils/contexts/contextutils.ml
+
+src/coq-plugin-lib/src/coq/logicutils/hofs/hofs.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/hofs.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/hofimpls.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/hofimpls.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/debruijn.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/debruijn.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/substitution.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/substitution.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/reducers.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/reducers.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/typehofs.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/typehofs.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/zooming.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/zooming.ml
+src/coq-plugin-lib/src/coq/logicutils/hofs/filters.mli
+src/coq-plugin-lib/src/coq/logicutils/hofs/filters.ml
+
+src/coq-plugin-lib/src/coq/logicutils/inductive/indutils.mli
+src/coq-plugin-lib/src/coq/logicutils/inductive/indutils.ml
+
+src/coq-plugin-lib/src/coq/devutils/printing.mli
+src/coq-plugin-lib/src/coq/devutils/printing.ml
+
+src/representation/candidates.mli
+src/representation/candidates.ml
+src/representation/assumptions.mli
+src/representation/assumptions.ml
+src/representation/merging.mli
+src/representation/merging.ml
+src/representation/cutlemma.mli
+src/representation/cutlemma.ml
+
+src/representation/categories/category.mli
+src/representation/categories/category.ml
+src/representation/categories/proofcat.mli
+src/representation/categories/proofcat.ml
+src/representation/categories/proofcatterms.mli
+src/representation/categories/proofcatterms.ml
+
+src/compilation/evaluation.mli
+src/compilation/evaluation.ml
+src/compilation/expansion.mli
+src/compilation/expansion.ml
+src/compilation/proofdiff.mli
+src/compilation/proofdiff.ml
+src/compilation/categories/catzooming.mli
+src/compilation/categories/catzooming.ml
+
+src/configuration/kindofchange.mli
+src/configuration/kindofchange.ml
+src/configuration/searchopts.mli
+src/configuration/searchopts.ml
 
 src/core/components/specialization/specialization.mli
 src/core/components/specialization/specialization.ml
@@ -99,8 +146,6 @@ src/core/procedures/search.mli
 src/core/procedures/search.ml
 src/core/procedures/theorem.mli
 src/core/procedures/theorem.ml
-src/core/procedures/desugar.mli
-src/core/procedures/desugar.ml
 
 src/patcher.ml4
 src/patch.mlpack
