@@ -1,18 +1,28 @@
-**!!! IMPORTANT NOTE: If you came here for DEVOID, it is currently located [here](https://github.com/uwplse/ornamental-search). By ITP, this plugin will include DEVOID as a dependency. !!!**
+Welcome to the PUMPKIN PATCH proof repair plugin suite!
+This plugin suite is a collection of plugins for maintaining proofs as
+specifications change over time:
 
-# PUMPKIN PATCH User Guide
+* PUMPKIN PATCH ([paper](http://tlringer.github.io/pdf/pumpkinpaper.pdf), [talk video](http://www.youtube.com/watch?v=p-V9oerg5DU)): example-based proof repair
+* DEVOID ([paper](http://tlringer.github.io/pdf/ornpaper.pdf), [standalone plugin](https://github.com/uwplse/ornamental-search)): reusing functions and proofs over unindexed types to derive indexed versions
+
+In addition, this plugin suite includes some development tools, like
+the [fix-to-elim](https://github.com/uwplse/fix-to-elim) plugin for automatic
+fixpoint translation, that may be useful for plugin developers and Coq
+contributors more broadly. We discuss these briefly at the end of the document.
+
+All of these tools, including DEVOID, are included as dependencies of the 
+main PUMPKIN PATCH plugin, so you can use both at the same time.
+**More information on using DEVOID
+can be found in the the standalone plugin repository. The remainder of this
+document will focus on how to use the main PUMPKIN PATCH plugin.**
+We hope to add an example of using these both together soon.
+
+# PUMPKIN PATCH for Users
 
 This is a prototype plugin for finding patches for broken Coq proofs.
 To use PUMPKIN, the programmer modifies a single proof script to provide 
 an _example_ adaptation of a proof to a change. PUMPKIN generalizes this example 
 into a _reusable patch_ which can be used to fix other broken proofs.
-
-This is a research prototype, so it is definitely not production-ready.
-With that in mind, I hope that by getting it out into the open I can
-contribute what I've learned so far. You can use it on the example proofs and
-you can extend it if you are interested. Don't hesitate to reach out
-if you have any questions. Similarly, please let me know if anything I have mentioned
-in this user guide does not work or is unclear.
 
 Reading the [paper](http://tlringer.github.io/pdf/pumpkinpaper.pdf) may help if you are interested
 in understanding the internals of the tool. The paper links to a release that captures
@@ -175,6 +185,7 @@ Patch Proof Old'.old New'.new as patch.
 See [Preprocess.v](/plugin/coq/Preprocess.v) and [PreprocessModule.v](/plugin/coq/PreprocessModule.v) for examples
 of how to use these commands. There are also proofs in [Regress.v](/plugin/coq/Regress.v) and [IntegersNew.v](/plugin/coq/IntegersNew.v) 
 that demonstrate its use with `Patch Proof`.
+This command is available as a [standalone plugin](https://github.com/uwplse/fix-to-elim) as well, if you are interested.
 
 ### Cutting Lemmas
 
@@ -211,7 +222,7 @@ around limitations.
 
 ### Support & Limitations
 
-Speaking of limitations: PUMPKIN is a research prototype, and so it is currently limited in the 
+PUMPKIN is a research prototype, and so it is currently limited in the 
 kinds of proofs and changes it supports. PUMPKIN is best equipped to handle changes in conclusions of inductive proofs.
 It has introductory support for changes in hypotheses.
 It also supports certain changes in definitions (for example, changes in a constructors
@@ -219,8 +230,12 @@ of an inductive type that a proof inducts over, or changes in a case of a fixpoi
 and some other styles of proofs (for example, simple applicative proofs, or
 proofs that apply constructors).
 
-PUMPKIN does not yet support structural changes like adding new hypotheses,
-adding constructors or parameters to an inductive type, or adding cases to a fixpoint.
+With the help of [DEVOID](https://github.com/uwplse/ornamental-search), PUMPKIN 
+can also handle certain changes from unindexed types to indexed versions.
+Please see the DEVOID repository for more of those examples.
+
+PUMPKIN does not yet support adding new hypotheses,
+adding constructors to an inductive type, or adding cases to a fixpoint.
 PUMPKIN has very limited support for proofs using logic specific to decidable domains
 (such as proofs that use `omega`) and nested induction.
 Supporting all of these features is on our roadmap.
@@ -284,10 +299,20 @@ The relevant examples are as follows:
 9. [Theorem.v](/plugin/coq/Theorem.v): Example fo the experimental theorem patching command
 10. [Hypotheses.v](/plugin/coq/Hypotheses.v): Very simple changes in hypotheses.
 
-## Extending PUMPKIN
+# PUMPKIN PATCH for Developers
+
+We welcome contributors! Especially those willing to help us
+with build tools, continuous integration, updating Coq versions,
+documentation, and other infrastructure.
+
+In addition, we have included some useful infrastructure for plugin
+developers more broadly.
+
+## Contributing
 
 If you've never written a Coq plugin before, you might want to check out
-and toy with my [starter plugin](http://github.com/uwplse/CoqAST/) first. 
+the [plugin tutorials](https://github.com/coq/coq/tree/master/doc/plugin_tutorial)
+in the main Coq repository.
 
 To get an idea of how the code is structured, I highly recommend reading Section 5 of the paper
 and following along in the code. The entry-point to the code is [patcher.ml4](/plugin/src/patcher.ml4). 
@@ -298,7 +323,14 @@ if you are modifying the tool, you may want to use it.
 Minor note: .ml4 files don't appear to work with a lot of emacs OCaml plugins.
 You can run tuareg-mode manually on .ml4 files.
 
-## Contributors
+## Developer Tools
+
+This plugin suite includes two useful tools for plugin developers:
+
+* The [fix-to-elim](https://github.com/uwplse/fix-to-elim) plugin for translating fixpoints to inductive proofs
+* The [coq-plugin-lib](https://github.com/uwplse/coq-plugin-lib) library for plugin development
+
+# Contributors
 
 This plugin is maintained by Talia Ringer with help from Nate Yazdani.
 John Leo and Dan Grossman have made conceptual contributions.
@@ -306,3 +338,8 @@ John Leo and Dan Grossman have made conceptual contributions.
 The following community members have also contributed to the code:
 1. Emilio Jesús Gallego Arias
 2. Your name here!
+
+# Licensing
+
+We use the MIT license because we think that Coq plugins are allowed to do so.
+If this is incorrect, please let us know kindly so we can fix it.
