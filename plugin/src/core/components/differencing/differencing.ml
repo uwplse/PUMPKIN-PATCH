@@ -22,9 +22,7 @@ open Stateutils
 (* Debug the search function *)
 let debug_search (d : goal_proof_diff) : unit =
   let (t_o, t_n) = proof_terms d in
-  let d = dest_goals d in
-  let ((old_goal, env_o), _) = old_proof d in
-  let ((new_goal, env_n), _) = new_proof d in
+  let (((old_goal, env_o), _), ((new_goal, env_n), _), _) = dest_goals d in
   debug_term env_o t_o "old";
   debug_term env_n t_n "new";
   debug_term env_o old_goal "old goal";

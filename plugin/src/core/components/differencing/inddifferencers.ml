@@ -18,6 +18,7 @@ open Environ
 open Evd
 open Higherdifferencers
 open Stateutils
+open Envutils
 
 (* --- Cases --- *)
 
@@ -81,11 +82,10 @@ let diff_ind_case opts diff d =
  * in the order of the sort function.
  *)
 let diff_sort_ind_case opts sort diff d_old d =
-  let o = old_proof d in
-  let n = new_proof d in
+  let (o, n, assums) = d in
   let ms_o = morphisms o in
   let ms_n = morphisms n in
-  let d_ms = difference ms_o ms_n (assumptions d) in
+  let d_ms = ms_o, ms_n, assums in
   bind
     (bind
       (map_diffs
@@ -96,9 +96,11 @@ let diff_sort_ind_case opts sort diff d_old d =
     (fun d_goals ->
       if is_hypothesis (get_change opts) then
         (* deal with the extra hypothesis *)
-        let env_o_o = context_env (fst (old_proof d_goals)) in
-        let env_o_n = context_env (fst (old_proof d_old)) in
-        let num_new_rels = nb_rel env_o_o - nb_rel env_o_n in
+        let ((goal_o_o, _), (_, _), _) = d_goals in
+        let ((goal_o_n, _), (_, _), _) = d_old in
+        let env_o_o = context_env goal_o_o in
+        let env_o_n = context_env goal_o_n in
+        let num_new_rels = new_rels2 env_o_o env_o_n in
         bind
           (diff_ind_case opts (diff opts) d_goals)
           (fun ds -> ret (List.map (unshift_by (num_new_rels - 1)) ds))
@@ -140,7 +142,7 @@ let diff_inductive_case opts diff d_old d sigma =
  * or an inductive case (some inductive hypotheses).
  *)
 let diff_base_or_inductive_case opts diff d_old d =
-  let o = old_proof d in
+  let (o, _, _) = d in
   if has_ihs o then
     diff_inductive_case opts diff d_old d
   else
@@ -154,12 +156,13 @@ let diff_base_or_inductive_case opts diff d_old d =
  * for all cases.
  *)
 let diff_and_unshift_case opts diff d_old d =
+  let (o, _, _) = d in
   bind
     (diff_base_or_inductive_case opts diff d_old d)
     (map_state
        (fun trm ->
          if is_conclusion (get_change opts) then
-           ret (unshift_by (List.length (morphisms (old_proof d))) trm)
+           ret (unshift_by (List.length (morphisms o)) trm)
          else
            ret trm))
 
@@ -196,8 +199,7 @@ let rec diff_ind_cases opts diff d_old ds sigma =
  * are lists of different lengths, or where there is a change in hypothesis.
  *)
 let diff_inductive diff d_old opts (d : (proof_cat * int) proof_diff) =
-  let (o, nparams_o) = old_proof d in
-  let (n, nparams_n) = new_proof d in
+  let ((o, nparams_o), (n, nparams_n), assums) = d in
   if not (nparams_o = nparams_n) then
     ret give_up
   else
@@ -218,4 +220,4 @@ let diff_inductive diff d_old opts (d : (proof_cat * int) proof_diff) =
       []
       ret
       (intro_params nparams_o)
-      (difference o n (assumptions d))
+      (o, n, assums)

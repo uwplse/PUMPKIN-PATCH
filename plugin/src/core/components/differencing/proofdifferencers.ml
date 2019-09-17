@@ -52,7 +52,7 @@ let sub_new_ih is_ind num_new_rels env (old_term : types) sigma =
  * Subtitute in the inductive hypothesis if in the inductive case
  *)
 let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff) =
-  let assums = assumptions d in
+  let (_, _, assums) = d in
   let (env, ns, os) = merge_diff_closures d [] in
   let [new_goal_type; new_term] = ns in
   let [old_goal_type; old_term] = os in
@@ -61,7 +61,7 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff) =
     (fun old_term_sub ->
       let n = (new_goal_type, new_term) in
       let o = (old_goal_type, old_term_sub) in
-      ret (env, difference o n assums))
+      ret (env, (o, n, assums)))
 
 (* --- Differencing of Proofs --- *)
 
@@ -146,8 +146,7 @@ let find_difference (opts : options) (d : goal_proof_diff) =
   bind
     (merge_diff_envs is_ind num_new_rels d_dest)
     (fun (env, d) ->
-      let (old_goal_type, old_term) = old_proof d in
-      let (new_goal_type, new_term) = new_proof d in
+      let ((old_goal_type, old_term), (new_goal_type, new_term), _) = d in
       let goal_type = mkProd (Name.Anonymous, new_goal_type, shift old_goal_type) in
       let change = get_change opts in
       bind
@@ -185,8 +184,7 @@ let no_diff opts (d : goal_proof_diff) =
     bind
       (merge_diff_envs false num_new_rels d_dest)
       (fun (env, d_merge) ->
-        let (_, old_term) = old_proof d_merge in
-        let (_, new_term) = new_proof d_merge in
+        let ((_, old_term), (_, new_term), _) = d_merge in
         bind
           (fun sigma -> convertible env sigma old_term new_term)
           (fun conv ->
@@ -206,8 +204,7 @@ let no_diff opts (d : goal_proof_diff) =
  * TODO: This is incorrect in some cases:
  * Inside of lambdas, we need to adjust this.
  *)
-let identity_candidates (d : goal_proof_diff) =
-  let (new_goal, _) = new_proof d in
+let identity_candidates ((_, _), (new_goal, _), _) =
   bind
     (fun sigma ->
       identity_term (context_env new_goal) sigma (context_term new_goal))

@@ -56,7 +56,7 @@ let return_patch opts env (patches : types list) =
        (fun fs ->
          bind
            (bind
-             (diff_fix_cases env (difference old_type new_type no_assumptions))
+             (diff_fix_cases env (old_type, new_type, no_assumptions))
              (fun cs ->
                bind
                  (configure_fixpoint_cases env cs fs)
@@ -90,7 +90,7 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) si
   let sigma, d = update_search_goals opts d (erase_goals d) sigma in
   let diff = get_differencer opts in
   let sigma_non_rev, patches = diff d sigma in
-  let ((_, env), _) = old_proof (dest_goals d) in
+  let (((_, env), _), ((_, _), _), _) = dest_goals d in
   if non_empty patches then
     return_patch opts env patches sigma_non_rev
   else

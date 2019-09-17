@@ -80,11 +80,9 @@ let rec configure_goal_body env goal c sigma : abstraction_config state =
  * Default configuration for abstracting arguments for a list of candidates,
  * given the difference in goals d_type in a common environment env
  *)
-let configure_args env (d_type : types proof_diff) cs =
-  let new_goal_type = new_proof d_type in
-  let old_goal_type = old_proof d_type in
-  let (f_base, args_n) = destApp new_goal_type in
-  let (f_goal, _) = destApp old_goal_type in
+let configure_args env (goal_o, goal_n, _) cs =
+  let (f_base, args_n) = destApp goal_n in
+  let (f_goal, _) = destApp goal_o in
   let args_base = Array.to_list args_n in
   let args_goal = args_base in
   let strategies = default_arg_strategies in

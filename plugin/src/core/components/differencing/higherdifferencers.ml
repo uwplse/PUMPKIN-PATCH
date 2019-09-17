@@ -49,18 +49,15 @@ let diff_reduced diff d =
  * 1. Update the terms and goals of the diff d to use those terms
  * 2. Apply the differencing function to the new diff
  *)
-let diff_terms (diff : proof_differencer) d opts d_t =
-  bind (update_terms_goals opts (old_proof d_t) (new_proof d_t) d) diff
+let diff_terms (diff : proof_differencer) d opts (t_o, t_n, _) =
+  bind (update_terms_goals opts t_o t_n d) diff
 
 (*
  * Recursively difference each term in a diff of arrays
  *)
-let diff_map (diff : term_differencer) d_arr =
-  let assums = assumptions d_arr in
-  map2_state
-    (fun t_o t_n -> diff (difference t_o t_n assums))
-    (Array.to_list (old_proof d_arr))
-    (Array.to_list (new_proof d_arr))
+let diff_map (diff : term_differencer) (os, ns, assums) =
+  let (os, ns) = map_tuple Array.to_list (os, ns) in
+  map2_state (fun t_o t_n -> diff (t_o, t_n, assums)) os ns
 
 (*
  * Recursively difference each term in a diff of arrays

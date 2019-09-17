@@ -11,19 +11,11 @@ open Evd
 
 (* --- Types --- *)
 
-type 'a proof_diff
-
-(* Construct a proof_diff *)
-val difference : 'a -> 'a -> equal_assumptions -> 'a proof_diff
-
-(* Get the assumptions from a proof_diff *)
-val assumptions : 'a proof_diff -> equal_assumptions
-
-(* Get the old proof from a proof_diff *)
-val old_proof : 'a proof_diff -> 'a
-
-(* Get the new proof from a proof_diff *)
-val new_proof : 'a proof_diff -> 'a
+(*
+ * This abstraction was just confusing. Slowly decoupling code from
+ * using it.
+ *)
+type 'a proof_diff = 'a * 'a * equal_assumptions
 
 (* Change the assumptions of a proof_diff *)
 val with_assumptions : equal_assumptions -> 'a proof_diff -> 'a proof_diff

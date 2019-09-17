@@ -49,19 +49,13 @@ let rec remove_first_n (n : int) (c : proof_cat) =
  * Remove those elements from the premise of c1 and c2
  * Add them to assums
  *)
-let intro_common_n n (d : proof_cat_diff) sigma =
-  let c1 = old_proof d in
-  let c2 = new_proof d in
-  let assums = assumptions d in
+let intro_common_n n (c1, c2, assums) sigma =
   if (List.length (morphisms c1) <= n) || (List.length (morphisms c2) <= n) then
     sigma, None
   else
     let sigma, c1' = remove_first_n n c1 sigma in
     let sigma, c2' = remove_first_n n c2 sigma in
-    sigma, Some
-      (with_old_proof c1'
-	 (with_new_proof c2'
-            (with_assumptions (assume_local_n_equal n assums) d)))
+    sigma, Some (c1', c2', assume_local_n_equal n assums)
 
 (*
  * Introduce a common element of c1 and c2 if possible
@@ -75,19 +69,13 @@ let intro_common = intro_common_n 1
  * Remove those elements from the premise of c1 and c2
  * Shift the assumptions
  *)
-let intro_n n (d : proof_cat_diff) sigma =
-  let c1 = old_proof d in
-  let c2 = new_proof d in
-  let assums = assumptions d in
+let intro_n n (c1, c2, assums) sigma =
   if (List.length (morphisms c1) <= n) || (List.length (morphisms c2) <= n) then
     sigma, None
   else
     let sigma, c1' = remove_first_n n c1 sigma in
     let sigma, c2' = remove_first_n n c2 sigma in
-    sigma, Some
-      (with_old_proof c1'
-	 (with_new_proof c2'
-            (with_assumptions (shift_assumptions_by n assums) d)))
+    sigma, Some (c1', c2', shift_assumptions_by n assums)
 
 (*
  * Introduce an element of c1 and c2 if possible
@@ -102,23 +90,23 @@ let intro = intro_n 1
  * This assumes both proofs have the same number of parameters,
  * otherwise it will fail.
  *)
-let intro_params nparams d =
+let intro_params nparams (o, n, assums) =
   bind
     (bind
-       (bind (params (old_proof d) nparams) (fun l -> ret (List.rev l)))
+       (bind (params o nparams) (fun l -> ret (List.rev l)))
        (fun pms_o ->
 	 bind
-	   (bind (params (new_proof d) nparams) (fun l -> ret (List.rev l)))
+	   (bind (params n nparams) (fun l -> ret (List.rev l)))
 	   (fun pms_n ->
 	     fold_left2_state
 	       (fun d_opt (_, e1, _) (_, e2, _) ->
 		 let d = Option.get d_opt in
 		 branch_state
-		   (fun d -> extensions_equal_assums (assumptions d) e1 e2)
+		   (fun _ -> extensions_equal_assums assums e1 e2)
 		   intro_common
 		   intro
 		   d)
-	       (Some d)
+	       (Some (o, n, assums))
 	       pms_o
 	       pms_n)))
     (fun o -> intro_common (Option.get o))
@@ -127,16 +115,10 @@ let intro_params nparams d =
 (* --- Zoomers and using zoomers --- *)
 
 (* Zoom *)
-let zoom expander (introducer : 'a intro_strategy) (d : 'a proof_diff) =
-  let a1 = old_proof d in
-  let a2 = new_proof d in
+let zoom expander (introducer : 'a intro_strategy) (a1, a2, assums) =
   bind
     (expander a1)
-    (fun o ->
-      bind
-	(expander a2)
-	(fun n ->
-	  introducer (with_old_proof o (with_new_proof n d))))
+    (fun o -> bind (expander a2) (fun n -> introducer (o, n, assums)))
 
 (*
  * Zoom

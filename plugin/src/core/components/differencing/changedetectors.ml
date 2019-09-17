@@ -67,7 +67,7 @@ let find_kind_of_change cut env proofs goals =
        branch_state
          not_convertible
          (fun (t_o, t_n) ->
-           let d_typs = difference t_o t_n no_assumptions in
+           let d_typs = t_o, t_n, no_assumptions in
            if same_shape env d_typs then
              ret (InductiveType (t_o, t_n))
            else

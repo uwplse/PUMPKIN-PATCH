@@ -75,11 +75,10 @@ type 'a configurable = options -> 'a
  *
  * POST-DEADLINE: No need for goals here, just need environments
  *)
-let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
+let configure_same_h change (goal_o, goal_n, assums) : types -> types -> bool =
   match change with
   | InductiveType (o, n) ->
-     let goals = (old_proof d, new_proof d) in
-     let (env_o, env_n) = context_envs goals in
+     let (env_o, env_n) = context_envs (goal_o, goal_n) in
      (fun f_o f_n ->
        let k_o = destConst f_o in
        let k_n = destConst f_n in
@@ -112,48 +111,41 @@ let configure_same_h change (d : lift_goal_diff) : types -> types -> bool =
       ret (Term (shift g_o, env_o'), Term (shift g_n, env_n'))
 
 (* Search for a difference in the changed constructor *)
-let set_inductive_goals typ_o typ_n (d : 'a goal_diff) : 'a goal_diff =
-  let (goal_o, proof_o) = old_proof d in
-  let (goal_n, proof_n) = new_proof d in
-  let assums = assumptions d in
+let set_inductive_goals typ_o typ_n ((goal_o, proof_o), (goal_n, proof_n), assums) =
   let env = context_env goal_o in
-  let d_typs = difference typ_o typ_n no_assumptions in
-  let d_constrs = ind_type_diff env d_typs in
-  let (o, n) = (old_proof d_constrs, new_proof d_constrs) in
+  let d_typs = typ_o, typ_n, no_assumptions in
+  let (o, n, _) = ind_type_diff env d_typs in
   let goal_o' = Context (Term (o, env), fid ()) in
   let goal_n' = Context (Term (n, env), fid ()) in
-  difference (goal_o', proof_o) (goal_n', proof_n) assums
+  (goal_o', proof_o), (goal_n', proof_n), assums
 
 (*
  * Update the goals for a change in types
  *)
 let update_goals_types d_old (d : proof_cat_diff) =
-  let (old_goal, _) = old_proof d_old in
-  let (new_goal, _) = new_proof d_old in
+  let ((goal_o, _), (goal_n, _), _) = d_old in
+  let (c_o, c_n, assums) = d in
   match map_tuple kind (proof_terms d_old) with
   | (Lambda (n_o, t_o, _), Lambda (n_n, t_n, _)) ->
      let rel_o = CRD.LocalAssum(n_o, t_o) in
      let rel_n = CRD.LocalAssum(n_n, t_n) in
      bind
-       (update_goal_terms (old_goal, new_goal) rel_o rel_n)
+       (update_goal_terms (goal_o, goal_n) rel_o rel_n)
        (fun (g_o, g_n) ->
-	 let o = (Context (g_o, fid ()), old_proof d) in
-	 let n = (Context (g_n, fid ()), new_proof d) in
-	 ret (difference o n (assumptions d)))
+	 let o = (Context (g_o, fid ()), c_o) in
+	 let n = (Context (g_n, fid ()), c_n) in
+	 ret (o, n, assums))
   | _ ->
-     let o = (old_goal, old_proof d) in
-     let n = (new_goal, new_proof d) in
-     ret (difference o n (assumptions d))
+     ret ((goal_o, c_o), (goal_n, c_n), assums)
 
 (* Set goals for search for a difference in hypothesis *)
 let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
-  let (goal_o, proof_o) = old_proof d in
-  let (goal_n, proof_n) = new_proof d in
+  let ((goal_o, proof_o), (goal_n, proof_n), assums) = d in
   let env_o = context_env goal_o in
   let env_n = context_env goal_n in
   let goal_o' = Context (Term (t_n, env_o), fid ()) in
   let goal_n' = Context (Term (t_o, env_n), fid ()) in
-  difference (goal_o', proof_o) (goal_n', proof_n) (assumptions d)
+  (goal_o', proof_o), (goal_n', proof_n), assums
 
 (*
  * Given a change, determine how to update goals:
@@ -168,11 +160,11 @@ let configure_update_goals change d_old d =
   | InductiveType (_, _) ->
      update_goals_types d_old d
   | Hypothesis (t_old, t_new) ->
+     let ((goal_o, _), (goal_n, _), _) = d_old in
      let d_def = add_goals d in
-     let old_goals = map_tuple fst (old_proof d_old, new_proof d_old) in
-     let default_goals = map_tuple fst (old_proof d_def, new_proof d_def) in
-     let (g_o, g_n) = context_terms old_goals in
-     let (g_o', g_n') = context_terms default_goals in
+     let ((default_goal_o, _), (default_goal_n, _), _) = d_def in
+     let (g_o, g_n) = context_terms (goal_o, goal_n) in
+     let (g_o', g_n') = context_terms (default_goal_o, default_goal_n) in
      if equal g_o g_o' && equal g_n g_n' then (* set initial goals *)
        ret (set_hypothesis_goals t_old t_new d_def)
      else (* update goals *)
@@ -225,25 +217,25 @@ let configure_swap_goals change d =
  * This is for different inductive cases. It probably shouldn't
  * be separate from everything else, eventually need to refactor
  * all the goal-setting and resetting functions into a format that makes sense.
+ *
+ * TODO naming etc
  *)
 let configure_reset_goals change d_old (d : goal_case_diff) : goal_case_diff =
   match change with
   | InductiveType (typ_o, typ_n) ->
      set_inductive_goals typ_o typ_n d
   | Hypothesis (typ_o, typ_n) ->
-     let (old_cases_goal, cases_o) = old_proof d in
-     let (new_cases_goal, cases_n) = new_proof d in
+     let ((old_cases_goal, cases_o), (new_cases_goal, cases_n), assums) = d in
      let env_o = context_env old_cases_goal in
      let env_n = context_env new_cases_goal in
-     let (old_goal, _) = old_proof d_old in
-     let (new_goal, _) = new_proof d_old in
+     let ((old_goal, _), (new_goal, _), _) = d_old in
      let num_new_rels_o = nb_rel env_o - nb_rel (context_env old_goal) in
      let num_new_rels_n = nb_rel env_n - nb_rel (context_env new_goal) in
      let o = shift_by num_new_rels_o (context_term old_goal) in
      let n = shift_by num_new_rels_n (context_term new_goal) in
      let goal_o = Context (Term (o, env_o), fid ()) in
      let goal_n = Context (Term (n, env_n), fid ()) in
-     difference (goal_o, cases_o) (goal_n, cases_n) (assumptions d)
+     (goal_o, cases_o), (goal_n, cases_n), assums
   | _ ->
      d
 

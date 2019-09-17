@@ -74,9 +74,10 @@ let configure env trm1 trm2 cut sigma =
   bind
     (map_tuple_state (eval_proof env) (trm1, trm2))
     (fun (c1, c2) ->
-      let d = add_goals (difference c1 c2 no_assumptions) in
+      let d = add_goals (c1, c2, no_assumptions) in
       let d_goals = erase_proofs d in
-      let env = context_env (old_proof d_goals) in
+      let (goal_o, _, _) = d_goals in
+      let env = context_env goal_o in
       bind
         (find_kind_of_change lemma env (proof_terms d) (goal_types d_goals))
         (fun change -> ret (d, configure_search d change lemma)))
@@ -87,7 +88,7 @@ let configure_optimize env trm =
   bind
     (eval_proof env trm)
     (fun c ->
-      let d = add_goals (difference c c no_assumptions) in
+      let d = add_goals (c, c, no_assumptions) in
       ret (d, configure_search d Identity None))
 
 (* Common inversion functionality *)

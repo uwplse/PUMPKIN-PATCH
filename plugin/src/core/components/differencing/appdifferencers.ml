@@ -60,12 +60,12 @@ open Kindofchange
  * TODO: clean up
  *)
 let diff_app diff_f diff_arg opts d =
-  let (_, env) = fst (old_proof (dest_goals d)) in
+  let (((_, env), _), ((_, _), _), _) = dest_goals d in
   match map_tuple kind (proof_terms d) with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
      let diff_rec diff opts ts = diff_terms (diff opts) d opts ts in
-     let d_f = difference f_o f_n no_assumptions in
-     let d_args = difference args_o args_n no_assumptions in
+     let d_f = f_o, f_n, no_assumptions in
+     let d_args = args_o, args_n, no_assumptions in
      (match get_change opts with
       | InductiveType (_, _) ->
          diff_rec diff_f opts d_f
@@ -95,8 +95,7 @@ let diff_app diff_f diff_arg opts d =
                  (set_change opts Conclusion)))
 	   d_args
       | Hypothesis (_, _) ->
-         let old_goal = fst (old_proof d) in
-         let new_goal = fst (new_proof d) in
+         let ((old_goal, _), (new_goal, _), _) = d in
          let (g_o, g_n) = map_tuple context_term (old_goal, new_goal) in
          let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
          let filter_goal trms evd = filter_by_type goal_type env evd trms in
@@ -139,37 +138,34 @@ let diff_app diff_f diff_arg opts d =
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *)
 let diff_app_ind diff_ind diff_arg opts d =
-  let d_proofs = erase_goals d in
-  let o = old_proof d_proofs in
-  let n = new_proof d_proofs in
-  let d_ind = difference (o, 0, []) (n, 0, []) (assumptions d) in
+  let (o, n, assums) = erase_goals d in
+  let d_ind = (o, 0, []), (n, 0, []), assums in
   bind
     (zoom_same_hypos d_ind)
     (fun d_opt sigma ->
       if Option.has_some d_opt then
-        let d_zoom = Option.get d_opt in
-        let assums = assumptions d_zoom in
-        let (o, npms_old, args_o) = old_proof d_zoom in
-        let (n, npms_new, args_n) = new_proof d_zoom in
-        let sigma_f, f  = diff_ind opts (difference (o, npms_old) (n, npms_new) assums) sigma in
+        let ((o, npms_o, as_o), (n, npms_n, as_n), assums) = Option.get d_opt in
+        let sigma_f, f  = diff_ind opts ((o, npms_o), (n, npms_n), assums) sigma in
         match get_change opts with
         | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
            sigma_f, f
         | FixpointCase ((_, _), cut) ->
-           let env = context_env (fst (old_proof d)) in
+           let ((goal_o, _), (_, _), _) = d in
+           let env = context_env goal_o in
            let filter_diff_cut diff d = filter_diff (filter_cut env cut) diff d in
            if non_empty f then
              sigma_f, f
            else
              (* Note that state is relevant here; don't use sigma_f *)
 	     let diff_rec diff opts = diff_terms (diff opts) d opts in
-	     let d_args = difference (Array.of_list args_o) (Array.of_list args_n) no_assumptions in
+	     let d_args = (Array.of_list as_o), (Array.of_list as_n), no_assumptions in
              let d_args_rev = reverse d_args in
              filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev sigma
         | _ ->
-           if non_empty args_o then
-             let env_o = context_env (fst (old_proof d)) in
-             let _, (_, prop_trm_ext, _) = prop o npms_old sigma in
+           if non_empty as_o then
+             let ((goal_o, _), (_, _), _) = d in
+             let env_o = context_env goal_o in
+             let _, (_, prop_trm_ext, _) = prop o npms_o sigma in
              let prop_trm = ext_term prop_trm_ext in
              let rec prop_arity p =
                match kind p with
@@ -182,7 +178,7 @@ let diff_app_ind diff_ind diff_arg opts d =
              in
              let arity = prop_arity prop_trm in
              let app f args = snd (specialize_using specialize_no_reduce env_o f args Evd.empty) in
-             let final_args_o = Array.of_list (fst (split_at arity args_o)) in
+             let final_args_o = Array.of_list (fst (split_at arity as_o)) in
 	     if is_identity (get_change opts) then (* TODO explain *)
 	       sigma, List.map 
 	                (fun f -> 
@@ -190,14 +186,14 @@ let diff_app_ind diff_ind diff_arg opts d =
 	                  app (app f final_args_o) (Array.make 1 dummy_arg)) 
 	                f
 	     else
-               let final_args_n = Array.of_list (fst (split_at arity args_n)) in
-               let d_args = difference final_args_n final_args_o no_assumptions in
+               let final_args_n = Array.of_list (fst (split_at arity as_n)) in
+               let d_args = final_args_n, final_args_o, no_assumptions in
 	       let sigma, args =
                  Util.on_snd
 	           Array.of_list
                    (diff_map
 		      (fun d_a ->
-                        let arg_n = new_proof d_a in
+                        let (_, arg_n, _) = d_a in
                         let apply p = ret (app p (Array.make 1 arg_n)) in
                         let diff_apply = filter_diff (map_state apply) in
                         diff_terms (diff_apply (diff_arg opts)) d opts d_a)

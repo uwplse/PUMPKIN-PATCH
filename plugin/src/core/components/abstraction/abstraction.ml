@@ -222,20 +222,16 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) =
   let goals = goal_types d in
   let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
   if goals_are_apps && non_empty cs then
-    let (env, d_type, cs) = merge_lift_diff_envs d cs in
-    let new_goal_type = new_proof d_type in
-    let old_goal_type = old_proof d_type in
+    let (env, (goal_o, goal_n, assums), cs) = merge_lift_diff_envs d cs in
     branch_state
       (fun env ->
-        forall_state
-          (fun (t1, t2) sigma -> convertible env sigma t1 t2)
-          (List.map2
-             (fun t1 t2 -> (t1, t2))
-             (unfold_args old_goal_type)
-             (unfold_args new_goal_type)))
+        forall2_state
+          (fun t1 t2 sigma -> convertible env sigma t1 t2)
+          (unfold_args goal_o)
+          (unfold_args goal_n))
       (fun env ->
         bind
-          (configure_args env d_type cs)
+          (configure_args env (goal_o, goal_n, assums) cs)
           (fun config ->
             let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
             bind
@@ -257,11 +253,11 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) =
  *)
 let abstract_case (opts : options) (d : goal_case_diff) cs sigma =
   let d_goal = erase_proofs d in
-  let old_goal = old_proof d_goal in
-  let env = context_env old_goal in
+  let (goal_o, goal_n, _) = d_goal in
+  let env = context_env goal_o in
   match get_change opts with
   | Kindofchange.Hypothesis (_, _) ->
-     let (g_o, g_n) = map_tuple context_term (old_goal, new_proof d_goal) in
+     let (g_o, g_n) = map_tuple context_term (goal_o, goal_n) in
      filter_by_type (mkProd (Names.Name.Anonymous, g_n, shift g_o)) env sigma cs
   | Kindofchange.InductiveType (_, _) ->
      sigma, cs
