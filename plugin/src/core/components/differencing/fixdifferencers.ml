@@ -34,7 +34,7 @@ let rec get_goal_fix env (o, n, assums) =
   if equal o n then
     ret give_up
   else
-    let rec get_goal_reduced d  =
+    let rec get_goal_reduced (o, n, assums) =
       let reduce_hd t sigma = reduce_unfold_whd env sigma t in
       bind
         (map_tuple_state reduce_hd (o, n))
