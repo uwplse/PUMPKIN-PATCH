@@ -4,17 +4,31 @@ open Constr
 open Environ
 open Assumptions
 
-type closure = env * (types list)
-type merged_closure = env * types list * types list
-
 (*
  * Merge two environments,
  * assuming certain terms are equal and substituting those equal terms
  *)
-val merge_environments : env -> env -> equal_assumptions -> env
+val merge_environments :
+  (env * env) -> (* old and new environments *)
+  equal_assumptions -> (* assumptions *)
+  env (* common environment *)
 
 (*
- * Merge two closures (environments and lists of terms),
+ * Merge two terms,
  * assuming certain terms are equal and substituting those equal terms
  *)
-val merge_closures : closure -> closure -> equal_assumptions -> merged_closure
+val merge_terms :
+  (env * env) -> (* old and new envs *)
+  (constr * constr) -> (* old and new terms *)
+  equal_assumptions -> (* assumptions *)
+  env * constr * constr (* common env, and updated old and new terms *)
+
+(*
+ * Merge two lists of terms,
+ * assuming certain terms are equal and substituting those equal terms
+ *)
+val merge_term_lists :
+  (env * env) -> (* old and new envs *)
+  (constr list * constr list) -> (* old and new terms *)
+  equal_assumptions -> (* assumptions *)
+  env * constr list * constr list (* common env, and updated old and new terms *)

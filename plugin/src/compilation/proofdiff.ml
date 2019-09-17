@@ -206,13 +206,14 @@ let proof_terms (d : goal_proof_diff) : types * types =
   diff_proofs (proof_to_term d)
 
 (* Auxiliary functions for merging envionrments for a diff *)
+(* TODO directionality swapped; either fix in merge or here *)
 let merge_lift_diff_closures (d : lift_goal_type_diff) (trms : types list) =
   let assums = assumptions d in
   let (old_goal_type, old_goal_env) = old_proof d in
   let (new_goal_type, new_goal_env) = new_proof d in
-  merge_closures
-    (new_goal_env, [new_goal_type])
-    (old_goal_env, old_goal_type :: trms)
+  merge_term_lists
+    (new_goal_env, old_goal_env)
+    ([new_goal_type], old_goal_type :: trms)
     assums
 
 let merge_lift_diff_envs (d : lift_goal_diff) (trms : types list) =
@@ -227,9 +228,9 @@ let merge_diff_closures (d : goal_type_term_diff) (trms : types list) =
   let assums = assumptions d in
   let ((old_goal_type, old_goal_env), old_term) = old_proof d in
   let ((new_goal_type, new_goal_env), new_term) = new_proof d in
-  merge_closures
-    (new_goal_env, [new_goal_type; new_term])
-    (old_goal_env, List.append [old_goal_type; old_term] trms)
+  merge_term_lists
+    (new_goal_env, old_goal_env)
+    ([new_goal_type; new_term], List.append [old_goal_type; old_term] trms)
     assums
 
 (* Get the goal types for a lift goal diff *)

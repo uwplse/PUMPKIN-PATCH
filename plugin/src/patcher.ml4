@@ -78,7 +78,7 @@ let configure env trm1 trm2 cut sigma =
       let d_goals = erase_proofs d in
       let env = context_env (old_proof d_goals) in
       bind
-        (find_kind_of_change lemma env d)
+        (find_kind_of_change lemma env (proof_terms d) (goal_types d_goals))
         (fun change -> ret (d, configure_search d change lemma)))
     sigma
 

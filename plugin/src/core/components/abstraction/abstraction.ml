@@ -27,8 +27,8 @@ open Inference
 (* Internal options for abstraction *)
 type abstraction_options =
   {
-    concrete : closure;
-    abstract : closure;
+    concrete : env * types list;
+    abstract : env * types list;
     goal_type : types;
     num_to_abstract : int;
   }
@@ -93,7 +93,7 @@ let get_arg_abstract_goal_type (config : abstraction_config) : types =
  * When abstracting over a property, add the property itself to the arguments
  * to abstract over
  *)
-let get_concrete_prop (config : abstraction_config) (concrete : closure) : closure =
+let get_concrete_prop (config : abstraction_config) concrete =
   let (env, args) = concrete in
   let p = config.f_base in
   (env, p :: (List.tl args))
@@ -114,8 +114,8 @@ let get_concrete config strategy =
          ret (get_concrete_prop config concrete))
 
 (* Get abstract arguments for a function *)
-let get_abstraction_args config : closure =
-  let rec infer_args (i : int) (en : env) (g : types) : closure =
+let get_abstraction_args config =
+  let rec infer_args (i : int) (en : env) (g : types) =
     if i = 0 then
       (en, [])
     else

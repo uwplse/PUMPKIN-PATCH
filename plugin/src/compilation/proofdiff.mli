@@ -175,7 +175,7 @@ val merge_lift_diff_envs :
  * Return them in the order (env, new, old ++ terms)
  *)
 val merge_diff_closures :
-  goal_type_term_diff -> types list -> merged_closure
+  goal_type_term_diff -> types list -> (env * types list * types list)
 
 (* --- Reduction and Simplification --- *)
 

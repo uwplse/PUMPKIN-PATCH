@@ -91,8 +91,8 @@ struct
        if env1 == env2 then
          convertible env1 trm1 trm2
        else
-         let (env, trm1s, trm2s) = merge_closures (env1, [trm1]) (env2, [trm2]) no_assumptions in
-         convertible env (List.hd trm1s) (List.hd trm2s)
+         let (env, trm1, trm2) = merge_terms (env1, env2) (trm1, trm2) no_assumptions in
+         convertible env trm1 trm2
     | (AppBinding (e11, e21), AppBinding (e12, e22)) ->
        and_state (equal e11) (equal e21) e12 e22 (* imperfect *)
     | _ ->
@@ -166,8 +166,8 @@ let rec extensions_equal_assums assums (e1 : extension) (e2 : extension) =
      if env1 == env2 then
        convertible env1 trm1 trm2
      else
-       let (env, trm1s, trm2s) = merge_closures (env1, [trm1]) (env2, [trm2]) assums in
-       convertible env (List.hd trm1s) (List.hd trm2s)
+       let (env, trm1, trm2) = merge_terms (env1, env2) (trm1, trm2) assums in
+       convertible env trm1 trm2
   | (AppBinding (e11, e21), AppBinding (e12, e22)) ->
      and_state (extensions_equal_assums assums e11) (extensions_equal_assums assums e21) e12 e22 (* imperfect *)
   | _ ->

@@ -3,7 +3,6 @@
 open Constr
 open Environ
 open Proofdiff
-open Proofcatterms
 open Cutlemma
 open Kindofchange
 open Reducers
@@ -53,8 +52,7 @@ let find_kind_of_conclusion cut (trm_o, trm_n) =
  *
  * Otherwise, search for a change in conclusion.
  *)
-let find_kind_of_change cut env d =
-  let d_goals = erase_proofs d in
+let find_kind_of_change cut env proofs goals =
   let r t sigma = reduce_remove_identities env sigma t in
   let not_convertible =
     not_state (fun (t_o, t_n) sigma -> convertible env sigma t_o t_n)
@@ -112,12 +110,12 @@ let find_kind_of_change cut env d =
        ret Conclusion
   in
   bind
-    (map_tuple_state r (goal_types d_goals))
+    (map_tuple_state r goals)
     (fun (old_goal, new_goal) ->
       bind
         (diff env old_goal new_goal)
         (fun change ->
           if is_conclusion change then
-            ret (find_kind_of_conclusion cut (proof_terms d))
+            ret (find_kind_of_conclusion cut proofs)
           else
             ret change))
