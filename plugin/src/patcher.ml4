@@ -28,6 +28,7 @@ open Defutils
 open Envutils
 open Stateutils
 open Inference
+open Proofcatterms
 
 module Globmap = Globnames.Refmap
 
@@ -74,8 +75,10 @@ let configure env trm1 trm2 cut sigma =
     (map_tuple_state (eval_proof env) (trm1, trm2))
     (fun (c1, c2) ->
       let d = add_goals (difference c1 c2 no_assumptions) in
+      let d_goals = erase_proofs d in
+      let env = context_env (old_proof d_goals) in
       bind
-        (find_kind_of_change lemma d)
+        (find_kind_of_change lemma env d)
         (fun change -> ret (d, configure_search d change lemma)))
     sigma
 

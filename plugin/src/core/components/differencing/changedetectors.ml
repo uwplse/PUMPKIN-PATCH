@@ -53,9 +53,8 @@ let find_kind_of_conclusion cut (trm_o, trm_n) =
  *
  * Otherwise, search for a change in conclusion.
  *)
-let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
+let find_kind_of_change cut env d =
   let d_goals = erase_proofs d in
-  let env = context_env (old_proof d_goals) in
   let r t sigma = reduce_remove_identities env sigma t in
   let not_convertible =
     not_state (fun (t_o, t_n) sigma -> convertible env sigma t_o t_n)
