@@ -21,20 +21,9 @@ open Stateutils
 (* TODO remove before merging *)
 type 'a proof_diff = 'a * 'a * equal_assumptions
 
-(* Change the assumptions of a proof_diff *)
-let with_assumptions assums (a1, a2, _) =
-  (a1, a2, assums)
-
-(* Change the old proof of a proof_diff *)
-let with_old_proof a1 (_, a2, assums) =
-  (a1, a2, assums)
-
-(* Change the new proof of a proof_diff *)
-let with_new_proof a2 (a1, _, assums) =
-  (a1, a2, assums)
-
 (* --- Kinds of proof diffs --- *)
 
+(* TODO same *)
 (* Difference between inductive proof_cats with params and leftover arguments *)
 type induction_diff = (proof_cat * int * (types list)) proof_diff
 
@@ -67,12 +56,6 @@ let map_diffs f g (o, n, assums) =
   bind
     (map_tuple_state f (o, n))
     (fun (o, n) -> bind (g assums) (fun assums -> ret (o, n, assums)))
-
-(*
- * Add extra information to the old and new proofs, respectively
- *)
-let add_to_diff (a1, a2, assums) (b1 : 'b) (b2 : 'b) : ('a * 'b) proof_diff =
-  (a1, b1), (a2, b2), assums
 
 (*
  * Reverse a diff, so that the new proof is the old proof and the
@@ -125,10 +108,14 @@ let eval_with_term f g trm (d : goal_proof_diff) =
     (fun p -> g (goal, p) d)
 
 let eval_with_old_term = 
-  eval_with_term (fun (o, _, _) -> o) (fun o p -> ret (with_old_proof o p))
+  eval_with_term
+    (fun (o, _, _) -> o)
+    (fun o (_, n, assums) -> ret (o, n, assums))
 
 let eval_with_new_term = 
-  eval_with_term (fun (_, n, _) -> n) (fun n p -> ret (with_new_proof n p))
+  eval_with_term
+    (fun (_, n, _) -> n)
+    (fun n (o, _, assums) -> ret (o, n, assums))
 
 let eval_with_terms o n d =
   bind (eval_with_new_term n d) (eval_with_old_term o)

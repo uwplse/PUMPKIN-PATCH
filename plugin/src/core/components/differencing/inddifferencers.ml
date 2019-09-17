@@ -35,16 +35,16 @@ open Envutils
  * but another arrow is.
  *)
 let rec diff_case abstract diff d sigma =
-  let d_goal = erase_proofs d in
+  let (goal1, goal2, assums) = erase_proofs d in
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
-     let d_t = add_to_diff d_goal t1 t2 in
+     let d_t = (goal1, t1), (goal2, t2), assums in
      (try
         bind
           (map_tuple_state eval_proof_arrow (h1, h2))
           (fun (c1, c2) ->
             bind
-              (bind (diff (add_to_diff d_goal c1 c2)) abstract)
+              (bind (diff ((goal1, c1), (goal2, c2), assums)) abstract)
               (fun cs sigma_h ->
                 if non_empty cs then
                   ret cs sigma_h
@@ -81,8 +81,7 @@ let diff_ind_case opts diff d =
  * This breaks it up into arrows and then searches those
  * in the order of the sort function.
  *)
-let diff_sort_ind_case opts sort diff d_old d =
-  let (o, n, assums) = d in
+let diff_sort_ind_case opts sort diff d_old (o, n, assums) =
   let ms_o = morphisms o in
   let ms_n = morphisms n in
   let d_ms = ms_o, ms_n, assums in
@@ -91,7 +90,7 @@ let diff_sort_ind_case opts sort diff d_old d =
       (map_diffs
          (fun (o, ms) -> ret (terminal o, ms))
          (fun _ -> update_case_assums d_ms)
-         (add_to_diff d (sort o ms_o) (sort n ms_n)))
+         ((o, sort o ms_o), (n, sort n ms_n), assums))
       (fun ds -> ret (reset_case_goals opts d_old ds)))
     (fun d_goals ->
       if is_hypothesis (get_change opts) then

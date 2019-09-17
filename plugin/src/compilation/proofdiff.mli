@@ -17,15 +17,6 @@ open Evd
  *)
 type 'a proof_diff = 'a * 'a * equal_assumptions
 
-(* Change the assumptions of a proof_diff *)
-val with_assumptions : equal_assumptions -> 'a proof_diff -> 'a proof_diff
-
-(* Change the old proof of a proof_diff *)
-val with_old_proof : 'a -> 'a proof_diff -> 'a proof_diff
-
-(* Change the new proof of a proof_diff *)
-val with_new_proof : 'a -> 'a proof_diff -> 'a proof_diff
-
 (* --- Kinds of proof diffs --- *)
 
 (* Difference between inductive proof_cats with params and leftover arguments *)
@@ -73,11 +64,6 @@ val map_diffs :
   'a proof_diff ->
   evar_map ->
   'b proof_diff state
-
-(*
- * Add extra information to the old and new proofs, respectively
- *)
-val add_to_diff : 'a proof_diff -> 'b -> 'b -> ('a * 'b) proof_diff
 
 (*
  * Reverse a diff, so that the new proof is the old proof and the
