@@ -1,4 +1,5 @@
 (* --- Type definitions for differencers --- *)
+(* TODO remove/clean these after cat cleanup *)
 
 open Constr
 open Proofdiff

@@ -23,8 +23,7 @@ open Envutils
  * This is a heuristic and may sometimes be wrong, so we should
  * expose an option to users as well (TODO).
  *)
-let find_kind_of_conclusion cut (d : goal_proof_diff) =
-  let (trm_o, trm_n) = proof_terms d in
+let find_kind_of_conclusion cut (trm_o, trm_n) =
   let rec configure trm_o trm_n =
     match map_tuple kind (trm_o, trm_n) with
     | (Lambda (_, _, b_o), _) ->
@@ -120,6 +119,6 @@ let find_kind_of_change (cut : cut_lemma option) (d : goal_proof_diff) =
         (diff env old_goal new_goal)
         (fun change ->
           if is_conclusion change then
-            ret (find_kind_of_conclusion cut d)
+            ret (find_kind_of_conclusion cut (proof_terms d))
           else
             ret change))
