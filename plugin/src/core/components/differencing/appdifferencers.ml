@@ -138,7 +138,8 @@ let diff_app diff_f diff_arg opts d =
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *)
 let diff_app_ind diff_ind diff_arg opts d =
-  let (o, n, assums) = erase_goals d in
+  let (_, _, assums) = d in
+  let (o, n, _) = erase_goals d in
   let d_ind = (o, 0, []), (n, 0, []), assums in
   bind
     (zoom_same_hypos d_ind)

@@ -102,7 +102,7 @@ let intro_params nparams (o, n, assums) =
 	       (fun d_opt (_, e1, _) (_, e2, _) ->
 		 let d = Option.get d_opt in
 		 branch_state
-		   (fun _ -> extensions_equal_assums assums e1 e2)
+		   (fun (_, _, assums) -> extensions_equal_assums assums e1 e2)
 		   intro_common
 		   intro
 		   d)

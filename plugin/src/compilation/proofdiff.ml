@@ -180,7 +180,7 @@ let merge_diff_closures (o, n, assums) trms =
   let ((goal_n, env_n), term_n) = n in
   merge_term_lists
     (env_n, env_o)
-    ([goal_n; term_n], List.append [goal_o; term_n] trms)
+    ([goal_n; term_n], List.append [goal_o; term_o] trms)
     assums
 
 (* Get the goal types for a lift goal diff *)
