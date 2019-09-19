@@ -35,9 +35,9 @@ open Envutils
  * but another arrow is.
  *)
 let rec diff_case abstract diff d sigma =
-  let (goal1, goal2, assums) = erase_proofs d in
   match diff_proofs d with
   | ((h1 :: t1), (h2 :: t2)) ->
+     let ((goal1, _), (goal2, _), assums) = d in
      let d_t = (goal1, t1), (goal2, t2), assums in
      (try
         bind

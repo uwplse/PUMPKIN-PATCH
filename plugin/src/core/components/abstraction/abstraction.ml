@@ -251,9 +251,7 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) =
  * If there is nothing to abstract or if we cannot determine what to
  * abstract, then return the original list.
  *)
-let abstract_case (opts : options) (d : goal_case_diff) cs sigma =
-  let d_goal = erase_proofs d in
-  let (goal_o, goal_n, _) = d_goal in
+let abstract_case (opts : options) ((goal_o, _), (goal_n, _), assums) cs sigma =
   let env = context_env goal_o in
   match get_change opts with
   | Kindofchange.Hypothesis (_, _) ->
@@ -262,9 +260,14 @@ let abstract_case (opts : options) (d : goal_case_diff) cs sigma =
   | Kindofchange.InductiveType (_, _) ->
      sigma, cs
   | Kindofchange.FixpointCase ((_, _), cut) ->
-     branch_state (are_cut env cut) ret (try_abstract_inductive d_goal) cs sigma
+     branch_state
+       (are_cut env cut)
+       ret
+       (try_abstract_inductive (goal_o, goal_n, assums))
+       cs
+       sigma
   | _ ->
-     try_abstract_inductive d_goal cs sigma
+     try_abstract_inductive (goal_o, goal_n, assums) cs sigma
                             
 (* 
  * Replace all occurrences of the first term in the second term with Rel 1,

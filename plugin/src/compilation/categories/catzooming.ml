@@ -142,13 +142,13 @@ let zoom_map f a expander introducer d =
 let zoom_same_hypos = zoom expand_application (fun d -> ret (Some d))
 
 (* Default zoom for recursive search *)
-let zoom_search f (d : goal_proof_diff) =
+let zoom_search f ((_, o), (_, n), assums) =
   zoom_map
     f
     give_up
     expand_terminal
     intro_common
-    (erase_goals d)
+    (o, n, assums)
 
 (* Zoom in, search, and wrap the result in a lambda from binding (n : t)  *)
 let zoom_wrap_lambda f n t (d : goal_proof_diff) =

@@ -58,45 +58,6 @@ let map_diffs f g (o, n, assums) =
     (fun (o, n) -> bind (g assums) (fun assums -> ret (o, n, assums)))
 
 (*
- * Reverse a diff, so that the new proof is the old proof and the
- * old proof is the new proof.
- *)
-let reverse (o, n, assums) : 'a proof_diff =
-  n, o, reverse_assumptions assums
-
-(*
- * Swap the goals in a goal diff
- *)
-let swap_goals ((g_o, o), (g_n, n), assums) : 'a goal_diff =
-  (g_o, n), (g_n, o), assums
-
-(*
- * Given a difference in proof categories, get the contexts for the
- * types of the conclusions (terminal objects), and return
- * a new difference that includes these as goal types
- *)
-let add_goals (c1, c2, assums) : goal_proof_diff =
-  let t1 = terminal c1 in
-  let t2 = terminal c2 in
-  (t1, c1), (t2, c2), assums
-
-(*
- * Erase the goals from a goal diff
- *)
-let erase_goals ((_, o), (_, n), assums) : 'a proof_diff =
-  o, n, assums
-
-(* Erase the proof terms, however they are represented, from a goal_diff *)
-let erase_proofs ((c_o, _), (c_n, _), assums) : lift_goal_diff =
-  c_o, c_n, assums
-
-(* Convert a difference in proof categories to a difference in terms *)
-let proof_to_term ((goal_o, o), (goal_n, n), assums) : goal_term_diff =
-  let term_o = only_extension_as_term o in
-  let term_n = only_extension_as_term n in
-  (goal_o, term_o), (goal_n, term_n), assums
-
-(*
  * Retain the same goals and assumptions,
  * but update the term in a goal proof diff
  *)
@@ -145,8 +106,8 @@ let diff_proofs ((_, term_o), (_, term_n), _) : 'a * 'a =
   (term_o, term_n)
 
 (* Get the proof terms for a proof diff *)
-let proof_terms (d : goal_proof_diff) : types * types =
-  diff_proofs (proof_to_term d)
+let proof_terms ((_, o), (_, n), _) : types * types =
+  map_tuple only_extension_as_term (o, n)
 
 (* Auxiliary functions for merging envionrments for a diff *)
 (* TODO directionality swapped; either fix in merge or here *)

@@ -66,40 +66,6 @@ val map_diffs :
   'b proof_diff state
 
 (*
- * Reverse a diff, so that the new proof is the old proof and the
- * old proof is the new proof.
- *)
-val reverse : 'a proof_diff -> 'a proof_diff
-
-(*
- * Swap the goals in a goal diff
- *)
-val swap_goals : 'a goal_diff -> 'a goal_diff
-
-(*
- * Given a difference in proof categories, get the contexts for the
- * types of the conclusions, and return
- * a new difference that includes these as goal types
- *)
-val add_goals : proof_cat_diff -> goal_proof_diff
-
-(*
- * Erase the goals; go in the opposite direction of above
- *)
-val erase_goals : 'a goal_diff -> 'a proof_diff
-
-(*
- * Erase the proof terms, however they are represented, from a goal_diff
- *)
-val erase_proofs : 'a goal_diff -> lift_goal_diff
-
-(*
- * Convert a difference in proof categories to a difference in terms
- *)
-val proof_to_term : goal_proof_diff -> goal_term_diff
-
-
-(*
  * Retain the same goals and assumptions, but update the old proof
  * with a term in a goal proof diff
  *)

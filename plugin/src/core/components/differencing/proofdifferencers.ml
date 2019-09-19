@@ -20,6 +20,7 @@ open Stateutils
 open Convertibility
 open Envutils
 open Inference
+open Utilities
 
 (* --- Utilities --- *)
 
@@ -137,8 +138,9 @@ let build_app_candidates env opts from_type old_term new_term =
  *
  * Currently heuristics-driven, and does not work for all cases.
  *)
-let find_difference (opts : options) (d : goal_proof_diff) =
-  let d = proof_to_term d in
+let find_difference (opts : options) ((goal_o, o), (goal_n, n), assums) =
+  let (term_o, term_n) = map_tuple only_extension_as_term (o, n) in
+  let d = (goal_o, term_o), (goal_n, term_n), assums in
   let d = swap_search_goals opts d in
   let d_dest = dest_goals d in
   let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
@@ -171,14 +173,15 @@ let find_difference (opts : options) (d : goal_proof_diff) =
               in bind (filter cs) (fun l -> ret (List.map unshift_c l)))))
         
 (* Determine if two diffs are identical (convertible). *)
-let no_diff opts (d : goal_proof_diff) =
+let no_diff opts ((goal_o, o), (goal_n, n), assums) =
   let change = get_change opts in
   if is_identity change then
     (* there is always a difference between the term and nothing *)
     ret false
   else
     (* check convertibility *)
-    let d_term = proof_to_term d in
+    let (term_o, term_n) = map_tuple only_extension_as_term (o, n) in
+    let d_term = (goal_o, term_o), (goal_n, term_n), assums in
     let d_dest = dest_goals d_term in
     let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
     bind

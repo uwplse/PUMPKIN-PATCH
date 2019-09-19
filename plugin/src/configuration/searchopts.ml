@@ -156,12 +156,13 @@ let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
  * 3) Otherwise, update the goals to the current conclusions.
  *)
 let configure_update_goals change d_old d =
+  let (c_o, c_n, assums) = d in
   match change with
   | InductiveType (_, _) ->
      update_goals_types d_old d
   | Hypothesis (t_old, t_new) ->
-     let ((goal_o, _), (goal_n, _), _) = d_old in
-     let d_def = add_goals d in
+     let ((goal_o, _), (goal_n, _), _) = d_old in 
+     let d_def = (terminal c_o, c_o), (terminal c_n, c_n), assums in
      let ((default_goal_o, _), (default_goal_n, _), _) = d_def in
      let (g_o, g_n) = context_terms (goal_o, goal_n) in
      let (g_o', g_n') = context_terms (default_goal_o, default_goal_n) in
@@ -170,7 +171,7 @@ let configure_update_goals change d_old d =
      else (* update goals *)
        update_goals_types d_old d
   | _ ->
-     ret (add_goals d)
+     ret ((terminal c_o, c_o), (terminal c_n, c_n), assums)
 
 (*
  * Given a change, determine how to test whether a proof might apply
@@ -197,12 +198,12 @@ let configure_is_app change d =
  * 1) If it's a change in inductive types or hypotheses, then swap the goals
  * 2) Otherwise, keep the goals as-is
  *)
-let configure_swap_goals change d =
+let configure_swap_goals change ((g_o, o), (g_n, n), assums) =
   match change with
   | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
-     swap_goals d
+     (g_o, n), (g_n, o), assums
   | _ ->
-     d
+     (g_o, o), (g_n, n), assums
 
 (*
  * Given options, determine how to reset the goals:
@@ -242,11 +243,11 @@ let configure_reset_goals change d_old (d : goal_case_diff) : goal_case_diff =
 (*
  * Build configuration options for the search based on the goal diff
  *)
-let configure_search d (change : kind_of_change) (cut : cut_lemma option) =
+let configure_search ((g_o, _), (g_n, _), assums) change cut =
   {
     is_ind = false;
     change = change;
-    same_h = configure_same_h change (erase_proofs d);
+    same_h = configure_same_h change (g_o, g_n, assums);
     update_goals = configure_update_goals change;
     swap_goals = configure_swap_goals change;
     reset_goals = configure_reset_goals change;
@@ -273,7 +274,7 @@ let update_terms_goals opts t_o t_n d =
   let update = update_search_goals opts d in
   bind
     (eval_with_terms t_o t_n d)
-    (fun d -> update (erase_goals d))
+    (fun ((_, o), (_, n), assums) -> update (o, n, assums))
 
 (* Convert search to a search_function for zooming *)
 let to_search_function search opts d =

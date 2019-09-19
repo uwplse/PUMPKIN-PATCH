@@ -86,15 +86,23 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) si
   Printf.printf "%s\n\n" "----";
   let change = get_change opts in
   let start_backwards = is_fixpoint_case change || is_hypothesis change in
-  let d = if start_backwards then reverse d else d in (* explain *)
-  let sigma, d = update_search_goals opts d (erase_goals d) sigma in
+  let (goal_o, o), (goal_n, n), assums = d in
+  let d =
+    if start_backwards then
+      (goal_n, n), (goal_o, o), reverse_assumptions assums
+    else
+      d
+  in (* explain above *)
+  let (_, o), (_, n), assums = d in
+  let sigma, d = update_search_goals opts d (o, n, assums) sigma in
   let diff = get_differencer opts in
   let sigma_non_rev, patches = diff d sigma in
   let (((_, env), _), ((_, _), _), _) = dest_goals d in
   if non_empty patches then
     return_patch opts env patches sigma_non_rev
   else
-    let sigma_rev, rev_patches = diff (reverse d) sigma in
+    let o, n, assums = d in
+    let sigma_rev, rev_patches = diff (n, o, reverse_assumptions assums) sigma in
     Printf.printf "%s\n" "searched backwards";
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
     let sigma_inv, inverted = invert_terms invert_factor env rev_patches sigma_rev in

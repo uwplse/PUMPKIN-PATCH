@@ -79,7 +79,7 @@ let diff_app diff_f diff_arg opts d =
              else
                filter_diff_cut
                  (diff_map_flat (diff_rec diff_arg opts))
-                 (reverse d_args))
+                 (args_n, args_o, no_assumptions))
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          filter_diff
            (fun args ->
@@ -138,8 +138,7 @@ let diff_app diff_f diff_arg opts d =
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *)
 let diff_app_ind diff_ind diff_arg opts d =
-  let (_, _, assums) = d in
-  let (o, n, _) = erase_goals d in
+  let ((_, o), (_, n), assums) = d in
   let d_ind = (o, 0, []), (n, 0, []), assums in
   bind
     (zoom_same_hypos d_ind)
@@ -159,8 +158,9 @@ let diff_app_ind diff_ind diff_arg opts d =
            else
              (* Note that state is relevant here; don't use sigma_f *)
 	     let diff_rec diff opts = diff_terms (diff opts) d opts in
-	     let d_args = (Array.of_list as_o), (Array.of_list as_n), no_assumptions in
-             let d_args_rev = reverse d_args in
+	     let as_o, as_n = map_tuple Array.of_list (as_o, as_n) in
+	     let d_args = as_o, as_n, no_assumptions in
+             let d_args_rev = as_n, as_o, no_assumptions in
              filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev sigma
         | _ ->
            if non_empty as_o then
