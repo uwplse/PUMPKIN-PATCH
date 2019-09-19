@@ -60,7 +60,8 @@ open Kindofchange
  * TODO: clean up
  *)
 let diff_app diff_f diff_arg opts d =
-  let (((_, env), _), ((_, _), _), _) = dest_goals d in
+  let ((goal_o, _), (_, _), _) = d in
+  let env = snd (dest_context_term goal_o) in
   match map_tuple kind (proof_terms d) with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
      let diff_rec diff opts ts = diff_terms (diff opts) d opts ts in
@@ -159,7 +160,6 @@ let diff_app_ind diff_ind diff_arg opts d =
              (* Note that state is relevant here; don't use sigma_f *)
 	     let diff_rec diff opts = diff_terms (diff opts) d opts in
 	     let as_o, as_n = map_tuple Array.of_list (as_o, as_n) in
-	     let d_args = as_o, as_n, no_assumptions in
              let d_args_rev = as_n, as_o, no_assumptions in
              filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev sigma
         | _ ->

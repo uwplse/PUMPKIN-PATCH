@@ -16,17 +16,19 @@ open Evd
 open Utilities
 open Constr
 open Stateutils
+open Proofcatterms
 
 (* --- Debugging --- *)
 
 (* Debug the search function *)
 let debug_search (d : goal_proof_diff) : unit =
   let (t_o, t_n) = proof_terms d in
-  let (((old_goal, env_o), _), ((new_goal, env_n), _), _) = dest_goals d in
+  let (g_o, _), (g_n, _), _ = d in
+  let (typ_o, env_o), (typ_n, env_n) = map_tuple dest_context_term (g_o, g_n) in
   debug_term env_o t_o "old";
   debug_term env_n t_n "new";
-  debug_term env_o old_goal "old goal";
-  debug_term env_n new_goal "new goal";
+  debug_term env_o typ_o "old goal";
+  debug_term env_n typ_n "new goal";
   print_separator ()
 
 (* --- Differencing --- *)

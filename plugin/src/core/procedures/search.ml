@@ -18,6 +18,7 @@ open Cutlemma
 open Kindofchange
 open Evd
 open Stateutils
+open Proofcatterms
 
 (* --- Procedure --- *)
 
@@ -97,12 +98,13 @@ let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) si
   let sigma, d = update_search_goals opts d (o, n, assums) sigma in
   let diff = get_differencer opts in
   let sigma_non_rev, patches = diff d sigma in
-  let (((_, env), _), ((_, _), _), _) = dest_goals d in
+  let (goal_o, o), (goal_n, n), assums = d in
+  let _, env = dest_context_term goal_o in
   if non_empty patches then
     return_patch opts env patches sigma_non_rev
   else
-    let o, n, assums = d in
-    let sigma_rev, rev_patches = diff (n, o, reverse_assumptions assums) sigma in
+    let d_rev = (goal_n, n), (goal_o, o), reverse_assumptions assums in
+    let sigma_rev, rev_patches = diff d_rev sigma in
     Printf.printf "%s\n" "searched backwards";
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
     let sigma_inv, inverted = invert_terms invert_factor env rev_patches sigma_rev in

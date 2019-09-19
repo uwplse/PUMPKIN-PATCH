@@ -81,24 +81,6 @@ let eval_with_new_term =
 let eval_with_terms o n d =
   bind (eval_with_new_term n d) (eval_with_old_term o)
 
-(* Destruct the contexts in a diff and return a new diff *)
-let dest_goals ((goal_o, a_o), (goal_n, a_n), assums) =
-  (dest_context_term goal_o, a_o), (dest_context_term goal_n, a_n), assums
-
-(* Destruct the contexts in a diff and return a new diff *)
-let dest_lift_goals (o, n, assums) : lift_goal_type_diff =
-  dest_context_term o, dest_context_term n, assums
-
-(* Destruct a case diff into a list of diffs, one for each case *)
-let dest_cases (os, ns, assums) : proof_cat_diff list =
-  List.map2 (fun o n -> o, n, assums) os ns
-
-(* Expand constructors in a proof_cat_diff *)
-let expand_constrs (o, n, assums) =
-  bind
-    (expand_constr o)
-    (fun o -> bind (expand_constr n) (fun n -> ret (o, n, assums)))
-
 (* --- Construction and destruction --- *)
 
 (* Get the proof terms for a goal_diff *)
@@ -116,7 +98,7 @@ let merge_lift_diff_closures ((goal_o, env_o), (goal_n, env_n), assums) trms =
 
 (* TODO same for directions *)
 let merge_lift_diff_envs (o, n, assums) (trms : types list) =
-  let (o, n, assums) = dest_lift_goals (o, n, assums) in
+  let (o, n) = map_tuple dest_context_term (o, n) in
   let (env, ns, os) = merge_lift_diff_closures (o, n, assums) trms in
   let goal_n = List.hd ns in
   let goal_o = List.hd os in
@@ -133,8 +115,8 @@ let merge_diff_closures (o, n, assums) trms =
 
 (* Get the goal types for a lift goal diff *)
 let goal_types (o, n, assums) : types * types =
-  let ((goal_o, _), (goal_n, _), _) = dest_lift_goals (o, n, assums) in
-  (goal_o, goal_n)
+  let (typ_o, _), (typ_n, _) = map_tuple dest_context_term (o, n) in
+  (typ_o, typ_n)
 
 (* --- Reduction and Simplification --- *)
 
@@ -169,7 +151,8 @@ let reduce_letin (d : goal_proof_diff) =
   let (o, n) = proof_terms d in
   try
     if isLetIn o || isLetIn n then
-      let (((_, env_o), _), ((_, env_n), _), _) = dest_goals d in
+      let (goal_o, _), (goal_n, _), _ = d in
+      let (_, env_o), (_, env_n) = map_tuple dest_context_term (goal_o, goal_n) in
       bind
 	(fun sigma -> reduce_whd_if_let_in env_o sigma o)
 	(fun o' ->
@@ -288,7 +271,7 @@ let ind_type_diff (env : env) (o, n, assums) : types proof_diff =
  * So this is a good benchmark case and we can extend this after.
  *)
 let induct_over_same_h eq (d : goal_proof_diff) : bool =
-  let ((_, o), (_, n), _) = dest_goals d in
+  let ((_, o), (_, n), _) = d in
   let trm1 = only_extension_as_term o in
   let trm2 = only_extension_as_term n in
   if (isApp trm1) && (isApp trm2) then

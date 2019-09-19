@@ -211,8 +211,8 @@ let diff_inductive diff d_old opts (d : (proof_cat * int) proof_diff) =
       (fun d ->
         bind
           (map_diffs sort ret d)
-          (fun d_sorted ->
-            let ds = dest_cases d_sorted in
+          (fun (os, ns, assums) ->
+            let ds = List.map2 (fun o n -> o, n, assums) os ns in
             bind
               (diff_ind_cases opts diff d_old ds)
               (map_state (fun d -> ret (unshift_by nparams_o d)))))

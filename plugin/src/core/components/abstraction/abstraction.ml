@@ -233,7 +233,9 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) =
         bind
           (configure_args env (goal_o, goal_n, assums) cs)
           (fun config ->
-            let num_new_rels = num_new_bindings snd (dest_lift_goals d) in
+            let (goal_o, goal_n, assums) = d in
+            let (goal_o, goal_n) = map_tuple dest_context_term (goal_o, goal_n) in
+            let num_new_rels = num_new_bindings snd (goal_o, goal_n, assums) in
             bind
               (abstract_with_strategies config)
               (map_state

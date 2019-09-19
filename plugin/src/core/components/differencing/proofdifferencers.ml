@@ -141,8 +141,9 @@ let build_app_candidates env opts from_type old_term new_term =
 let find_difference (opts : options) ((goal_o, o), (goal_n, n), assums) =
   let (term_o, term_n) = map_tuple only_extension_as_term (o, n) in
   let d = (goal_o, term_o), (goal_n, term_n), assums in
-  let d = swap_search_goals opts d in
-  let d_dest = dest_goals d in
+  let ((goal_o, term_o), (goal_n, term_n), assums) = swap_search_goals opts d in
+  let (goal_o, goal_n) = map_tuple dest_context_term (goal_o, goal_n) in
+  let d_dest = ((goal_o, term_o), (goal_n, term_n), assums) in
   let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
   let is_ind = is_ind opts in
   bind
@@ -181,8 +182,8 @@ let no_diff opts ((goal_o, o), (goal_n, n), assums) =
   else
     (* check convertibility *)
     let (term_o, term_n) = map_tuple only_extension_as_term (o, n) in
-    let d_term = (goal_o, term_o), (goal_n, term_n), assums in
-    let d_dest = dest_goals d_term in
+    let (goal_o, goal_n) = map_tuple dest_context_term (goal_o, goal_n) in
+    let d_dest = (goal_o, term_o), (goal_n, term_n), assums in
     let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
     bind
       (merge_diff_envs false num_new_rels d_dest)

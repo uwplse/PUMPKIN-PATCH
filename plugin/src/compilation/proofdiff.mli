@@ -83,26 +83,6 @@ val eval_with_new_term : types -> goal_proof_diff -> evar_map -> goal_proof_diff
  *)
 val eval_with_terms : types -> types -> goal_proof_diff -> evar_map -> goal_proof_diff state
 
-(*
- * Destruct the contexts in a goal_diff and return a new diff
- *)
-val dest_goals : 'a goal_diff ->  ((types * env) * 'a) proof_diff
-
-(*
- * Destruct the contexts in a lift_goal_diff and return a new diff
- *)
-val dest_lift_goals : lift_goal_diff -> lift_goal_type_diff
-
-(*
- * Destruct a case diff into a list of diffs, one for each case
- *)
-val dest_cases : case_diff -> proof_cat_diff list
-
-(*
- * Expand constructors in a proof_cat_diff
- *)
-val expand_constrs : proof_cat_diff -> evar_map -> proof_cat_diff state
-
 (* --- Merging environments for diffs --- *)
 
 (*
