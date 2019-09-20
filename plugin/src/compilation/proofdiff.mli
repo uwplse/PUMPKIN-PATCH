@@ -66,18 +66,6 @@ val map_diffs :
   'b proof_diff state
 
 (*
- * Retain the same goals and assumptions, but update the old proof
- * with a term in a goal proof diff
- *)
-val eval_with_old_term : types -> goal_proof_diff -> evar_map -> goal_proof_diff state
-
-(*
- * Retain the same goals and assumptions, but update the new proof
- * with a term in a goal proof diff
- *)
-val eval_with_new_term : types -> goal_proof_diff -> evar_map -> goal_proof_diff state
-
-(*
  * Retain the same goals and assumptions, but update the old and new
  * terms with the terms in a goal proof diff
  *)
