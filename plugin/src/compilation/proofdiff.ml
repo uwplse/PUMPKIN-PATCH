@@ -92,26 +92,13 @@ let proof_terms ((_, o), (_, n), _) : types * types =
   map_tuple only_extension_as_term (o, n)
 
 (* Auxiliary functions for merging envionrments for a diff *)
-(* TODO directionality swapped; either fix in merge or here *)
-let merge_lift_diff_closures ((goal_o, env_o), (goal_n, env_n), assums) trms =
-  merge_term_lists (env_n, env_o) ([goal_n], goal_o :: trms) assums
-
-(* TODO same for directions *)
 let merge_lift_diff_envs (o, n, assums) (trms : types list) =
   let (o, n) = map_tuple dest_context_term (o, n) in
-  let (env, ns, os) = merge_lift_diff_closures (o, n, assums) trms in
+  let ((goal_o, env_o), (goal_n, env_n), assums) = (o, n, assums) in
+  let (env, os, ns) = merge_term_lists (env_o, env_n) (goal_o :: trms, [goal_n]) assums in
   let goal_n = List.hd ns in
   let goal_o = List.hd os in
   (env, (goal_o, goal_n, assums), List.tl os)
-
-(* TODO same *)
-let merge_diff_closures (o, n, assums) trms =
-  let ((goal_o, env_o), term_o) = o in
-  let ((goal_n, env_n), term_n) = n in
-  merge_term_lists
-    (env_n, env_o)
-    ([goal_n; term_n], List.append [goal_o; term_o] trms)
-    assums
 
 (* Get the goal types for a lift goal diff *)
 let goal_types (o, n, assums) : types * types =
@@ -292,5 +279,6 @@ let induct_over_same_h eq (d : goal_proof_diff) : bool =
     false
 
 (* Get the number of bindings that are not common to both proofs in d *)
+(* TODO remove me before merging *)
 let num_new_bindings (f : 'a -> env) (o, n, assums) =
   num_assumptions (complement_assumptions assums (f o))

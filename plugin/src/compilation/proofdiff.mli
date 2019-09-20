@@ -81,14 +81,6 @@ val eval_with_terms : types -> types -> goal_proof_diff -> evar_map -> goal_proo
 val merge_lift_diff_envs :
   lift_goal_diff -> types list -> (env * types proof_diff * types list)
 
-(*
- * Merge the environments for two goal_type_term_diffs
- * Combine with a list of terms in the old environment
- * Return them in the order (env, new, old ++ terms)
- *)
-val merge_diff_closures :
-  goal_type_term_diff -> types list -> (env * types list * types list)
-
 (* --- Reduction and Simplification --- *)
 
 (* Reduce the terms inside of a goal_proof_diff *)

@@ -3,11 +3,24 @@
 open Evd
 open Searchopts
 open Differencers
+open Assumptions
+open Proofcat
+open Searchopts
+open Stateutils
+open Constr
+open Environ
 
 (*
  * Primitive differencing function
  *)
-val find_difference : proof_differencer configurable
+val find_difference :
+  options ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  constr list state
 
 (*
  * Determine if two proof diffs are identical

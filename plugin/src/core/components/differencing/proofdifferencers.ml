@@ -21,6 +21,8 @@ open Convertibility
 open Envutils
 open Inference
 open Utilities
+open Merging
+open Assumptions
 
 (* --- Utilities --- *)
 
@@ -52,17 +54,13 @@ let sub_new_ih is_ind num_new_rels env (old_term : types) sigma =
  * Merge the environments in a diff and factor out the enviroment
  * Subtitute in the inductive hypothesis if in the inductive case
  *)
-let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff) =
-  let (_, _, assums) = d in
-  let (env, ns, os) = merge_diff_closures d [] in
-  let [new_goal_type; new_term] = ns in
-  let [old_goal_type; old_term] = os in
+let merge_diff_envs assums is_ind num_new_rels envs (trm_o, trm_n) (typ_o, typ_n) =
+  let (env, [typ_o; trm_o], [typ_n; trm_n]) =
+    merge_term_lists envs ([typ_o; trm_o], [typ_n; trm_n]) assums
+  in
   bind
-    (sub_new_ih is_ind num_new_rels env old_term)
-    (fun old_term_sub ->
-      let n = (new_goal_type, new_term) in
-      let o = (old_goal_type, old_term_sub) in
-      ret (env, (o, n, assums)))
+    (sub_new_ih is_ind num_new_rels env trm_o)
+    (fun trm_o -> ret (env, (trm_o, trm_n), (typ_o, typ_n)))
 
 (* --- Differencing of Proofs --- *)
 
@@ -84,33 +82,34 @@ let merge_diff_envs is_ind num_new_rels (d : goal_type_term_diff) =
  *
  * For optimization, we just return the original term.
  *)
-let build_app_candidates_no_red env opts from_type old_term new_term =
+let build_app_candidates_no_red env opts from_type (trm_o, trm_n) =
   try
-    let env_b = push_local (Name.Anonymous, from_type) env in
-    let old_term_shift = shift old_term in
+    let num_rels = nb_rel env in
+    let env = push_local (Name.Anonymous, from_type) env in
+    let trm_o = shift trm_o in
     bind
       (if is_identity (get_change opts) then
 	(* the difference between a term and nothing is the term *)
-	ret [old_term_shift]
+	ret [trm_o]
       else
         (* otherwise, check containment *)
-	let new_term_shift = shift new_term in
+	let trm_n = shift trm_n in
         bind
           (fun sigma ->
-            let sub = (new_term_shift, mkRel 1) in
-            all_conv_substs_combs env_b sigma sub old_term_shift)
+            let sub = (trm_n, mkRel 1) in
+            all_conv_substs_combs env sigma sub trm_o)
           (fun subbed sigma ->
-            filter_not_same old_term_shift env_b sigma subbed))
-      (map_state (fun b -> ret (reconstruct_lambda_n env_b b (nb_rel env))))
+            filter_not_same trm_o env sigma subbed))
+      (map_state (fun b -> ret (reconstruct_lambda_n env b num_rels)))
   with _ ->
     ret give_up
 
 (*
  * Build app candidates, then remove identity functions
  *)
-let build_app_candidates env opts from_type old_term new_term =
+let build_app_candidates env opts from_type trms =
   bind
-    (build_app_candidates_no_red env opts from_type old_term new_term)
+    (build_app_candidates_no_red env opts from_type trms)
     (fun cs sigma -> reduce_all reduce_remove_identities env sigma cs)
 
 (*
@@ -137,29 +136,29 @@ let build_app_candidates env opts from_type old_term new_term =
  * In theory, it should work.
  *
  * Currently heuristics-driven, and does not work for all cases.
+ *
+ * TODO refactor out some of the goal making an env merging logic, once we
+ * fix the other differencers, before merging
  *)
-let find_difference (opts : options) ((goal_o, o), (goal_n, n), assums) =
-  let (term_o, term_n) = map_tuple only_extension_as_term (o, n) in
-  let d = (goal_o, term_o), (goal_n, term_n), assums in
-  let ((goal_o, term_o), (goal_n, term_n), assums) = swap_search_goals opts d in
-  let (goal_o, goal_n) = map_tuple dest_context_term (goal_o, goal_n) in
-  let d_dest = ((goal_o, term_o), (goal_n, term_n), assums) in
-  let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
+let find_difference (opts : options) assums envs terms goals =
+  let terms = swap_search_proofs opts terms in
+  let num_new_rels = num_assumptions (complement_assumptions assums (fst envs)) in
   let is_ind = is_ind opts in
   bind
-    (merge_diff_envs is_ind num_new_rels d_dest)
-    (fun (env, d) ->
-      let ((old_goal_type, old_term), (new_goal_type, new_term), _) = d in
-      let goal_type = mkProd (Name.Anonymous, new_goal_type, shift old_goal_type) in
+    (merge_diff_envs assums is_ind num_new_rels envs terms goals)
+    (fun (env, terms, goals) ->
+      let (goal_o, goal_n) = goals in
+      let goal_type = mkProd (Name.Anonymous, goal_n, shift goal_o) in
       let change = get_change opts in
       bind
         (if is_hypothesis change then
-           ret new_goal_type
+           ret goal_n
          else
-           fun sigma -> infer_type env sigma new_term)
+           let (_, term_n) = terms in
+           fun sigma -> infer_type env sigma term_n)
         (fun from_type ->
           bind
-            (build_app_candidates env opts from_type old_term new_term)
+            (build_app_candidates env opts from_type terms)
             (fun cs ->
               let unshift_c = unshift_local (num_new_rels - 1) num_new_rels in
               let filter_gt l sigma = filter_by_type goal_type env sigma l in
@@ -184,11 +183,11 @@ let no_diff opts ((goal_o, o), (goal_n, n), assums) =
     let (term_o, term_n) = map_tuple only_extension_as_term (o, n) in
     let (goal_o, goal_n) = map_tuple dest_context_term (goal_o, goal_n) in
     let d_dest = (goal_o, term_o), (goal_n, term_n), assums in
+    let ((typ_o, env_o), trm_o), ((typ_n, env_n), trm_n), assums = d_dest in
     let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
     bind
-      (merge_diff_envs false num_new_rels d_dest)
-      (fun (env, d_merge) ->
-        let ((_, old_term), (_, new_term), _) = d_merge in
+      (merge_diff_envs assums false num_new_rels (env_o, env_n) (trm_o, trm_n) (typ_o, typ_n))
+      (fun (env, (old_term, new_term), _) ->
         bind
           (fun sigma -> convertible env sigma old_term new_term)
           (fun conv ->

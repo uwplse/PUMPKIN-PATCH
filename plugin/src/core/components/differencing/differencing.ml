@@ -91,10 +91,18 @@ let rec diff (opts : options) (d : goal_proof_diff) =
        identity_candidates (* 1 *)
        (fun d ->
          if induct_over_same_h (same_h opts) d then
-           try_chain_diffs
-             [(diff_app_ind (diff_inductive diff d) diff opts); (* 2a *)
-              (find_difference opts)]                           (* 2b *)
-             d
+           bind (* TODO move back into chaining, maybe *)
+             (diff_app_ind (diff_inductive diff d) diff opts d) (* 2a *)
+             (fun cs ->
+               if non_empty cs then
+                 ret cs
+               else
+                 let ((goal_o, o), (goal_n, n), assums) = d in (* 2 b *)
+                 let terms = map_tuple only_extension_as_term (o, n) in
+                 let goals = map_tuple dest_context_term (goal_o, goal_n) in
+                 let envs = map_tuple snd goals in
+                 let goals = map_tuple fst goals in
+                 find_difference opts assums envs terms goals)
          else if applies_ih opts d then
            bind (reduce_trim_ihs d) (diff_app diff diff opts) (* 3 *)
          else
@@ -118,11 +126,21 @@ let rec diff (opts : options) (d : goal_proof_diff) =
                        ret give_up))
            | _ ->
               if is_app opts d then
-                try_chain_diffs
-                  [(find_difference opts);     (* 6a *)
-                   (diff_app diff diff opts);  (* 6b *)
-                   (diff_reduced (diff opts))] (* 6c *)
-                  d
+                let ((goal_o, o), (goal_n, n), assums) = d in
+                bind (* TODO move back into chaining, maybe *)
+                  (let terms = map_tuple only_extension_as_term (o, n) in
+                   let goals = map_tuple dest_context_term (goal_o, goal_n) in
+                   let envs = map_tuple snd goals in
+                   let goals = map_tuple fst goals in
+                   find_difference opts assums envs terms goals) (* 6a *)
+                  (fun cs ->
+                    if non_empty cs then
+                      ret cs
+                    else
+                      try_chain_diffs
+                        [(diff_app diff diff opts);  (* 6b *)
+                         (diff_reduced (diff opts))] (* 6c *)
+                        d)
               else
                 ret give_up))
                

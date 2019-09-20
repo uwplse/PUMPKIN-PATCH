@@ -57,7 +57,7 @@ type options =
     change : kind_of_change;
     same_h : types -> types -> bool;
     update_goals : goal_proof_diff -> proof_cat_diff -> evar_map -> goal_proof_diff state;
-    swap_goals : goal_term_diff -> goal_term_diff;
+    swap_proofs : (constr * constr) -> (constr * constr);
     reset_goals : goal_proof_diff -> goal_case_diff -> goal_case_diff;
     is_app : goal_proof_diff -> bool;
   }
@@ -198,12 +198,12 @@ let configure_is_app change d =
  * 1) If it's a change in inductive types or hypotheses, then swap the goals
  * 2) Otherwise, keep the goals as-is
  *)
-let configure_swap_goals change ((g_o, o), (g_n, n), assums) =
+let configure_swap_proofs change (trm_o, trm_n) =
   match change with
   | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
-     (g_o, n), (g_n, o), assums
+     (trm_n, trm_o)
   | _ ->
-     (g_o, o), (g_n, n), assums
+     (trm_o, trm_n)
 
 (*
  * Given options, determine how to reset the goals:
@@ -249,7 +249,7 @@ let configure_search ((g_o, _), (g_n, _), assums) change cut =
     change = change;
     same_h = configure_same_h change (g_o, g_n, assums);
     update_goals = configure_update_goals change;
-    swap_goals = configure_swap_goals change;
+    swap_proofs = configure_swap_proofs change;
     reset_goals = configure_reset_goals change;
     is_app = configure_is_app change;
   }
@@ -262,7 +262,7 @@ let set_is_ind opts is_ind = { opts with is_ind = is_ind }
 (* --- Using options --- *)
 
 let update_search_goals opts = opts.update_goals
-let swap_search_goals opts = opts.swap_goals
+let swap_search_proofs opts = opts.swap_proofs
 let reset_case_goals opts = opts.reset_goals
 let same_h opts = opts.same_h
 let is_app opts = opts.is_app

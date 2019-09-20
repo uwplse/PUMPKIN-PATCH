@@ -18,9 +18,9 @@ type merged_closure = env * types list * types list
  * assuming certain terms are equal and substituting those equal terms
  *)
 let merge_environments (env_o, env_n) assums =
-  let num_rels = nb_rel env_n in
+  let num_rels = nb_rel env_o in
   let unshift_assums (a1, a2) = (unshift_from_assumptions_by num_rels a1, unshift_assumptions_by num_rels a2) in
-  let split_assums = unshift_assums (split_assumptions assums env_n) in
+  let split_assums = unshift_assums (split_assumptions assums env_o) in
   let (env_merged, _, _) =
     List.fold_left
        (fun (env, substs, l) i ->
@@ -29,12 +29,12 @@ let merge_environments (env_o, env_n) assums =
            (env, shift_assums substs, l)
          else
            let shift_assums = map_tuple shift_assumptions in
-           let decl = lookup_rel i env_n in
+           let decl = lookup_rel i env_o in
            let substitute = substitute_assumptions (fold_tuple union_assumptions substs) in
            let decl = CRD.map_constr substitute decl in
            (push_rel decl env, shift_assums substs, decl :: l))
-       (env_o, split_assums, [])
-       (List.rev (all_rel_indexes env_n))
+       (env_n, split_assums, [])
+       (List.rev (all_rel_indexes env_o))
   in env_merged
 
 (*
@@ -43,7 +43,7 @@ let merge_environments (env_o, env_n) assums =
  *)
 let merge_term_lists (env_o, env_n) (trms_o, trms_n) assums =
   let env = merge_environments (env_o, env_n) assums in
-  let num_new_rels = new_rels2 env env_o in
+  let num_new_rels = new_rels2 env env_n in
   let shift_assums = shift_to_assumptions_by num_new_rels assums in
   let shift_non_assums =
     List.fold_left
@@ -53,11 +53,11 @@ let merge_term_lists (env_o, env_n) (trms_o, trms_n) assums =
         else
           shift_from_assumptions s)
       no_assumptions
-      (List.rev (all_rel_indexes env_n))
+      (List.rev (all_rel_indexes env_o))
   in
   let to_substitute = union_assumptions shift_assums shift_non_assums in
-  let trms_o = List.map (shift_by num_new_rels) trms_o in
-  let trms_n = List.map (substitute_assumptions to_substitute) trms_n in
+  let trms_n = List.map (shift_by num_new_rels) trms_n in
+  let trms_o = List.map (substitute_assumptions to_substitute) trms_o in
   (env, trms_o, trms_n)
        
 (*
