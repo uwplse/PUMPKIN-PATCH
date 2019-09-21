@@ -91,8 +91,17 @@ let diff_app diff_f diff_arg opts d =
                ret args)
            (diff_map_flat
               (diff_rec
-                 (fun o ->
-                   branch_state (no_diff o) (fun _ -> ret give_up) (diff_arg o))
+                 (fun opts d ->
+                   branch_state
+                     (fun ((goal_o, o), (goal_n, n), assums) ->
+                       let goals = map_tuple dest_context_term (goal_o, goal_n) in
+                       let envs = map_tuple snd goals in
+                       let goals = map_tuple fst goals in
+                       let terms = map_tuple only_extension_as_term (o, n) in
+                       no_diff opts assums envs terms goals)
+                     (fun _ -> ret give_up)
+                     (diff_arg opts)
+                     d)
                  (set_change opts Conclusion)))
 	   d_args
       | Hypothesis (_, _) ->

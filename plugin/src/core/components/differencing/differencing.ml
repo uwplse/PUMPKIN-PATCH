@@ -86,8 +86,14 @@ let debug_search (d : goal_proof_diff) : unit =
 let rec diff (opts : options) (d : goal_proof_diff) =
   bind
     (bind (reduce_casts d) reduce_letin)
-    (branch_state
-       (no_diff opts)
+    (fun d ->
+      let ((goal_o, o), (goal_n, n), assums) = d in 
+      let terms = map_tuple only_extension_as_term (o, n) in
+      let goals = map_tuple dest_context_term (goal_o, goal_n) in
+      let envs = map_tuple snd goals in
+      let goals = map_tuple fst goals in
+      branch_state
+       (fun _ -> no_diff opts assums envs terms goals)
        identity_candidates (* 1 *)
        (fun d ->
          if induct_over_same_h (same_h opts) d then
@@ -97,12 +103,7 @@ let rec diff (opts : options) (d : goal_proof_diff) =
                if non_empty cs then
                  ret cs
                else
-                 let ((goal_o, o), (goal_n, n), assums) = d in (* 2 b *)
-                 let terms = map_tuple only_extension_as_term (o, n) in
-                 let goals = map_tuple dest_context_term (goal_o, goal_n) in
-                 let envs = map_tuple snd goals in
-                 let goals = map_tuple fst goals in
-                 find_difference opts assums envs terms goals)
+                 find_difference opts assums envs terms goals) (* 2b *)
          else if applies_ih opts d then
            bind (reduce_trim_ihs d) (diff_app diff diff opts) (* 3 *)
          else
@@ -115,8 +116,18 @@ let rec diff (opts : options) (d : goal_proof_diff) =
               bind
                 (eval_with_terms t_o t_n d)
                 (branch_state
-                   (no_diff
-                      (if is_id then set_change opts Conclusion else opts))
+                   (fun d ->
+                     let ((goal_o, o), (goal_n, n), assums) = d in 
+                     let terms = map_tuple only_extension_as_term (o, n) in
+                     let goals = map_tuple dest_context_term (goal_o, goal_n) in
+                     let envs = map_tuple snd goals in
+                     let goals = map_tuple fst goals in
+                     no_diff
+                       (if is_id then set_change opts Conclusion else opts)
+                       assums
+                       envs
+                       terms
+                       goals)
                    (fun _ -> zoom_wrap_lambda search_body n_o t_o d) (* 4 *)
                    (fun _ ->
                      let is_concl = is_conclusion change in
@@ -126,13 +137,8 @@ let rec diff (opts : options) (d : goal_proof_diff) =
                        ret give_up))
            | _ ->
               if is_app opts d then
-                let ((goal_o, o), (goal_n, n), assums) = d in
                 bind (* TODO move back into chaining, maybe *)
-                  (let terms = map_tuple only_extension_as_term (o, n) in
-                   let goals = map_tuple dest_context_term (goal_o, goal_n) in
-                   let envs = map_tuple snd goals in
-                   let goals = map_tuple fst goals in
-                   find_difference opts assums envs terms goals) (* 6a *)
+                  (find_difference opts assums envs terms goals) (* 6a *)
                   (fun cs ->
                     if non_empty cs then
                       ret cs
@@ -142,7 +148,8 @@ let rec diff (opts : options) (d : goal_proof_diff) =
                          (diff_reduced (diff opts))] (* 6c *)
                         d)
               else
-                ret give_up))
+                ret give_up)
+       d)
                
 (* --- Top-level differencer --- *)
 

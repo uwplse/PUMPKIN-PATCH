@@ -25,7 +25,14 @@ val find_difference :
 (*
  * Determine if two proof diffs are identical
  *)
-val no_diff : proof_diff_predicate configurable
+val no_diff :
+  options ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  bool state
 
 (*
  * Return the identity candidates applied to the type

@@ -173,29 +173,25 @@ let find_difference (opts : options) assums envs terms goals =
               in bind (filter cs) (fun l -> ret (List.map unshift_c l)))))
         
 (* Determine if two diffs are identical (convertible). *)
-let no_diff opts ((goal_o, o), (goal_n, n), assums) =
+let no_diff opts assums envs terms goals =
   let change = get_change opts in
   if is_identity change then
     (* there is always a difference between the term and nothing *)
     ret false
   else
     (* check convertibility *)
-    let (term_o, term_n) = map_tuple only_extension_as_term (o, n) in
-    let (goal_o, goal_n) = map_tuple dest_context_term (goal_o, goal_n) in
-    let d_dest = (goal_o, term_o), (goal_n, term_n), assums in
-    let ((typ_o, env_o), trm_o), ((typ_n, env_n), trm_n), assums = d_dest in
-    let num_new_rels = num_new_bindings (fun o -> snd (fst o)) d_dest in
+    let num_new_rels = num_assumptions (complement_assumptions assums (fst envs)) in
     bind
-      (merge_diff_envs assums false num_new_rels (env_o, env_n) (trm_o, trm_n) (typ_o, typ_n))
-      (fun (env, (old_term, new_term), _) ->
+      (merge_diff_envs assums false num_new_rels envs terms goals)
+      (fun (env, (term_o, term_n), _) ->
         bind
-          (fun sigma -> convertible env sigma old_term new_term)
+          (fun sigma -> convertible env sigma term_o term_n)
           (fun conv ->
             match change with
             | FixpointCase ((d_old, d_new), _) ->
                ret (conv
-                    || (equal d_old old_term && equal d_new new_term)
-                    || (equal d_old new_term && equal d_new old_term))
+                    || (equal d_old term_o && equal d_new term_n)
+                    || (equal d_old term_n && equal d_new term_o))
             | _ ->
                ret conv))
 
@@ -206,6 +202,8 @@ let no_diff opts ((goal_o, o), (goal_n, n), assums) =
  *
  * TODO: This is incorrect in some cases:
  * Inside of lambdas, we need to adjust this.
+ *
+ * TODO left off here
  *)
 let identity_candidates ((_, _), (new_goal, _), _) =
   bind
