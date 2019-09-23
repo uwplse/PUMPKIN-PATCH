@@ -11,6 +11,10 @@ open Constr
 open Environ
 
 (*
+ * TODO move this type signature back to proofdiff in the end before merging
+ *)
+
+(*
  * Primitive differencing function
  *)
 val find_difference :
@@ -38,4 +42,10 @@ val no_diff :
  * Return the identity candidates applied to the type
  * of the new proof in the diff
  *)
-val identity_candidates : proof_differencer
+val identity_candidates :
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  constr list state

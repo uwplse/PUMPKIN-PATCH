@@ -202,11 +202,8 @@ let no_diff opts assums envs terms goals =
  *
  * TODO: This is incorrect in some cases:
  * Inside of lambdas, we need to adjust this.
- *
- * TODO left off here
  *)
-let identity_candidates ((_, _), (new_goal, _), _) =
-  bind
-    (fun sigma ->
-      identity_term (context_env new_goal) sigma (context_term new_goal))
-    (fun t -> ret [t])
+let identity_candidates _ envs _ goals =
+  let env_n = snd envs in
+  let goal_n = snd goals in
+  bind (fun sigma -> identity_term env_n sigma goal_n) (fun t -> ret [t])

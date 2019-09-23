@@ -94,7 +94,7 @@ let rec diff (opts : options) (d : goal_proof_diff) =
       let goals = map_tuple fst goals in
       branch_state
        (fun _ -> no_diff opts assums envs terms goals)
-       identity_candidates (* 1 *)
+       (fun _ -> identity_candidates assums envs terms goals) (* 1 *)
        (fun d ->
          if induct_over_same_h (same_h opts) d then
            bind (* TODO move back into chaining, maybe *)
