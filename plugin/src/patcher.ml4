@@ -69,28 +69,25 @@ let intern_defs env d1 d2 =
       ret (unwrap_definition env d1, unwrap_definition env d2))
 
 (* Initialize diff & search configuration *)
-let configure env trm1 trm2 cut sigma =
+let configure env trms cut sigma =
   let cut_term = Option.map (intern env sigma) cut in
   let lemma = Option.map (fun (_, t) -> build_cut_lemma env t) cut_term in
   bind
-    (map_tuple_state (eval_proof env) (trm1, trm2))
-    (fun (c1, c2) ->
-      let goal1, goal2 = map_tuple terminal (c1, c2) in
-      let d = (goal1, c1), (goal2, c2), no_assumptions in
-      let d_goals = (goal1, goal2, no_assumptions) in
-      let env = context_env goal1 in
+    (map_tuple_state (fun trm sigma -> infer_type env sigma trm) trms)
+    (fun goals ->
       bind
-        (find_kind_of_change lemma env (proof_terms d) (goal_types d_goals))
-        (fun change -> ret (d, configure_search d change lemma)))
+        (find_kind_of_change lemma env trms goals)
+        (fun change ->
+	  ret (goals, configure_search env change lemma)))
     sigma
 
 (* Initialize diff & search configuration for optimization *)
 let configure_optimize env trm =
   bind
-    (eval_proof env trm)
-    (fun c ->
-      let d = ((terminal c, c), (terminal c, c), no_assumptions)	 in
-      ret (d, configure_search d Identity None))
+    (fun sigma -> infer_type env sigma trm)
+    (fun goal ->
+      let goals = (goal, goal) in
+      ret (goals, configure_search env Identity None))
 
 (* Common inversion functionality *)
 let invert_patch n env patch sigma =
@@ -137,11 +134,11 @@ let patch env n try_invert a search sigma =
  *)
 let patch_proof n d_old d_new cut =
   let (sigma, env) = Pfedit.get_current_context () in
-  let sigma, (old_term, new_term) = intern_defs env d_old d_new sigma in
-  let sigma, (d, opts) = configure env old_term new_term cut sigma in
+  let sigma, trms = intern_defs env d_old d_new sigma in
+  let sigma, (goals, opts) = configure env trms cut sigma in
   let change = get_change opts in
   let try_invert = not (is_conclusion change || is_hypothesis change) in
-  let search _ _ = search_for_patch old_term opts d in
+  let search _ _ = search_for_patch opts env trms goals in
   patch env n try_invert () search sigma
 
 (*
@@ -158,8 +155,8 @@ let optimize_proof n d =
   let (sigma, env) = Pfedit.get_current_context () in
   let sigma, def = intern env sigma d in
   let trm = unwrap_definition env def in
-  let sigma, (d, opts) = configure_optimize env trm sigma in
-  let search _ _ = search_for_patch trm opts d in
+  let sigma, (goals, opts) = configure_optimize env trm sigma in
+  let search _ _ = search_for_patch opts env (trm, trm) goals in
   patch env n false () search sigma
 
 (*

@@ -15,10 +15,12 @@ open Factoring
 open Fixdifferencers
 open Differencing
 open Cutlemma
-open Kindofchange
 open Evd
 open Stateutils
+open Proofcat
 open Proofcatterms
+open Evaluation
+open Kindofchange
 
 (* --- Procedure --- *)
 
@@ -82,11 +84,22 @@ let return_patch opts env (patches : types list) =
  *
  * Search in one direction, and if we fail try the other direction.
  * If we find patches, return the head for now, since any patch will do.
+ *
+ * TODO finish decatifying before merging
  *)
-let search_for_patch (default : types) (opts : options) (d : goal_proof_diff) sigma =
+let search_for_patch opts env trms goals sigma =
   Printf.printf "%s\n\n" "----";
+  let default = snd trms in
   let change = get_change opts in
   let start_backwards = is_fixpoint_case change || is_hypothesis change in
+  let sigma, d =
+    bind
+      (map_tuple_state (eval_proof env) trms)
+      (fun (c1, c2) ->
+	let goal1, goal2 = map_tuple terminal (c1, c2) in
+	ret ((goal1, c1), (goal2, c2), no_assumptions))
+      sigma
+  in
   let (goal_o, o), (goal_n, n), assums = d in
   let d =
     if start_backwards then

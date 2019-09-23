@@ -72,18 +72,15 @@ type 'a configurable = options -> 'a
  *    then two types we induct over are "the same" if they are either identical
  *    or are the same as the types we changed.
  * 2) Otherwise, two types we induct over are "the same" if they are identical.
- *
- * POST-DEADLINE: No need for goals here, just need environments
  *)
-let configure_same_h change (goal_o, goal_n, assums) : types -> types -> bool =
+let configure_same_h env change : types -> types -> bool =
   match change with
   | InductiveType (o, n) ->
-     let (env_o, env_n) = context_envs (goal_o, goal_n) in
      (fun f_o f_n ->
        let k_o = destConst f_o in
        let k_n = destConst f_n in
-       let ind_o = mkInd (Option.get (inductive_of_elim env_o k_o), 0) in
-       let ind_n = mkInd (Option.get (inductive_of_elim env_n k_n), 0) in
+       let ind_o = mkInd (Option.get (inductive_of_elim env k_o), 0) in
+       let ind_n = mkInd (Option.get (inductive_of_elim env k_n), 0) in
        (equal f_o f_n) || (equal ind_o o && equal ind_n n))
   | _ ->
      equal
@@ -243,11 +240,11 @@ let configure_reset_goals change d_old (d : goal_case_diff) : goal_case_diff =
 (*
  * Build configuration options for the search based on the goal diff
  *)
-let configure_search ((g_o, _), (g_n, _), assums) change cut =
+let configure_search env change cut =
   {
     is_ind = false;
     change = change;
-    same_h = configure_same_h change (g_o, g_n, assums);
+    same_h = configure_same_h env change;
     update_goals = configure_update_goals change;
     swap_proofs = configure_swap_proofs change;
     reset_goals = configure_reset_goals change;

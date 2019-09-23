@@ -9,6 +9,8 @@ open Catzooming
 open Evd
 open Stateutils
 open Proofcat
+open Environ
+open Assumptions
 
 (* --- Options for search --- *)
 
@@ -19,7 +21,10 @@ type 'a configurable = options -> 'a
 
 (* Build configuration options for the search *)
 val configure_search :
-  goal_proof_diff -> kind_of_change -> cut_lemma option -> options
+  env ->
+  kind_of_change ->
+  cut_lemma option ->
+  options
 
 (* --- Modifying options --- *)
 

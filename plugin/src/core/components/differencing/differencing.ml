@@ -83,7 +83,7 @@ let debug_search (d : goal_proof_diff) : unit =
  * 6c. When 6b doesn't produce anything, try reducing the diff and calling
  *    recursively. (Support for this is preliminary.)
  *)
-let rec diff (opts : options) (d : goal_proof_diff) =
+let rec diff opts d =
   bind
     (bind (reduce_casts d) reduce_letin)
     (fun d ->
