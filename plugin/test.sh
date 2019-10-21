@@ -3,10 +3,24 @@ coqc coq/Example.v
 coqc coq/Identity.v
 coqc coq/Reverse.v
 coqc coq/Regress.v
+coqc coq/Hypotheses.v
+coqc coq/Variants1.v
+coqc coq/Variants2.v
+coqc coq/Variants3.v
+coqc coq/Variants4.v
+coqc coq/Variants5.v
+coqc coq/Variants6.v
+coqc coq/Variants7.v
+coqc coq/Variants8.v
+coqc coq/Variants9.v
+coqc coq/Variants10.v
 coqc coq/Variants.v > ~/foo.txt
 coqc coq/Abstract.v
 coqc coq/divide.v
 coqc coq/Induction.v
+coqc coq/Axioms.v
+coqc coq/CoqLib.v
+coqc coq/IntegersOld.v
 coqc coq/IntegersNew.v
 coqc coq/Optimization.v
 coqc coq/Theorem.v
