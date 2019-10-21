@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+coqc coq/Example.v
+coqc coq/Identity.v
+coqc coq/Reverse.v
 coqc coq/Regress.v
 coqc coq/Variants.v > ~/foo.txt
 coqc coq/Abstract.v
