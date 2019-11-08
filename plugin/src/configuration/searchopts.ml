@@ -126,15 +126,6 @@ let zoom_goals envs terms goals =
   | _ ->
      ret (envs, goals)
 
-(* Set goals for search for a difference in hypothesis *)
-let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
-  let ((goal_o, proof_o), (goal_n, proof_n), assums) = d in
-  let env_o = context_env goal_o in
-  let env_n = context_env goal_n in
-  let goal_o' = Context (Term (t_n, env_o), fid ()) in
-  let goal_n' = Context (Term (t_o, env_n), fid ()) in
-  (goal_o', proof_o), (goal_n', proof_n), assums
-
 (*
  * Given a change, determine how to update goals:
  * 1) If it's a change in a type we induct over,
@@ -158,7 +149,11 @@ let configure_update_goals change envs terms goals (c_o, c_n, assums) =
      let (g_o, g_n) = goals in
      let (g_o', g_n') = context_terms (default_goal_o, default_goal_n) in
      if equal g_o g_o' && equal g_n g_n' then (* set initial goals *)
-       ret (set_hypothesis_goals t_old t_new d_def)
+       let envs = context_envs (default_goal_n, default_goal_o) in
+       let goals = (t_new, t_old) in
+       let goal_o' = Context (Term (fst goals, fst envs), fid ()) in
+       let goal_n' = Context (Term (snd goals, snd envs), fid ()) in
+       ret ((goal_o', c_o), (goal_n', c_n), assums)
      else (* update goals *)
        bind
          (zoom_goals envs terms goals)
