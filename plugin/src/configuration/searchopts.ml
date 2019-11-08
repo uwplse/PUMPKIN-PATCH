@@ -111,8 +111,9 @@ let set_inductive_goals typ_o typ_n ((goal_o, proof_o), (goal_n, proof_n), assum
 
 (*
  * Update the goals for a change in types
+ * TODO: can we match over goals and use product instead?
  *)
-let update_goals_types assums envs terms goals =
+let zoom_goals envs terms goals =
   match map_tuple kind terms with
   | (Lambda (n_o, t_o, _), Lambda (n_n, t_n, _)) ->
      let env_o, env_n = envs in
@@ -121,9 +122,9 @@ let update_goals_types assums envs terms goals =
      bind
        (update_goal_terms envs terms goals)
        (fun goals ->
-         ret (envs, terms, goals))
+         ret (envs, goals))
   | _ ->
-     ret (envs, terms, goals)
+     ret (envs, goals)
 
 (* Set goals for search for a difference in hypothesis *)
 let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
@@ -142,13 +143,12 @@ let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
  * 2) If it's a change in hypotheses, update to the current hypotheses.
  * 3) Otherwise, update the goals to the current conclusions.
  *)
-let configure_update_goals change envs terms goals d =
-  let (c_o, c_n, assums) = d in
+let configure_update_goals change envs terms goals (c_o, c_n, assums) =
   match change with
   | InductiveType (_, _) ->
      bind
-       (update_goals_types assums envs terms goals)
-       (fun (envs, terms, goals) ->
+       (zoom_goals envs terms goals)
+       (fun (envs, goals) ->
          let goal_o = Context (Term (fst goals, fst envs), fid ()) in
          let goal_n = Context (Term (snd goals, snd envs), fid ()) in
          ret ((goal_o, c_o), (goal_n, c_n), assums))
@@ -161,8 +161,8 @@ let configure_update_goals change envs terms goals d =
        ret (set_hypothesis_goals t_old t_new d_def)
      else (* update goals *)
        bind
-         (update_goals_types assums envs terms goals)
-         (fun (envs, terms, goals) ->
+         (zoom_goals envs terms goals)
+         (fun (envs, goals) ->
            let goal_o = Context (Term (fst goals, fst envs), fid ()) in
            let goal_n = Context (Term (snd goals, snd envs), fid ()) in
            ret ((goal_o, c_o), (goal_n, c_n), assums))
