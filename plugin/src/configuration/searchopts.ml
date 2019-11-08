@@ -16,11 +16,7 @@ open Contextutils
 open Stateutils
 open Convertibility
 open Evd
-
-(*
- * Note: Evar discipline is not good here yet, but will change when
- * we merge PUMPKIN with DEVOID and refactor.
- *)
+open Envutils
 
 (* --- Auxiliary --- *)
 
@@ -56,7 +52,7 @@ type options =
     is_ind : bool;
     change : kind_of_change;
     same_h : types -> types -> bool;
-    update_goals : goal_proof_diff -> proof_cat_diff -> evar_map -> goal_proof_diff state;
+    update_goals : (env * env) -> (constr * constr) -> (types * types) -> proof_cat_diff -> evar_map -> goal_proof_diff state;
     swap_proofs : (constr * constr) -> (constr * constr);
     reset_goals : goal_proof_diff -> goal_case_diff -> goal_case_diff;
     is_app : goal_proof_diff -> bool;
@@ -89,23 +85,20 @@ let configure_same_h env change : types -> types -> bool =
  * Given a set of goals, update the goal terms for a change in types.
  * Eliminate the terms we encounter from the goal.
  *)
- let update_goal_terms goals rel_o rel_n =
-   let (g_o, g_n) = context_terms goals in
-   let (env_o, env_n) = context_envs goals in
-   let env_o' = push_rel rel_o env_o in
-   let env_n' = push_rel rel_n env_n in
-   let (_, _, t_o) = CRD.to_tuple @@ rel_o in
-   let (_, _, t_n) = CRD.to_tuple @@ rel_n in
-   let trim = terms_convertible env_o' env_n' t_o t_n in
-   match map_tuple kind (g_o, g_n) with
-   | (Prod (_, t_g_o, b_o), Prod (_, t_g_n, b_n)) ->
-      branch_state
-	(trim t_g_o)
-	(fun _ -> ret (Term (b_o, env_o'), Term (b_n, env_n')))
-	(fun _ -> ret (Term (shift g_o, env_o'), Term (shift g_n, env_n')))
-	t_g_n
-   | _ ->
-      ret (Term (shift g_o, env_o'), Term (shift g_n, env_n'))
+let update_goal_terms envs terms goals =
+  let (env_o, env_n) = envs in
+  let (t_o, t_n) = terms in
+  let trim = terms_convertible env_o env_n t_o t_n in
+  let (g_o, g_n) = goals in
+  match map_tuple kind (g_o, g_n) with
+  | (Prod (_, t_g_o, b_o), Prod (_, t_g_n, b_n)) ->
+     branch_state
+       (trim t_g_o)
+       (fun _ -> ret (b_o, b_n))
+       (fun _ -> ret (map_tuple shift (g_o, g_n)))
+       t_g_n
+  | _ ->
+     ret (map_tuple shift (g_o, g_n))
 
 (* Search for a difference in the changed constructor *)
 let set_inductive_goals typ_o typ_n ((goal_o, proof_o), (goal_n, proof_n), assums) =
@@ -119,21 +112,18 @@ let set_inductive_goals typ_o typ_n ((goal_o, proof_o), (goal_n, proof_n), assum
 (*
  * Update the goals for a change in types
  *)
-let update_goals_types d_old (d : proof_cat_diff) =
-  let ((goal_o, _), (goal_n, _), _) = d_old in
-  let (c_o, c_n, assums) = d in
-  match map_tuple kind (proof_terms d_old) with
+let update_goals_types assums envs terms goals =
+  match map_tuple kind terms with
   | (Lambda (n_o, t_o, _), Lambda (n_n, t_n, _)) ->
-     let rel_o = CRD.LocalAssum(n_o, t_o) in
-     let rel_n = CRD.LocalAssum(n_n, t_n) in
+     let env_o, env_n = envs in
+     let envs = push_local (n_o, t_o) env_o, push_local (n_n, t_n) env_n in
+     let terms = t_o, t_n in
      bind
-       (update_goal_terms (goal_o, goal_n) rel_o rel_n)
-       (fun (g_o, g_n) ->
-	 let o = (Context (g_o, fid ()), c_o) in
-	 let n = (Context (g_n, fid ()), c_n) in
-	 ret (o, n, assums))
+       (update_goal_terms envs terms goals)
+       (fun goals ->
+         ret (envs, terms, goals))
   | _ ->
-     ret ((goal_o, c_o), (goal_n, c_n), assums)
+     ret (envs, terms, goals)
 
 (* Set goals for search for a difference in hypothesis *)
 let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
@@ -152,21 +142,30 @@ let set_hypothesis_goals t_o t_n (d : 'a goal_diff) : 'a goal_diff =
  * 2) If it's a change in hypotheses, update to the current hypotheses.
  * 3) Otherwise, update the goals to the current conclusions.
  *)
-let configure_update_goals change d_old d =
+let configure_update_goals change envs terms goals d =
   let (c_o, c_n, assums) = d in
   match change with
   | InductiveType (_, _) ->
-     update_goals_types d_old d
+     bind
+       (update_goals_types assums envs terms goals)
+       (fun (envs, terms, goals) ->
+         let goal_o = Context (Term (fst goals, fst envs), fid ()) in
+         let goal_n = Context (Term (snd goals, snd envs), fid ()) in
+         ret ((goal_o, c_o), (goal_n, c_n), assums))
   | Hypothesis (t_old, t_new) ->
-     let ((goal_o, _), (goal_n, _), _) = d_old in 
      let d_def = (terminal c_o, c_o), (terminal c_n, c_n), assums in
      let ((default_goal_o, _), (default_goal_n, _), _) = d_def in
-     let (g_o, g_n) = context_terms (goal_o, goal_n) in
+     let (g_o, g_n) = goals in
      let (g_o', g_n') = context_terms (default_goal_o, default_goal_n) in
      if equal g_o g_o' && equal g_n g_n' then (* set initial goals *)
        ret (set_hypothesis_goals t_old t_new d_def)
      else (* update goals *)
-       update_goals_types d_old d
+       bind
+         (update_goals_types assums envs terms goals)
+         (fun (envs, terms, goals) ->
+           let goal_o = Context (Term (fst goals, fst envs), fid ()) in
+           let goal_n = Context (Term (snd goals, snd envs), fid ()) in
+           ret ((goal_o, c_o), (goal_n, c_n), assums))
   | _ ->
      ret ((terminal c_o, c_o), (terminal c_n, c_n), assums)
 
@@ -267,16 +266,23 @@ let get_change opts = opts.change
 let is_ind opts = opts.is_ind
 
 (* Keep the same assumptions, but update the goals and terms for a diff *)
-let update_terms_goals opts t_o t_n d =
-  let update = update_search_goals opts d in
+let update_terms_goals opts t_o t_n ((goal_o, c_o), (goal_n, c_n), assums) =
+  let update = update_search_goals opts in (* TODO remove last input, simplify *)
   bind
-    (eval_with_terms t_o t_n d)
-    (fun ((_, o), (_, n), assums) -> update (o, n, assums))
+    (eval_with_terms t_o t_n ((goal_o, c_o), (goal_n, c_n), assums))
+    (fun ((_, o), (_, n), assums) ->
+      let envs = map_tuple context_env (goal_o, goal_n) in
+      let goals = map_tuple context_term (goal_o, goal_n) in
+      let terms = proof_terms ((goal_o, c_o), (goal_n, c_n), assums) in
+      update envs terms goals (o, n, assums))
 
 (* Convert search to a search_function for zooming *)
-let to_search_function search opts d =
-  (fun d' -> 
-    bind (update_search_goals opts d d') (search opts))
+let to_search_function search opts ((goal_o, c_o), (goal_n, c_n), assums) =
+  let envs = map_tuple context_env (goal_o, goal_n) in (* TODO remove last input, simplify *)
+  let goals = map_tuple context_term (goal_o, goal_n) in
+  let terms = proof_terms ((goal_o, c_o), (goal_n, c_n), assums) in
+  (fun d' ->
+    bind (update_search_goals opts envs terms goals d') (search opts))
 
 (*
  * Check if a term applies the inductive hypothesis

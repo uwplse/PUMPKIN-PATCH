@@ -85,7 +85,7 @@ let return_patch opts env (patches : types list) =
  * Search in one direction, and if we fail try the other direction.
  * If we find patches, return the head for now, since any patch will do.
  *
- * TODO finish decatifying before merging
+ * TODO finish decatifying & clean before merging
  *)
 let search_for_patch opts env trms goals sigma =
   Printf.printf "%s\n\n" "----";
@@ -107,8 +107,11 @@ let search_for_patch opts env trms goals sigma =
     else
       d
   in (* explain above *)
-  let (_, o), (_, n), assums = d in
-  let sigma, d = update_search_goals opts d (o, n, assums) sigma in
+  let (goal_o, o), (goal_n, n), assums = d in
+  let envs = map_tuple context_env (goal_o, goal_n) in
+  let goals = map_tuple context_term (goal_o, goal_n) in
+  let terms = proof_terms d in
+  let sigma, d = update_search_goals opts envs terms goals (o, n, assums) sigma in
   let diff = get_differencer opts in
   let sigma_non_rev, patches = diff d sigma in
   let (goal_o, o), (goal_n, n), assums = d in
