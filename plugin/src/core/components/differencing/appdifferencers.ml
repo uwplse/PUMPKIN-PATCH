@@ -66,8 +66,9 @@ let diff_app diff_f diff_arg opts d =
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
      let envs = map_tuple context_env (goal_o, goal_n) in
      let goals = map_tuple context_term (goal_o, goal_n) in
+     let terms = proof_terms d in
      let diff_rec diff opts (t_o, t_n, _) =
-       diff_terms (diff opts) opts assums envs (t_o, t_n) goals
+       diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
      in
      let d_f = f_o, f_n, no_assumptions in
      let d_args = args_o, args_n, no_assumptions in
@@ -173,8 +174,9 @@ let diff_app_ind diff_ind diff_arg opts d =
              (* Note that state is relevant here; don't use sigma_f *)
              let envs = map_tuple context_env (goal_o, goal_n) in
              let goals = map_tuple context_term (goal_o, goal_n) in
+             let terms = proof_terms d in
              let diff_rec diff opts (t_o, t_n, _) =
-               diff_terms (diff opts) opts assums envs (t_o, t_n) goals
+               diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
              in
 	     let as_o, as_n = map_tuple Array.of_list (as_o, as_n) in
              let d_args_rev = as_n, as_o, no_assumptions in
@@ -217,7 +219,8 @@ let diff_app_ind diff_ind diff_arg opts d =
                         let ((goal_o, _), (goal_n, _), assums) = d in
                         let envs = map_tuple context_env (goal_o, goal_n) in
                         let goals = map_tuple context_term (goal_o, goal_n) in
-                        diff_terms (diff_apply (diff_arg opts)) opts assums envs (arg_o, arg_n) goals)
+                        let terms = proof_terms d in
+                        diff_terms (diff_apply (diff_arg opts)) opts assums envs terms goals envs (arg_o, arg_n))
                       d_args
                       sigma)
 	       in sigma, combine_cartesian app f (combine_cartesian_append args)

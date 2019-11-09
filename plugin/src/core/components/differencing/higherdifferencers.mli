@@ -39,6 +39,8 @@ val diff_terms :
    (env * env) ->
    (constr * constr) ->
    (types * types) ->
+   (env * env) ->
+   (constr * constr) ->
    evar_map ->
    candidates state) configurable
 

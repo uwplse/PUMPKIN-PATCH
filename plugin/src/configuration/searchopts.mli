@@ -72,19 +72,6 @@ val get_change : kind_of_change configurable
 val is_ind : bool configurable
 
 (*
- * Udate the goals and terms for a diff.
- * Use the options to determine how to update the goals,
- * and replace the terms with the supplied old and new types.
- *)
-val update_terms_goals :
-  (equal_assumptions ->
-   (env * env) ->
-   (constr * constr) ->
-   (types * types) ->
-   evar_map ->
-   goal_proof_diff state) configurable
-
-(*
  * Convert a search function that takes a set of options to a
  * search_function that is independent of options, which
  * can be used by zooming.

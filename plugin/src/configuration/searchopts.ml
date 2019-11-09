@@ -259,11 +259,6 @@ let is_app opts = opts.is_app
 let get_change opts = opts.change
 let is_ind opts = opts.is_ind
 
-(* Keep the same assumptions, but update the goals and terms for a diff *)
-(* TODO explain or remove, now that this is trivial *)
-let update_terms_goals opts assums envs terms goals =
-  update_search_goals opts assums envs terms goals envs terms
-
 (* Convert search to a search_function for zooming *)
 let to_search_function search opts ((goal_o, c_o), (goal_n, c_n), assums) =
   let envs = map_tuple context_env (goal_o, goal_n) in (* TODO remove last input, simplify *)
