@@ -135,26 +135,24 @@ let zoom_goals envs terms goals =
  * 3) Otherwise, update the goals to the current conclusions.
  *)
 let configure_update_goals change envs terms goals (c_o, c_n, assums) =
+  let goals_next_ctx = map_tuple terminal (c_o, c_n) in
+  let envs_next = map_tuple context_env goals_next_ctx in
+  let goals_next = map_tuple context_term goals_next_ctx in
   bind
     (match change with
     | InductiveType (_, _) ->
        zoom_goals envs terms goals
     | Hypothesis (t_old, t_new) ->
-       let d_def = (terminal c_o, c_o), (terminal c_n, c_n), assums in
-       let ((default_goal_o, _), (default_goal_n, _), _) = d_def in
        let (g_o, g_n) = goals in
-       let (g_o', g_n') = context_terms (default_goal_o, default_goal_n) in
+       let (g_o', g_n') = goals_next in
        if equal g_o g_o' && equal g_n g_n' then (* set initial goals *)
-         let envs = context_envs (default_goal_n, default_goal_o) in
+         let envs = (snd envs_next, fst envs_next) in
          let goals = (t_new, t_old) in
          ret (envs, goals)
        else (* update goals *)
          zoom_goals envs terms goals
     | _ ->
-       let goals = map_tuple terminal (c_o, c_n) in
-       let envs = map_tuple context_env goals in
-       let goals = map_tuple context_term goals in
-       ret (envs, goals))
+       ret (envs_next, goals_next))
     (fun (envs, goals) ->
       let goal_o = Context (Term (fst goals, fst envs), fid ()) in
       let goal_n = Context (Term (snd goals, snd envs), fid ()) in
