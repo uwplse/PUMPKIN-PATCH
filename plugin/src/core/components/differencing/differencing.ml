@@ -83,7 +83,13 @@ let debug_search (d : goal_proof_diff) : unit =
  * 6c. When 6b doesn't produce anything, try reducing the diff and calling
  *    recursively. (Support for this is preliminary.)
  *)
-let rec diff opts d =
+let diff opts assums envs terms goals sigma = 
+  let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
+  let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
+  let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
+  let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
+  let d = ((goal_o, o), (goal_n, n), assums) in
+  let rec diff opts d sigma = (* TODO temp *)
   bind
     (bind (reduce_casts d) reduce_letin)
     (fun d ->
@@ -150,13 +156,18 @@ let rec diff opts d =
               else
                 ret give_up)
        d)
+    sigma
+  in diff opts d sigma
                
 (* --- Top-level differencer --- *)
 
 (* Given a configuration, return the appropriate differencer *)
-let get_differencer (opts : options) =
+let get_differencer (opts : options) assums envs terms goals sigma =
   let should_reduce = is_inductive_type (get_change opts) in
   if should_reduce then
-    (fun d -> bind (reduce_diff reduce_term d) (diff opts))
+    let sigma, term_o = reduce_term (fst envs) sigma (fst terms) in
+    let sigma, term_n = reduce_term (snd envs) sigma (snd terms) in
+    let terms = (term_o, term_n) in
+    diff opts assums envs terms goals sigma
   else
-    diff opts
+    diff opts assums envs terms goals sigma

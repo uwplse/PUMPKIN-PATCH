@@ -38,14 +38,13 @@ val set_change : options -> kind_of_change -> options
 
 (* Update the goals of search *)
 val update_search_goals :
-  (equal_assumptions ->
-   (env * env) ->
+  ((env * env) ->
    (constr * constr) ->
    (types * types) ->
    (env * env) ->
    (constr * constr) ->
    evar_map ->
-   goal_proof_diff state) configurable
+   ((env * env) * (constr * constr) * (types * types)) state) configurable
 
 (* Swap the goals of search *)
 val swap_search_proofs : ((constr * constr) -> (constr * constr)) configurable

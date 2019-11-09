@@ -50,7 +50,15 @@ let diff_reduced diff d =
  * 2. Apply the differencing function to the new diff
  *)
 let diff_terms (diff : proof_differencer) opts assums envs terms goals envs_next terms_next =
-  bind (update_search_goals opts assums envs terms goals envs_next terms_next) diff
+  bind
+    (update_search_goals opts envs terms goals envs_next terms_next)
+    (fun (envs, terms, goals) sigma ->
+      let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
+      let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
+      let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
+      let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
+      let d = ((goal_o, o), (goal_n, n), assums) in
+      diff d sigma)
 
 (*
  * Recursively difference each term in a diff of arrays

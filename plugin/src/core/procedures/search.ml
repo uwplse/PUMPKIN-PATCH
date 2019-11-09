@@ -99,16 +99,13 @@ let search_for_patch opts env terms goals sigma =
   let sigma, typ_o = infer_type env sigma (fst terms) in
   let sigma, typ_n = infer_type env sigma (snd terms) in
   let goals = (typ_o, typ_n) in
-  let sigma, d = update_search_goals opts assums envs terms goals envs terms sigma in
+  let sigma, (envs, terms, goals) = update_search_goals opts envs terms goals envs terms sigma in
   let diff = get_differencer opts in
-  let sigma_non_rev, patches = diff d sigma in
-  let (goal_o, o), (goal_n, n), assums = d in
-  let _, env = dest_context_term goal_o in
+  let sigma_non_rev, patches = diff assums envs terms goals sigma in
   if non_empty patches then
     return_patch opts env patches sigma_non_rev
   else
-    let d_rev = (goal_n, n), (goal_o, o), reverse_assumptions assums in
-    let sigma_rev, rev_patches = diff d_rev sigma in
+    let sigma_rev, rev_patches = diff (reverse_assumptions assums) (snd envs, fst envs) (snd terms, fst terms) (snd goals, fst goals) sigma in
     Printf.printf "%s\n" "searched backwards";
     Printf.printf "inverting %d candidates\n" (List.length rev_patches);
     let sigma_inv, inverted = invert_terms invert_factor env rev_patches sigma_rev in
