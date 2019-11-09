@@ -188,6 +188,15 @@ let rec diff_ind_cases opts diff d_old ds sigma =
 
 (* --- Top-level --- *)
 
+(* TODO temp for refactor *)
+let temp_to_diff assums envs terms goals sigma =
+  let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
+  let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
+  let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
+  let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
+  let d = ((goal_o, o), (goal_n, n), assums) in
+  sigma, d
+         
 (*
  * Search an inductive proof for a patch.
  * That is, break it into cases, and search those cases for patches.
@@ -197,10 +206,11 @@ let rec diff_ind_cases opts diff d_old ds sigma =
  * This does not yet handle the case when the inductive parameters
  * are lists of different lengths, or where there is a change in hypothesis.
  *)
-let diff_inductive diff d_old opts (d : (proof_cat * int) proof_diff) =
+let diff_inductive diff assums_old envs_old terms_old goals_old opts (d : (proof_cat * int) proof_diff) sigma =
+  let sigma, d_old = temp_to_diff assums_old envs_old terms_old goals_old sigma in
   let ((o, nparams_o), (n, nparams_n), assums) = d in
   if not (nparams_o = nparams_n) then
-    ret give_up
+    ret give_up sigma
   else
     let sort c =
       bind
@@ -220,3 +230,4 @@ let diff_inductive diff d_old opts (d : (proof_cat * int) proof_diff) =
       ret
       (intro_params nparams_o)
       (o, n, assums)
+      sigma

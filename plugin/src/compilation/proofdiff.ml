@@ -121,47 +121,69 @@ let reduce_diff (r : reducer) d : evar_map -> goal_proof_diff state =
 	(fun n -> eval_with_terms o n d))
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
-let rec reduce_casts (d : goal_proof_diff) =
-  match map_tuple kind (proof_terms d) with
+let rec reduce_casts envs (o, n) sigma =
+  let terms = map_tuple only_extension_as_term (o, n) in
+  match map_tuple kind terms with
   | (Cast (t, _, _), _) ->
-     bind (eval_with_old_term t d) reduce_casts
+     bind
+       (bind
+          (eval_proof (fst envs) t)
+          (fun o sigma ->
+            let sigma, n = eval_proof (snd envs) (snd terms) sigma in
+            ret (o, n) sigma))
+       (reduce_casts envs)
+       sigma
   | (_, Cast (t, _, _)) ->
-     bind (eval_with_new_term t d) reduce_casts
+     bind
+       (bind
+          (eval_proof (snd envs) t)
+          (fun n sigma ->
+            let sigma, o = eval_proof (fst envs) (fst terms) sigma in
+            ret (o, n) sigma))
+       (reduce_casts envs)
+       sigma
   | _ ->
-     ret d
+     (* TODO just return terms *)
+     ret (o, n) sigma
 
 (*
  * Given a difference in proofs, substitute the head let ins
  * Fail silently
  *)
-let reduce_letin (d : goal_proof_diff) =
-  let (o, n) = proof_terms d in
+let reduce_letin envs (o, n) =
+  let terms = map_tuple only_extension_as_term (o, n) in
   try
-    if isLetIn o || isLetIn n then
-      let (goal_o, _), (goal_n, _), _ = d in
-      let (_, env_o), (_, env_n) = map_tuple dest_context_term (goal_o, goal_n) in
+    if isLetIn (fst terms) || isLetIn (snd terms) then
       bind
-	(fun sigma -> reduce_whd_if_let_in env_o sigma o)
+	(fun sigma -> reduce_whd_if_let_in (fst envs) sigma (fst terms))
 	(fun o' ->
 	  bind
-	    (fun sigma -> reduce_whd_if_let_in env_n sigma n)
-	    (fun n' -> eval_with_terms o' n' d))
+	    (fun sigma -> reduce_whd_if_let_in (snd envs) sigma (snd terms))
+	    (fun n' ->
+              bind
+                (eval_proof (fst envs) o')
+                (fun o ->
+                  bind
+                    (eval_proof (snd envs) n')
+                    (fun n ->
+                      ret (o, n)))))
     else
-      ret d
+      ret (o, n)
   with _ ->
-    ret d
+    ret (o, n)
 
 (* Given a term, trim off the IH, assuming it's an application *)
 let trim_ih (trm : types) : types =
   assert (isApp trm);
   let (f, args) = destApp trm in
   let args_trim = Array.sub args 0 ((Array.length args) - 1) in
+  (* TODO Talia: this looks like it's making a silly assumption about
+     where the IH is located. *)
   mkApp (f, args_trim)
 
 (* Given a diff, trim off the IHs, assuming the terms are applications *)
-let reduce_trim_ihs (d : goal_proof_diff) =
-  let (old_term, new_term) = map_tuple trim_ih (proof_terms d) in
-  eval_with_terms old_term new_term d
+let reduce_trim_ihs terms =
+  map_tuple trim_ih terms
 
 (* --- Assumptions --- *)
 

@@ -4,6 +4,9 @@ open Differencers
 open Searchopts
 open Proofdiff
 open Evd
+open Assumptions
+open Environ
+open Constr
 
 (*
  * Difference an inductive proof.
@@ -19,5 +22,8 @@ open Evd
  *)
 val diff_inductive :
   proof_differencer configurable ->
-  goal_proof_diff ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
   ind_proof_differencer configurable

@@ -55,7 +55,7 @@ type options =
     update_goals : (env * env) -> (constr * constr) -> (types * types) -> (env * env) -> (constr * constr) -> evar_map -> ((env * env) * (constr * constr) * (types * types)) state;
     swap_proofs : (constr * constr) -> (constr * constr);
     reset_goals : goal_proof_diff -> goal_case_diff -> goal_case_diff;
-    is_app : goal_proof_diff -> bool;
+    is_app : (constr * constr) -> bool;
   }
 
 type 'a configurable = options -> 'a
@@ -165,8 +165,8 @@ let configure_update_goals change envs terms goals envs_next terms_next sigma =
  * 2) If it's a change in conclusions or definitions,
  *    then check whether the old proof may apply the new proof.
  *)
-let configure_is_app change d =
-  match (map_tuple kind (proof_terms d), change) with
+let configure_is_app change terms =
+  match (map_tuple kind terms, change) with
   | ((_, App (_, _)), InductiveType (_, _)) ->
      true
   | ((_, App (_, _)), Hypothesis (_, _)) ->
@@ -254,10 +254,7 @@ let get_change opts = opts.change
 let is_ind opts = opts.is_ind
 
 (* Convert search to a search_function for zooming *)
-let to_search_function search opts ((goal_o, c_o), (goal_n, c_n), assums) =
-  let envs = map_tuple context_env (goal_o, goal_n) in (* TODO remove last input, simplify *)
-  let goals = map_tuple context_term (goal_o, goal_n) in
-  let terms = proof_terms ((goal_o, c_o), (goal_n, c_n), assums) in
+let to_search_function search opts assums envs terms goals =
   (fun d' ->
     let (o, n, assums) = d' in
     let terms_next = map_tuple only_extension_as_term (o, n) in (* TODO is this different from terms? *)
@@ -276,8 +273,8 @@ let to_search_function search opts ((goal_o, c_o), (goal_n, c_n), assums) =
  * Check if a term applies the inductive hypothesis
  * This is naive for now
  *)
-let applies_ih opts (d : goal_proof_diff) : bool =
-  match map_tuple kind (proof_terms d) with
+let applies_ih opts terms : bool =
+  match map_tuple kind terms with
   | (App (f1, args1), App (f2, args2)) ->
      is_ind opts && Array.length args1 = Array.length args2 && isLambda f1 && isLambda f2
   | _ ->

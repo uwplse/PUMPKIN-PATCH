@@ -87,16 +87,24 @@ val merge_lift_diff_envs :
 val reduce_diff : reducer -> goal_proof_diff -> evar_map -> goal_proof_diff state
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
-val reduce_casts : goal_proof_diff -> evar_map -> goal_proof_diff state
+val reduce_casts :
+  env * env ->
+  proof_cat * proof_cat ->
+  evar_map ->
+  (proof_cat * proof_cat) state
 
 (*
  * Given a differrence in proofs, weak head reduce any let-ins
  * If this fails because of a substituted assumption, then fail silently
  *)
-val reduce_letin : goal_proof_diff -> evar_map -> goal_proof_diff state
+val reduce_letin :
+  env * env ->
+  proof_cat * proof_cat ->
+  evar_map ->
+  (proof_cat * proof_cat) state
 
 (* Given a difference in proofs, trim applications of the IH *)
-val reduce_trim_ihs : goal_proof_diff -> evar_map -> goal_proof_diff state
+val reduce_trim_ihs : (constr * constr) -> (constr * constr)
 
 (* --- Assumptions --- *)
 

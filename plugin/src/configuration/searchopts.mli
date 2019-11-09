@@ -61,7 +61,7 @@ val same_h : (env -> types -> types -> evar_map -> bool state) configurable
  * This function has a sense of direction, and the direction is determined
  * by the kind of change
  *)
-val is_app : (goal_proof_diff -> bool) configurable
+val is_app : ((constr * constr) -> bool) configurable
 
 (* Get the kind of change *)
 val get_change : kind_of_change configurable
@@ -76,10 +76,14 @@ val is_ind : bool configurable
  *)
 val to_search_function :
   ((goal_proof_diff -> evar_map -> candidates state) configurable) ->
-  (goal_proof_diff -> search_function) configurable
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   search_function) configurable
 
 (*
  * Check if the proofs apply the inductive hypothesis
  *)
 val applies_ih :
-  (goal_proof_diff -> bool) configurable
+  ((constr * constr) -> bool) configurable
