@@ -1,6 +1,11 @@
 open Searchopts
 open Differencers
 open Evd
+open Assumptions
+open Environ
+open Constr
+open Stateutils
+open Candidates
        
 (* --- Recursive Differencers for Application --- *)
 
@@ -13,7 +18,12 @@ open Evd
 val diff_app :
   proof_differencer configurable -> (* diff f *)
   proof_differencer configurable -> (* diff each arg *)
-  proof_differencer configurable
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) configurable
 
 (*
  * If the proofs are applications (f args) and (f' args'),
@@ -25,5 +35,10 @@ val diff_app :
 val diff_app_ind :
   ind_proof_differencer configurable -> (* diff f *)
   proof_differencer configurable -> (* diff each arg *)
-  proof_differencer configurable
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) configurable
 

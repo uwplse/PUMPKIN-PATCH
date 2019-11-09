@@ -51,7 +51,7 @@ type options =
   {
     is_ind : bool;
     change : kind_of_change;
-    same_h : types -> types -> bool;
+    same_h : env -> constr -> constr -> evar_map -> bool state;
     update_goals : (env * env) -> (constr * constr) -> (types * types) -> (env * env) -> (constr * constr) -> evar_map -> ((env * env) * (constr * constr) * (types * types)) state;
     swap_proofs : (constr * constr) -> (constr * constr);
     reset_goals : goal_proof_diff -> goal_case_diff -> goal_case_diff;
@@ -69,17 +69,17 @@ type 'a configurable = options -> 'a
  *    or are the same as the types we changed.
  * 2) Otherwise, two types we induct over are "the same" if they are identical.
  *)
-let configure_same_h env change : types -> types -> bool =
+let configure_same_h change =
   match change with
   | InductiveType (o, n) ->
-     (fun f_o f_n ->
+     (fun env f_o f_n ->
        let k_o = destConst f_o in
        let k_n = destConst f_n in
        let ind_o = mkInd (Option.get (inductive_of_elim env k_o), 0) in
        let ind_n = mkInd (Option.get (inductive_of_elim env k_n), 0) in
-       (equal f_o f_n) || (equal ind_o o && equal ind_n n))
+       ret ((equal f_o f_n) || (equal ind_o o && equal ind_n n)))
   | _ ->
-     equal
+     (fun env f_o f_n -> ret (equal f_o f_n))
 
 (*
  * Given a set of goals, update the goal terms for a change in types.
@@ -227,11 +227,11 @@ let configure_reset_goals change d_old (d : goal_case_diff) : goal_case_diff =
 (*
  * Build configuration options for the search based on the goal diff
  *)
-let configure_search env change cut =
+let configure_search change cut =
   {
     is_ind = false;
     change = change;
-    same_h = configure_same_h env change;
+    same_h = configure_same_h change;
     update_goals = configure_update_goals change;
     swap_proofs = configure_swap_proofs change;
     reset_goals = configure_reset_goals change;

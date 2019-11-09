@@ -33,6 +33,23 @@ let debug_search (d : goal_proof_diff) : unit =
 
 (* --- Differencing --- *)
 
+(* TODO temproary for refactor *)
+let temp_to_diff assums envs terms goals sigma =
+  let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
+  let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
+  let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
+  let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
+  let d = ((goal_o, o), (goal_n, n), assums) in
+  sigma, d
+
+let temp_from_diff d =
+  let ((goal_o, o), (goal_n, n), assums) = d in
+  let terms = map_tuple only_extension_as_term (o, n) in
+  let goals = map_tuple dest_context_term (goal_o, goal_n) in
+  let envs = map_tuple snd goals in
+  let goals = map_tuple fst goals in
+  (assums, envs, terms, goals)
+                
 (*
  * Search for a direct patch given a difference in proof_cats within.
  * This is a collection of heuristics, which
@@ -83,78 +100,77 @@ let debug_search (d : goal_proof_diff) : unit =
  * 6c. When 6b doesn't produce anything, try reducing the diff and calling
  *    recursively. (Support for this is preliminary.)
  *)
-let diff opts assums envs terms goals sigma = 
-  let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
-  let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
-  let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
-  let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
-  let d = ((goal_o, o), (goal_n, n), assums) in
+let diff opts assums envs terms goals sigma =
+  let sigma, d = temp_to_diff assums envs terms goals sigma in
   let rec diff opts d sigma = (* TODO temp *)
   bind
     (bind (reduce_casts d) reduce_letin)
     (fun d ->
-      let ((goal_o, o), (goal_n, n), assums) = d in 
-      let terms = map_tuple only_extension_as_term (o, n) in
-      let goals = map_tuple dest_context_term (goal_o, goal_n) in
-      let envs = map_tuple snd goals in
-      let goals = map_tuple fst goals in
+      let (assums, envs, terms, goals) = temp_from_diff d in
       branch_state
        (fun _ -> no_diff opts assums envs terms goals)
        (fun _ -> identity_candidates assums envs terms goals) (* 1 *)
-       (fun d ->
-         if induct_over_same_h (same_h opts) d then
-           bind (* TODO move back into chaining, maybe *)
-             (diff_app_ind (diff_inductive diff d) diff opts d) (* 2a *)
-             (fun cs ->
-               if non_empty cs then
-                 ret cs
-               else
-                 find_difference opts assums envs terms goals) (* 2b *)
-         else if applies_ih opts d then
-           bind (reduce_trim_ihs d) (diff_app diff diff opts) (* 3 *)
-         else
-           match map_tuple kind (proof_terms d) with
-           | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
-              let change = get_change opts in
-              let ind = is_ind opts in
-              let is_id = is_identity change in
-              let search_body = to_search_function diff opts d in
-              bind
-                (eval_with_terms t_o t_n d)
-                (branch_state
-                   (fun d ->
-                     let ((goal_o, o), (goal_n, n), assums) = d in 
-                     let terms = map_tuple only_extension_as_term (o, n) in
-                     let goals = map_tuple dest_context_term (goal_o, goal_n) in
-                     let envs = map_tuple snd goals in
-                     let goals = map_tuple fst goals in
-                     no_diff
-                       (if is_id then set_change opts Conclusion else opts)
-                       assums
-                       envs
-                       terms
-                       goals)
-                   (fun _ -> zoom_wrap_lambda search_body n_o t_o d) (* 4 *)
-                   (fun _ ->
-                     let is_concl = is_conclusion change in
+       (fun _ ->
+         branch_state
+           (fun _ -> induct_over_same_h (same_h opts) assums envs terms)
+           (fun _ ->
+             bind (* TODO move back into chaining, maybe *)
+               (let (assums, envs, terms, goals) = temp_from_diff d in
+                diff_app_ind (diff_inductive diff d) diff opts assums envs terms goals) (* 2a *)
+               (fun cs ->
+                 if non_empty cs then
+                   ret cs
+                 else
+                   find_difference opts assums envs terms goals) (* 2b *))
+           (fun _ ->
+             if applies_ih opts d then
+               bind
+                 (reduce_trim_ihs d)
+                 (fun d ->
+                   let (assums, envs, terms, goals) = temp_from_diff d in
+                   diff_app diff diff opts assums envs terms goals) (* 3 *)
+             else
+               match map_tuple kind (proof_terms d) with
+               | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
+                  let change = get_change opts in
+                  let ind = is_ind opts in
+                  let is_id = is_identity change in
+                  let search_body = to_search_function diff opts d in
+                  bind
+                    (eval_with_terms t_o t_n d)
+                    (branch_state
+                       (fun d ->
+                         let (assums, envs, terms, goals) = temp_from_diff d in
+                         no_diff
+                           (if is_id then set_change opts Conclusion else opts)
+                           assums
+                           envs
+                           terms
+                           goals)
+                       (fun _ -> zoom_wrap_lambda search_body n_o t_o d) (* 4 *)
+                       (fun _ ->
+                         let is_concl = is_conclusion change in
                      if ind || not (is_concl || is_id) then
                        zoom_unshift search_body d (* 5 *)
                      else
                        ret give_up))
-           | _ ->
-              if is_app opts d then
-                bind (* TODO move back into chaining, maybe *)
-                  (find_difference opts assums envs terms goals) (* 6a *)
-                  (fun cs ->
-                    if non_empty cs then
-                      ret cs
-                    else
-                      try_chain_diffs
-                        [(diff_app diff diff opts);  (* 6b *)
-                         (diff_reduced (diff opts))] (* 6c *)
-                        d)
-              else
-                ret give_up)
+               | _ ->
+                  if is_app opts d then
+                    bind (* TODO move back into chaining, maybe *)
+                      (find_difference opts assums envs terms goals) (* 6a *)
+                      (fun cs ->
+                        if non_empty cs then
+                          ret cs
+                        else
+                          try_chain_diffs
+                            [(fun d ->
+                                let (assums, envs, terms, goals) = temp_from_diff d in
+                                diff_app diff diff opts assums envs terms goals);  (* 6b *)
+                             (diff_reduced (diff opts))] (* 6c *)
+                            d)
+                  else
+                    ret give_up)
+           d)
        d)
     sigma
   in diff opts d sigma

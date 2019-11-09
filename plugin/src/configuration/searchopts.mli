@@ -21,7 +21,6 @@ type 'a configurable = options -> 'a
 
 (* Build configuration options for the search *)
 val configure_search :
-  env ->
   kind_of_change ->
   cut_lemma option ->
   options
@@ -54,7 +53,7 @@ val reset_case_goals :
   (goal_proof_diff -> goal_case_diff -> goal_case_diff) configurable
 
 (* Determine whether two terms induct over the same hypothesis *)
-val same_h : (types -> types -> bool) configurable
+val same_h : (env -> types -> types -> evar_map -> bool state) configurable
 
 (*
  * Determine whether one term applies the other

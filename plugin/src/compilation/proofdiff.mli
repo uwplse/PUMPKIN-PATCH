@@ -134,7 +134,13 @@ val ind_type_diff : env -> types proof_diff -> types proof_diff
  * This expects both proof categories not to be expanded.
  * It will error if the proof is already expanded.
  *)
-val induct_over_same_h : (types -> types -> bool) -> goal_proof_diff -> bool
+val induct_over_same_h :
+  (env -> constr -> constr -> evar_map -> bool state) ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  evar_map ->
+  bool state
 
 (*
  * Given a function that extracts an environment from a proof,

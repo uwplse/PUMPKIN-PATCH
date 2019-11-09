@@ -78,7 +78,7 @@ let configure env trms cut sigma =
       bind
         (find_kind_of_change lemma env trms goals)
         (fun change ->
-	  ret (goals, configure_search env change lemma)))
+	  ret (goals, configure_search change lemma)))
     sigma
 
 (* Initialize diff & search configuration for optimization *)
@@ -87,7 +87,7 @@ let configure_optimize env trm =
     (fun sigma -> infer_type env sigma trm)
     (fun goal ->
       let goals = (goal, goal) in
-      ret (goals, configure_search env Identity None))
+      ret (goals, configure_search Identity None))
 
 (* Common inversion functionality *)
 let invert_patch n env patch sigma =

@@ -59,14 +59,10 @@ open Kindofchange
  *
  * TODO: clean up
  *)
-let diff_app diff_f diff_arg opts d =
-  let ((goal_o, _), (goal_n, _), assums) = d in
-  let env = snd (dest_context_term goal_o) in
-  match map_tuple kind (proof_terms d) with
+let diff_app diff_f diff_arg opts assums envs terms goals =
+  let env = fst envs in
+  match map_tuple kind terms with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
-     let envs = map_tuple context_env (goal_o, goal_n) in
-     let goals = map_tuple context_term (goal_o, goal_n) in
-     let terms = proof_terms d in
      let diff_rec diff opts (t_o, t_n, _) =
        diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
      in
@@ -110,8 +106,7 @@ let diff_app diff_f diff_arg opts d =
                  (set_change opts Conclusion)))
 	   d_args
       | Hypothesis (_, _) ->
-         let ((old_goal, _), (new_goal, _), _) = d in
-         let (g_o, g_n) = map_tuple context_term (old_goal, new_goal) in
+         let (g_o, g_n) = goals in
          let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
          let filter_goal trms evd = filter_by_type goal_type env evd trms in
          let filter_diff_h diff = filter_diff filter_goal diff in
@@ -152,8 +147,9 @@ let diff_app diff_f diff_arg opts d =
  *
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *)
-let diff_app_ind diff_ind diff_arg opts d =
-  let ((_, o), (_, n), assums) = d in
+let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
+  let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
+  let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
   let d_ind = (o, 0, []), (n, 0, []), assums in
   bind
     (zoom_same_hypos d_ind)
@@ -165,16 +161,12 @@ let diff_app_ind diff_ind diff_arg opts d =
         | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
            sigma_f, f
         | FixpointCase ((_, _), cut) ->
-           let ((goal_o, _), (goal_n, _), _) = d in
-           let env = context_env goal_o in
+           let env = fst envs in
            let filter_diff_cut diff d = filter_diff (filter_cut env cut) diff d in
            if non_empty f then
              sigma_f, f
            else
              (* Note that state is relevant here; don't use sigma_f *)
-             let envs = map_tuple context_env (goal_o, goal_n) in
-             let goals = map_tuple context_term (goal_o, goal_n) in
-             let terms = proof_terms d in
              let diff_rec diff opts (t_o, t_n, _) =
                diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
              in
@@ -183,8 +175,7 @@ let diff_app_ind diff_ind diff_arg opts d =
              filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev sigma
         | _ ->
            if non_empty as_o then
-             let ((goal_o, _), (_, _), _) = d in
-             let env_o = context_env goal_o in
+             let env_o = fst envs in
              let _, (_, prop_trm_ext, _) = prop o npms_o sigma in
              let prop_trm = ext_term prop_trm_ext in
              let rec prop_arity p =
@@ -216,10 +207,6 @@ let diff_app_ind diff_ind diff_arg opts d =
                         let (arg_o, arg_n, _) = d_a in
                         let apply p = ret (app p (Array.make 1 arg_n)) in
                         let diff_apply = filter_diff (map_state apply) in
-                        let ((goal_o, _), (goal_n, _), assums) = d in
-                        let envs = map_tuple context_env (goal_o, goal_n) in
-                        let goals = map_tuple context_term (goal_o, goal_n) in
-                        let terms = proof_terms d in
                         diff_terms (diff_apply (diff_arg opts)) opts assums envs terms goals envs (arg_o, arg_n))
                       d_args
                       sigma)
@@ -228,3 +215,4 @@ let diff_app_ind diff_ind diff_arg opts d =
              sigma_f, f
       else
         sigma, give_up)
+    sigma

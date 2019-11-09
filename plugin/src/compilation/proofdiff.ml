@@ -257,26 +257,25 @@ let ind_type_diff (env : env) (o, n, assums) : types proof_diff =
  * two proofs like (f x y z (ind .... )) (f x y z (ind ..... )).
  * So this is a good benchmark case and we can extend this after.
  *)
-let induct_over_same_h eq (d : goal_proof_diff) : bool =
-  let ((_, o), (_, n), _) = d in
-  let trm1 = only_extension_as_term o in
-  let trm2 = only_extension_as_term n in
-  if (isApp trm1) && (isApp trm2) then
-    let (f1, _) = destApp trm1 in
-    let (f2, _) = destApp trm2 in
-    match (kind f1, kind f2) with
-    | (Const k1, Const k2) ->
-       let ind1_opt = inductive_of_elim (context_env (terminal o)) k1 in
-       let ind2_opt = inductive_of_elim (context_env (terminal n)) k2 in
-       if Option.has_some ind1_opt && Option.has_some ind2_opt then
+let induct_over_same_h eq assums envs terms =
+  let (term_o, term_n) = terms in
+  if isApp term_o && isApp term_n then
+    let (f_o, _) = destApp term_o in
+    let (f_n, _) = destApp term_n in
+    match map_tuple kind (f_o, f_n) with
+    | (Const k_o, Const k_n) ->
+       let ind_o_opt = inductive_of_elim (fst envs) k_o in
+       let ind_n_opt = inductive_of_elim (snd envs) k_n in
+       if Option.has_some ind_o_opt && Option.has_some ind_n_opt then
          (* should be checking that the types are the same, too *)
-         eq f1 f2
+         let (env, os, ns) = merge_term_lists envs ([f_o], [f_n]) assums in
+         eq env (List.hd os) (List.hd ns)
        else
-         false
+         ret false
     | _ ->
-       false
+       ret false
   else
-    false
+    ret false
 
 (* Get the number of bindings that are not common to both proofs in d *)
 (* TODO remove me before merging *)
