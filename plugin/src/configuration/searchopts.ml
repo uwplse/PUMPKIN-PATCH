@@ -52,7 +52,7 @@ type options =
     is_ind : bool;
     change : kind_of_change;
     same_h : types -> types -> bool;
-    update_goals : (env * env) -> (constr * constr) -> (types * types) -> proof_cat_diff -> evar_map -> goal_proof_diff state;
+    update_goals : equal_assumptions -> (env * env) -> (constr * constr) -> (types * types) -> (env * env) -> (constr * constr) -> evar_map -> goal_proof_diff state;
     swap_proofs : (constr * constr) -> (constr * constr);
     reset_goals : goal_proof_diff -> goal_case_diff -> goal_case_diff;
     is_app : goal_proof_diff -> bool;
@@ -133,9 +133,13 @@ let zoom_goals envs terms goals =
  *    eliminate variables we encounter.
  * 2) If it's a change in hypotheses, update to the current hypotheses.
  * 3) Otherwise, update the goals to the current conclusions.
+ *
+ * TODO clean more when totally removing cats
  *)
-let configure_update_goals change envs terms goals (c_o, c_n, assums) =
-  let goals_next_ctx = map_tuple terminal (c_o, c_n) in
+let configure_update_goals change assums envs terms goals envs_next terms_next sigma =
+  let sigma, o_next = Evaluation.eval_proof (fst envs_next) (fst terms_next) sigma in
+  let sigma, n_next = Evaluation.eval_proof (snd envs_next) (snd terms_next) sigma in
+  let goals_next_ctx = map_tuple terminal (o_next, n_next) in
   let envs_next = map_tuple context_env goals_next_ctx in
   let goals_next = map_tuple context_term goals_next_ctx in
   bind
@@ -156,7 +160,8 @@ let configure_update_goals change envs terms goals (c_o, c_n, assums) =
     (fun (envs, goals) ->
       let goal_o = Context (Term (fst goals, fst envs), fid ()) in
       let goal_n = Context (Term (snd goals, snd envs), fid ()) in
-      ret ((goal_o, c_o), (goal_n, c_n), assums))
+      ret ((goal_o, o_next), (goal_n, n_next), assums))
+    sigma
   
 (*
  * Given a change, determine how to test whether a proof might apply
@@ -255,15 +260,9 @@ let get_change opts = opts.change
 let is_ind opts = opts.is_ind
 
 (* Keep the same assumptions, but update the goals and terms for a diff *)
-let update_terms_goals opts t_o t_n ((goal_o, c_o), (goal_n, c_n), assums) =
-  let update = update_search_goals opts in (* TODO remove last input, simplify *)
-  bind
-    (eval_with_terms t_o t_n ((goal_o, c_o), (goal_n, c_n), assums))
-    (fun ((_, o), (_, n), assums) ->
-      let envs = map_tuple context_env (goal_o, goal_n) in
-      let goals = map_tuple context_term (goal_o, goal_n) in
-      let terms = proof_terms ((goal_o, c_o), (goal_n, c_n), assums) in
-      update envs terms goals (o, n, assums))
+(* TODO explain or remove, now that this is trivial *)
+let update_terms_goals opts assums envs terms goals =
+  update_search_goals opts assums envs terms goals envs terms
 
 (* Convert search to a search_function for zooming *)
 let to_search_function search opts ((goal_o, c_o), (goal_n, c_n), assums) =
@@ -271,7 +270,10 @@ let to_search_function search opts ((goal_o, c_o), (goal_n, c_n), assums) =
   let goals = map_tuple context_term (goal_o, goal_n) in
   let terms = proof_terms ((goal_o, c_o), (goal_n, c_n), assums) in
   (fun d' ->
-    bind (update_search_goals opts envs terms goals d') (search opts))
+    let (o, n, assums) = d' in
+    let terms_next = map_tuple only_extension_as_term (o, n) in (* TODO is this different from terms? *)
+    let envs_next = map_tuple context_env (map_tuple terminal (o, n)) in
+    bind (update_search_goals opts assums envs terms goals envs_next terms_next) (search opts))
 
 (*
  * Check if a term applies the inductive hypothesis

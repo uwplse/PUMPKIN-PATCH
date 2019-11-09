@@ -49,8 +49,8 @@ let diff_reduced diff d =
  * 1. Update the terms and goals of the diff d to use those terms
  * 2. Apply the differencing function to the new diff
  *)
-let diff_terms (diff : proof_differencer) d opts (t_o, t_n, _) =
-  bind (update_terms_goals opts t_o t_n d) diff
+let diff_terms (diff : proof_differencer) opts assums envs terms goals =
+  bind (update_terms_goals opts assums envs terms goals) diff
 
 (*
  * Recursively difference each term in a diff of arrays

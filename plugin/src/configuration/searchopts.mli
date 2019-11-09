@@ -38,10 +38,12 @@ val set_change : options -> kind_of_change -> options
 
 (* Update the goals of search *)
 val update_search_goals :
-  ((env * env) ->
+  (equal_assumptions ->
+   (env * env) ->
    (constr * constr) ->
    (types * types) ->
-   proof_cat_diff ->
+   (env * env) ->
+   (constr * constr) ->
    evar_map ->
    goal_proof_diff state) configurable
 
@@ -75,7 +77,12 @@ val is_ind : bool configurable
  * and replace the terms with the supplied old and new types.
  *)
 val update_terms_goals :
-  (types -> types -> goal_proof_diff -> evar_map -> goal_proof_diff state) configurable
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   goal_proof_diff state) configurable
 
 (*
  * Convert a search function that takes a set of options to a

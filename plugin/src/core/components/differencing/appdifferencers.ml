@@ -60,11 +60,15 @@ open Kindofchange
  * TODO: clean up
  *)
 let diff_app diff_f diff_arg opts d =
-  let ((goal_o, _), (_, _), _) = d in
+  let ((goal_o, _), (goal_n, _), assums) = d in
   let env = snd (dest_context_term goal_o) in
   match map_tuple kind (proof_terms d) with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
-     let diff_rec diff opts ts = diff_terms (diff opts) d opts ts in
+     let envs = map_tuple context_env (goal_o, goal_n) in
+     let goals = map_tuple context_term (goal_o, goal_n) in
+     let diff_rec diff opts (t_o, t_n, _) =
+       diff_terms (diff opts) opts assums envs (t_o, t_n) goals
+     in
      let d_f = f_o, f_n, no_assumptions in
      let d_args = args_o, args_n, no_assumptions in
      (match get_change opts with
@@ -160,14 +164,18 @@ let diff_app_ind diff_ind diff_arg opts d =
         | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
            sigma_f, f
         | FixpointCase ((_, _), cut) ->
-           let ((goal_o, _), (_, _), _) = d in
+           let ((goal_o, _), (goal_n, _), _) = d in
            let env = context_env goal_o in
            let filter_diff_cut diff d = filter_diff (filter_cut env cut) diff d in
            if non_empty f then
              sigma_f, f
            else
              (* Note that state is relevant here; don't use sigma_f *)
-	     let diff_rec diff opts = diff_terms (diff opts) d opts in
+             let envs = map_tuple context_env (goal_o, goal_n) in
+             let goals = map_tuple context_term (goal_o, goal_n) in
+             let diff_rec diff opts (t_o, t_n, _) =
+               diff_terms (diff opts) opts assums envs (t_o, t_n) goals
+             in
 	     let as_o, as_n = map_tuple Array.of_list (as_o, as_n) in
              let d_args_rev = as_n, as_o, no_assumptions in
              filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev sigma
@@ -203,10 +211,13 @@ let diff_app_ind diff_ind diff_arg opts d =
 	           Array.of_list
                    (diff_map
 		      (fun d_a ->
-                        let (_, arg_n, _) = d_a in
+                        let (arg_o, arg_n, _) = d_a in
                         let apply p = ret (app p (Array.make 1 arg_n)) in
                         let diff_apply = filter_diff (map_state apply) in
-                        diff_terms (diff_apply (diff_arg opts)) d opts d_a)
+                        let ((goal_o, _), (goal_n, _), assums) = d in
+                        let envs = map_tuple context_env (goal_o, goal_n) in
+                        let goals = map_tuple context_term (goal_o, goal_n) in
+                        diff_terms (diff_apply (diff_arg opts)) opts assums envs (arg_o, arg_n) goals)
                       d_args
                       sigma)
 	       in sigma, combine_cartesian app f (combine_cartesian_append args)

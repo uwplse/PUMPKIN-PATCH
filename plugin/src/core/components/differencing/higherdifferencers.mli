@@ -4,6 +4,9 @@ open Candidates
 open Differencers
 open Evd
 open Stateutils
+open Assumptions
+open Environ
+open Constr
 
 (* --- Recursive differencing --- *)
 
@@ -31,7 +34,13 @@ val diff_reduced : proof_differencer -> proof_differencer
  * to the difference in terms.
  *)
 val diff_terms :
-  proof_differencer -> goal_proof_diff -> term_differencer configurable
+  proof_differencer ->
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) configurable
 
 (*
  * Using some term differencer, recursively difference an array
