@@ -21,6 +21,7 @@ open Proofcat
 open Proofcatterms
 open Evaluation
 open Kindofchange
+open Inference
 
 (* --- Procedure --- *)
 
@@ -87,30 +88,17 @@ let return_patch opts env (patches : types list) =
  *
  * TODO finish decatifying & clean before merging
  *)
-let search_for_patch opts env trms goals sigma =
+let search_for_patch opts env terms goals sigma =
   Printf.printf "%s\n\n" "----";
-  let default = snd trms in
+  let default = snd terms in
   let change = get_change opts in
   let start_backwards = is_fixpoint_case change || is_hypothesis change in
-  let sigma, d =
-    bind
-      (map_tuple_state (eval_proof env) trms)
-      (fun (c1, c2) ->
-	let goal1, goal2 = map_tuple terminal (c1, c2) in
-	ret ((goal1, c1), (goal2, c2), no_assumptions))
-      sigma
-  in
-  let (goal_o, o), (goal_n, n), assums = d in
-  let d =
-    if start_backwards then
-      (goal_n, n), (goal_o, o), reverse_assumptions assums
-    else
-      d
-  in (* explain above *)
-  let (goal_o, o), (goal_n, n), assums = d in
-  let envs = map_tuple context_env (goal_o, goal_n) in
-  let goals = map_tuple context_term (goal_o, goal_n) in
-  let terms = proof_terms d in
+  let assums = no_assumptions in
+  let envs = env, env in
+  let terms = if start_backwards then (snd terms, fst terms) else terms in
+  let sigma, typ_o = infer_type env sigma (fst terms) in
+  let sigma, typ_n = infer_type env sigma (snd terms) in
+  let goals = (typ_o, typ_n) in
   let sigma, d = update_search_goals opts assums envs terms goals envs terms sigma in
   let diff = get_differencer opts in
   let sigma_non_rev, patches = diff d sigma in
