@@ -100,13 +100,14 @@ let temp_from_diff d =
  * 6c. When 6b doesn't produce anything, try reducing the diff and calling
  *    recursively. (Support for this is preliminary.)
  *)
-let diff opts assums envs terms goals sigma =
+let rec diff opts assums envs terms goals sigma =
   let sigma, d = temp_to_diff assums envs terms goals sigma in
   let rec diff opts d sigma = (* TODO temp *)
     let ((goal_o, o), (goal_n, n), assums) = d in
     let (assums, envs, terms, goals) = temp_from_diff d in
   bind
-    (bind (reduce_casts envs (o, n)) (reduce_letin envs))
+    (let terms = reduce_casts (map_tuple only_extension_as_term (o, n)) in
+     reduce_letin envs terms)
     (fun terms ->
       branch_state
        (fun _ -> no_diff opts assums envs terms goals)

@@ -121,30 +121,14 @@ let reduce_diff (r : reducer) d : evar_map -> goal_proof_diff state =
 	(fun n -> eval_with_terms o n d))
 
 (* Given a difference in proofs, trim down any casts and get the terms *)
-let rec reduce_casts envs (o, n) sigma =
-  let terms = map_tuple only_extension_as_term (o, n) in
+let rec reduce_casts terms =
   match map_tuple kind terms with
   | (Cast (t, _, _), _) ->
-     bind
-       (bind
-          (eval_proof (fst envs) t)
-          (fun o sigma ->
-            let sigma, n = eval_proof (snd envs) (snd terms) sigma in
-            ret (o, n) sigma))
-       (reduce_casts envs)
-       sigma
+     reduce_casts (t, snd terms)
   | (_, Cast (t, _, _)) ->
-     bind
-       (bind
-          (eval_proof (snd envs) t)
-          (fun n sigma ->
-            let sigma, o = eval_proof (fst envs) (fst terms) sigma in
-            ret (o, n) sigma))
-       (reduce_casts envs)
-       sigma
+     reduce_casts (fst terms, t)
   | _ ->
-     (* TODO just return terms *)
-     ret terms sigma
+     terms
 
 (*
  * Given a difference in proofs, substitute the head let ins
