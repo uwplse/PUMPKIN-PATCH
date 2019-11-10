@@ -32,23 +32,6 @@ let debug_search (d : goal_proof_diff) : unit =
   print_separator ()
 
 (* --- Differencing --- *)
-
-(* TODO temproary for refactor *)
-let temp_to_diff assums envs terms goals sigma =
-  let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
-  let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
-  let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
-  let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
-  let d = ((goal_o, o), (goal_n, n), assums) in
-  sigma, d
-
-let temp_from_diff d =
-  let ((goal_o, o), (goal_n, n), assums) = d in
-  let terms = map_tuple only_extension_as_term (o, n) in
-  let goals = map_tuple dest_context_term (goal_o, goal_n) in
-  let envs = map_tuple snd goals in
-  let goals = map_tuple fst goals in
-  (assums, envs, terms, goals)
                 
 (*
  * Search for a direct patch given a difference in proof_cats within.
@@ -101,70 +84,61 @@ let temp_from_diff d =
  *    recursively. (Support for this is preliminary.)
  *)
 let rec diff opts assums envs terms goals sigma =
-  let terms = reduce_casts terms in
-  bind
-    (reduce_letin envs terms)
-    (fun terms ->
-      branch_state
-       (fun _ -> no_diff opts assums envs terms goals)
-       (fun _ -> identity_candidates assums envs terms goals) (* 1 *)
-       (fun _ ->
-         branch_state
-           (fun _ -> induct_over_same_h (same_h opts) assums envs terms)
-           (fun _ ->
-             try_chain_diffs
-               [diff_app_ind (diff_inductive diff assums envs terms goals) diff opts; (* 2a *)
-                find_difference opts] (* 2b *)
-               assums
-               envs
-               terms
-               goals)
-           (fun _ ->
-             if applies_ih opts terms then
-               let terms = reduce_trim_ihs terms in
-               diff_app diff diff opts assums envs terms goals (* 3 *)
-             else
-               match map_tuple kind terms with
-               | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
-                  let change = get_change opts in
-                  let ind = is_ind opts in
-                  let is_id = is_identity change in
-                  let search_body = to_search_function diff opts assums envs terms goals in
-                  branch_state
-                    (fun _ ->
-                      no_diff
-                        (if is_id then set_change opts Conclusion else opts)
-                        assums
-                        envs
-                        (t_o, t_n)
-                        goals)
-                    (fun _ -> zoom_wrap_lambda search_body n_o t_o assums envs terms goals) (* 4 *)
-                    (fun _ ->
-                      let is_concl = is_conclusion change in
-                      if ind || not (is_concl || is_id) then
-                        zoom_unshift search_body assums envs terms goals (* 5 *)
-                      else
-                        ret give_up)
-                    ()
-               | _ ->
-                  if is_app opts terms then
-                    bind (* TODO move back into chaining, maybe *)
-                      (find_difference opts assums envs terms goals) (* 6a *)
-                      (fun cs ->
-                        if non_empty cs then
-                          ret cs
-                        else
-                          try_chain_diffs
-                            [(diff_app diff diff opts);  (* 6b *)
-                             (diff_reduced (diff opts))] (* 6c *)
-                            assums
-                            envs
-                            terms
-                            goals)
+  let sigma, terms = reduce_letin envs (reduce_casts terms) sigma in
+  branch_diff
+    (no_diff opts)
+    identity_candidates (* 1 *)
+    (branch_diff
+       (fun assums envs terms _ ->
+         induct_over_same_h (same_h opts) assums envs terms)
+       (try_chain_diffs
+          [diff_app_ind (diff_inductive diff assums envs terms goals) diff opts; (* 2a *)
+           find_difference opts] (* 2b *))
+       (fun assums envs terms goals ->
+         if applies_ih opts terms then
+           let terms = reduce_trim_ihs terms in
+           diff_app diff diff opts assums envs terms goals (* 3 *)
+         else
+           match map_tuple kind terms with
+           | (Lambda (n_o, t_o, b_o), Lambda (_, t_n, b_n)) ->
+              let change = get_change opts in
+              let ind = is_ind opts in
+              let is_id = is_identity change in
+              let search_body = to_search_function diff opts assums envs terms goals in
+              branch_diff
+                (fun assums envs _ ->
+                  no_diff
+                    (if is_id then set_change opts Conclusion else opts)
+                    assums
+                    envs
+                    (t_o, t_n))
+                (zoom_wrap_lambda search_body n_o t_o) (* 4 *)
+                (fun assums envs terms goals ->
+                  let is_concl = is_conclusion change in
+                  if ind || not (is_concl || is_id) then
+                    zoom_unshift search_body assums envs terms goals (* 5 *)
                   else
                     ret give_up)
-           ())
-       ())
+                assums
+                envs
+                terms
+                goals
+           | _ ->
+              if is_app opts terms then
+                try_chain_diffs
+                  [(find_difference opts);     (* 6a *)
+                   (diff_app diff diff opts);  (* 6b *)
+                   (diff_reduced (diff opts))] (* 6c *)
+                  assums
+                  envs
+                  terms
+                  goals
+              else
+                ret give_up))
+    assums
+    envs
+    terms
+    goals
     sigma
                
 (* --- Top-level differencer --- *)

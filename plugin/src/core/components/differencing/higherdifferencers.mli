@@ -29,6 +29,38 @@ val try_chain_diffs :
   candidates state
 
 (*
+ * If p holds, apply diff_t
+ * Otherwise, apply diff_f
+ *
+ * TODO before merging, move these type sigs back in somewhere
+ *)
+val branch_diff :
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   bool state) ->
+  (equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  candidates state) ->
+  (equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  candidates state) ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  candidates state
+    
+(*
  * Reduce and then diff
  * If reducing has no effect, then give up to prevent inifinite recursion
  *)

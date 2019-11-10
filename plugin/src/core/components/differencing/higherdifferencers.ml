@@ -27,6 +27,17 @@ let rec try_chain_diffs diffs assums envs terms goals =
      ret give_up
 
 (*
+ * If p holds, apply diff_t
+ * Otherwise, apply diff_f
+ *)
+let branch_diff p diff_t diff_f assums envs terms goals =
+  branch_state
+    (fun _ -> p assums envs terms goals)
+    (fun _ -> diff_t assums envs terms goals)
+    (fun _ -> diff_f assums envs terms goals)
+    ()
+  
+(*
  * Try to reduce and then diff
  * If reducing does not change the term, then give_up to prevent
  * inifinite recursion
