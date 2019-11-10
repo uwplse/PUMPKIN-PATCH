@@ -20,6 +20,14 @@ open Stateutils
 open Convertibility
 open Kindofchange
 
+let temp_from_diff d =
+  let ((goal_o, o), (goal_n, n), assums) = d in
+  let terms = map_tuple only_extension_as_term (o, n) in
+  let goals = map_tuple dest_context_term (goal_o, goal_n) in
+  let envs = map_tuple snd goals in
+  let goals = map_tuple fst goals in
+  (assums, envs, terms, goals)
+       
 (*
  * Given a search function and a difference between terms,
  * if the terms are applications (f args) and (f' args'),
@@ -60,6 +68,14 @@ open Kindofchange
  * TODO: clean up
  *)
 let diff_app diff_f diff_arg opts assums envs terms goals =
+  let diff_f opts d =
+    let assums, envs, terms, goals = temp_from_diff d in
+    diff_f opts assums envs terms goals
+  in
+  let diff_arg opts d =
+    let assums, envs, terms, goals = temp_from_diff d in
+    diff_arg opts assums envs terms goals
+  in
   let env = fst envs in
   match map_tuple kind terms with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
@@ -148,6 +164,10 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *)
 let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
+  let diff_arg opts d =
+    let assums, envs, terms, goals = temp_from_diff d in
+    diff_arg opts assums envs terms goals
+  in
   let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
   let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
   let d_ind = (o, 0, []), (n, 0, []), assums in

@@ -262,12 +262,7 @@ let to_search_function search opts assums envs terms goals =
     bind
       (update_search_goals opts envs terms goals envs_next terms_next)
       (fun (envs, terms, goals) sigma ->
-        let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
-        let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
-        let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
-        let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
-        let d = ((goal_o, o), (goal_n, n), assums) in
-        search opts d sigma))
+        search opts assums envs terms goals sigma))
 
 (*
  * Check if a term applies the inductive hypothesis

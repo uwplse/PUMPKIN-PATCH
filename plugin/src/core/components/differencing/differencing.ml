@@ -101,13 +101,9 @@ let temp_from_diff d =
  *    recursively. (Support for this is preliminary.)
  *)
 let rec diff opts assums envs terms goals sigma =
-  let sigma, d = temp_to_diff assums envs terms goals sigma in
-  let rec diff opts d sigma = (* TODO temp *)
-    let ((goal_o, o), (goal_n, n), assums) = d in
-    let (assums, envs, terms, goals) = temp_from_diff d in
+  let terms = reduce_casts terms in
   bind
-    (let terms = reduce_casts (map_tuple only_extension_as_term (o, n)) in
-     reduce_letin envs terms)
+    (reduce_letin envs terms)
     (fun terms ->
       branch_state
        (fun _ -> no_diff opts assums envs terms goals)
@@ -149,7 +145,7 @@ let rec diff opts assums envs terms goals sigma =
                         zoom_unshift search_body assums envs terms goals (* 5 *)
                       else
                         ret give_up)
-                    d
+                    ()
                | _ ->
                   if is_app opts terms then
                     bind (* TODO move back into chaining, maybe *)
@@ -160,20 +156,16 @@ let rec diff opts assums envs terms goals sigma =
                         else
                           try_chain_diffs
                             [(diff_app diff diff opts);  (* 6b *)
-                             (diff_reduced
-                                (fun assums envs terms goals sigma ->
-                                  let sigma, d = temp_to_diff assums envs terms goals sigma in (* TODO remove once ported the rest *)
-                                  diff opts d sigma))] (* 6c *)
+                             (diff_reduced (diff opts))] (* 6c *)
                             assums
                             envs
                             terms
                             goals)
                   else
                     ret give_up)
-           d)
-       d)
+           ())
+       ())
     sigma
-  in diff opts d sigma
                
 (* --- Top-level differencer --- *)
 

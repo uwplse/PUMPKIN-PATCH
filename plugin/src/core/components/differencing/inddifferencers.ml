@@ -20,6 +20,14 @@ open Higherdifferencers
 open Stateutils
 open Envutils
 
+let temp_from_diff d =
+  let ((goal_o, o), (goal_n, n), assums) = d in
+  let terms = map_tuple only_extension_as_term (o, n) in
+  let goals = map_tuple dest_context_term (goal_o, goal_n) in
+  let envs = map_tuple snd goals in
+  let goals = map_tuple fst goals in
+  (assums, envs, terms, goals)
+
 (* --- Cases --- *)
 
 (*
@@ -207,6 +215,10 @@ let temp_to_diff assums envs terms goals sigma =
  * are lists of different lengths, or where there is a change in hypothesis.
  *)
 let diff_inductive diff assums_old envs_old terms_old goals_old opts (d : (proof_cat * int) proof_diff) sigma =
+  let diff opts d =
+    let assums, envs, terms, goals = temp_from_diff d in
+    diff opts assums envs terms goals
+  in
   let sigma, d_old = temp_to_diff assums_old envs_old terms_old goals_old sigma in
   let ((o, nparams_o), (n, nparams_n), assums) = d in
   if not (nparams_o = nparams_n) then

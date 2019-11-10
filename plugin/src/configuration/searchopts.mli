@@ -75,7 +75,12 @@ val is_ind : bool configurable
  * can be used by zooming.
  *)
 val to_search_function :
-  ((goal_proof_diff -> evar_map -> candidates state) configurable) ->
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) configurable ->
   (equal_assumptions ->
    (env * env) ->
    (constr * constr) ->

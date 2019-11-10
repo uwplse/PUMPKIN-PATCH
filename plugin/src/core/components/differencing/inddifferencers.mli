@@ -7,6 +7,8 @@ open Evd
 open Assumptions
 open Environ
 open Constr
+open Stateutils
+open Candidates
 
 (*
  * Difference an inductive proof.
@@ -21,7 +23,12 @@ open Constr
  * to update the goals for the next iteration.
  *)
 val diff_inductive :
-  proof_differencer configurable ->
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) configurable ->
   equal_assumptions ->
   (env * env) ->
   (constr * constr) ->

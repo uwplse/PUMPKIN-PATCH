@@ -16,8 +16,18 @@ open Candidates
  * Use the options to determine how to combine the results.
  *)
 val diff_app :
-  proof_differencer configurable -> (* diff f *)
-  proof_differencer configurable -> (* diff each arg *)
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) configurable -> (* diff f *)
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) configurable -> (* diff each arg *)
   (equal_assumptions ->
    (env * env) ->
    (constr * constr) ->
@@ -34,7 +44,12 @@ val diff_app :
  *)
 val diff_app_ind :
   ind_proof_differencer configurable -> (* diff f *)
-  proof_differencer configurable -> (* diff each arg *)
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) configurable -> (* diff each arg *)
   (equal_assumptions ->
    (env * env) ->
    (constr * constr) ->
