@@ -144,14 +144,13 @@ let rec reduce_casts envs (o, n) sigma =
        sigma
   | _ ->
      (* TODO just return terms *)
-     ret (o, n) sigma
+     ret terms sigma
 
 (*
  * Given a difference in proofs, substitute the head let ins
  * Fail silently
  *)
-let reduce_letin envs (o, n) =
-  let terms = map_tuple only_extension_as_term (o, n) in
+let reduce_letin envs terms =
   try
     if isLetIn (fst terms) || isLetIn (snd terms) then
       bind
@@ -160,17 +159,11 @@ let reduce_letin envs (o, n) =
 	  bind
 	    (fun sigma -> reduce_whd_if_let_in (snd envs) sigma (snd terms))
 	    (fun n' ->
-              bind
-                (eval_proof (fst envs) o')
-                (fun o ->
-                  bind
-                    (eval_proof (snd envs) n')
-                    (fun n ->
-                      ret (o, n)))))
+              ret (o', n')))
     else
-      ret (o, n)
+      ret terms
   with _ ->
-    ret (o, n)
+    ret terms
 
 (* Given a term, trim off the IH, assuming it's an application *)
 let trim_ih (trm : types) : types =

@@ -15,8 +15,16 @@ open Constr
  * If that fails, then try the next one, and so on
  *)
 val try_chain_diffs :
-  ('a candidate_differencer) list ->
-  'a proof_diff ->
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) list ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
   evar_map ->
   candidates state
 
@@ -24,7 +32,19 @@ val try_chain_diffs :
  * Reduce and then diff
  * If reducing has no effect, then give up to prevent inifinite recursion
  *)
-val diff_reduced : proof_differencer -> proof_differencer
+val diff_reduced :
+  (equal_assumptions ->
+   (env * env) ->
+   (constr * constr) ->
+   (types * types) ->
+   evar_map ->
+   candidates state) ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  candidates state
 
 (*
  * Convert a proof differencer to a term differencer

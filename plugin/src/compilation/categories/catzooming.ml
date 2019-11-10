@@ -150,11 +150,22 @@ let zoom_search f ((_, o), (_, n), assums) =
     intro_common
     (o, n, assums)
 
+(* TODO temproary for refactor *)
+let temp_to_diff assums envs terms goals sigma =
+  let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
+  let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
+  let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), Utilities.fid ()) in
+  let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), Utilities.fid ()) in
+  let d = ((goal_o, o), (goal_n, n), assums) in
+  sigma, d
+    
 (* Zoom in, search, and wrap the result in a lambda from binding (n : t)  *)
-let zoom_wrap_lambda f n t (d : goal_proof_diff) =
+let zoom_wrap_lambda f n t assums envs terms goals sigma =
+  let sigma, d = temp_to_diff assums envs terms goals sigma in
   zoom_search
     (fun d -> bind (f d) (map_state (fun c -> ret (mkLambda (n, t, c)))))
     d
+    sigma
 
 (* Zoom in, search, and wrap the result in a prod from binding (n : t) *)
 let zoom_wrap_prod f n t (d : goal_proof_diff) =
@@ -163,7 +174,9 @@ let zoom_wrap_prod f n t (d : goal_proof_diff) =
     d
 
 (* Zoom in, search, and unshift the result *)
-let zoom_unshift f (d : goal_proof_diff) =
+let zoom_unshift f assums envs terms goals sigma =
+  let sigma, d = temp_to_diff assums envs terms goals sigma in
   zoom_search
     (fun d -> bind (f d) (map_state (fun t -> ret (unshift t))))
     d
+    sigma

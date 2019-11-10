@@ -91,7 +91,7 @@ val reduce_casts :
   env * env ->
   proof_cat * proof_cat ->
   evar_map ->
-  (proof_cat * proof_cat) state
+  (constr * constr) state
 
 (*
  * Given a differrence in proofs, weak head reduce any let-ins
@@ -99,9 +99,9 @@ val reduce_casts :
  *)
 val reduce_letin :
   env * env ->
-  proof_cat * proof_cat ->
+  constr * constr ->
   evar_map ->
-  (proof_cat * proof_cat) state
+  (constr * constr) state
 
 (* Given a difference in proofs, trim applications of the IH *)
 val reduce_trim_ihs : (constr * constr) -> (constr * constr)

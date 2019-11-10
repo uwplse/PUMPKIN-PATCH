@@ -7,6 +7,7 @@ open Names
 open Constr
 open Stateutils
 open Evd
+open Assumptions
 
 (* --- Zooming --- *)
 
@@ -118,7 +119,15 @@ val zoom_search : search_function -> goal_proof_diff -> evar_map -> candidates s
  * Zoom in, search, and wrap the result in a lambda
  *)
 val zoom_wrap_lambda :
-  search_function -> Name.t -> types -> goal_proof_diff -> evar_map -> candidates state
+  search_function ->
+  Name.t ->
+  types ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  candidates state
 
 (*
  * Zoom in, search, and wrap the result in a product
@@ -129,5 +138,12 @@ val zoom_wrap_prod :
 (*
  * Zoom in, search, and unshift the result
  *)
-val zoom_unshift : search_function -> goal_proof_diff -> evar_map -> candidates state
+val zoom_unshift :
+  search_function ->
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  candidates state
 

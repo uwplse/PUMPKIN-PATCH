@@ -13,16 +13,16 @@ open Stateutils
  * Try to difference with one differencer
  * If that fails, then try the next one
  *)
-let rec try_chain_diffs diffs d =
+let rec try_chain_diffs diffs assums envs terms goals =
   match diffs with
   | diff_h :: diff_t ->
      bind
-       (diff_h d)
+       (diff_h assums envs terms goals)
        (fun cs ->
          if non_empty cs then
            ret cs
          else
-           try_chain_diffs diff_t d)
+           try_chain_diffs diff_t assums envs terms goals)
   | _ ->
      ret give_up
 
@@ -31,16 +31,13 @@ let rec try_chain_diffs diffs d =
  * If reducing does not change the term, then give_up to prevent
  * inifinite recursion
  *)
-let diff_reduced diff d =
-  let (o, n) = proof_terms d in
-  bind
-    (reduce_diff reduce_term d)
-    (fun d_red ->
-      let (o_red, n_red) = proof_terms d_red in
-      if not ((equal o o_red) && (equal n n_red)) then
-        diff d_red
-      else
-        ret give_up)
+let diff_reduced diff assums envs terms goals sigma =
+  let sigma, term_o = reduce_term (fst envs) sigma (fst terms) in
+  let sigma, term_n = reduce_term (snd envs) sigma (snd terms) in
+  if not ((equal (fst terms) term_o) && (equal (snd terms) term_n)) then
+    diff assums envs (term_o, term_n) goals sigma
+  else
+    ret give_up sigma
 
 (*
  * Convert a differencing function that takes a diff into one between two terms

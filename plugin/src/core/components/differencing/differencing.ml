@@ -107,10 +107,7 @@ let diff opts assums envs terms goals sigma =
     let (assums, envs, terms, goals) = temp_from_diff d in
   bind
     (bind (reduce_casts envs (o, n)) (reduce_letin envs))
-    (fun (o, n) ->
-      let ((goal_o, _), (goal_n, _), assums) = d in
-      let d = ((goal_o, o), (goal_n, n), assums) in
-      let (_, _, terms, _) = temp_from_diff d in
+    (fun terms ->
       branch_state
        (fun _ -> no_diff opts assums envs terms goals)
        (fun _ -> identity_candidates assums envs terms goals) (* 1 *)
@@ -118,13 +115,13 @@ let diff opts assums envs terms goals sigma =
          branch_state
            (fun _ -> induct_over_same_h (same_h opts) assums envs terms)
            (fun _ ->
-             bind (* TODO move back into chaining, maybe *)
-               (diff_app_ind (diff_inductive diff assums envs terms goals) diff opts assums envs terms goals) (* 2a *)
-               (fun cs ->
-                 if non_empty cs then
-                   ret cs
-                 else
-                   find_difference opts assums envs terms goals) (* 2b *))
+             try_chain_diffs
+               [diff_app_ind (diff_inductive diff assums envs terms goals) diff opts; (* 2a *)
+                find_difference opts] (* 2b *)
+               assums
+               envs
+               terms
+               goals)
            (fun _ ->
              if applies_ih opts terms then
                let terms = reduce_trim_ihs terms in
@@ -144,11 +141,11 @@ let diff opts assums envs terms goals sigma =
                         envs
                         (t_o, t_n)
                         goals)
-                    (fun _ -> zoom_wrap_lambda search_body n_o t_o d) (* 4 *)
+                    (fun _ -> zoom_wrap_lambda search_body n_o t_o assums envs terms goals) (* 4 *)
                     (fun _ ->
                       let is_concl = is_conclusion change in
                       if ind || not (is_concl || is_id) then
-                        zoom_unshift search_body d (* 5 *)
+                        zoom_unshift search_body assums envs terms goals (* 5 *)
                       else
                         ret give_up)
                     d
@@ -161,10 +158,15 @@ let diff opts assums envs terms goals sigma =
                           ret cs
                         else
                           try_chain_diffs
-                            [(fun _ ->
-                                diff_app diff diff opts assums envs terms goals);  (* 6b *)
-                             (diff_reduced (diff opts))] (* 6c *)
-                            d)
+                            [(diff_app diff diff opts);  (* 6b *)
+                             (diff_reduced
+                                (fun assums envs terms goals sigma ->
+                                  let sigma, d = temp_to_diff assums envs terms goals sigma in (* TODO remove once ported the rest *)
+                                  diff opts d sigma))] (* 6c *)
+                            assums
+                            envs
+                            terms
+                            goals)
                   else
                     ret give_up)
            d)
