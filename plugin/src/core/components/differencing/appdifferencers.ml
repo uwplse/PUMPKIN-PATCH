@@ -76,9 +76,6 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
       (update_search_goals opts envs terms goals envs terms_next)
       (fun (envs, terms, goals) -> diff opts assums envs terms goals)
   in
-  let diff_all_args =
-    diff_map_flat (fun _ -> diff_update_goals diff_arg)
-  in
   match map_tuple kind terms with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
      (match get_change opts with
