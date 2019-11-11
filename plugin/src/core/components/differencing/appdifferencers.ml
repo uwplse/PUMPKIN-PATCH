@@ -65,7 +65,7 @@ let diff_terms diff opts assums envs terms goals envs_next terms_next =
  * For example, if one application passes through an intermediate lemma
  * but the other doesn't, this function has no clue what to do.
  *
- * TODO: clean up
+ * TODO: clean up, make filter exist again once we port everything
  *)
 let diff_app diff_f diff_arg opts assums envs terms goals =
   let diff_rec diff opts _ (t_o, t_n) = (* TODO remove, rename second to diff_rec *)
@@ -97,8 +97,7 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
            terms
            goals
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
-         (* TODO clean, make filter exist again when everything
-            is back to proof differencers *)
+         (* TODO clean, left off here *)
          let env = fst envs in
          let assums = no_assumptions in
          let os, ns = args_o, args_n in
