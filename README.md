@@ -248,6 +248,23 @@ If you would like to contribute directly to the plugin, feel free to cut a pull 
 
 ## Bonus Functionality
 
+### Refactoring
+
+Right now, there is support for one simple refactoring using the
+`Replace Convertible` command. Just write:
+
+```
+Replace Convertible foo in bar as baz.
+```
+
+This will replace all subterms of `bar` that are convertible to `foo`
+with `foo` itself, and define it as a new term `baz`. Work is in progress
+for a better interface for this, and for commands that do this over an
+entire file or over multiple files. Please cut an issue if you have any ideas
+for the ideal interface!
+
+See [Replace.v](/plugin/coq/Replace.v) for an example.
+
 ### Proof Optimization
 
 Proof patching can be used to optimize proofs as well. Optimization removes extra induction

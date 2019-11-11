@@ -28,6 +28,8 @@ open Defutils
 open Envutils
 open Stateutils
 open Inference
+open Substitution
+open Pp
 
 module Globmap = Globnames.Refmap
 
@@ -235,6 +237,16 @@ let factor n trm : unit =
       fs
   with _ -> failwith "Could not find lemmas"
 
+(* Replace all subterms convertible with conv_trm in trm *)
+let replace_convertible n conv_trm def : unit =
+  let (sigma, env) = Pfedit.get_current_context () in
+  let sigma, conv_trm = intern env sigma conv_trm in
+  let sigma, def = intern env sigma def in
+  let trm = unwrap_definition env def in
+  let sigma, subbed = all_conv_substs env sigma (conv_trm, conv_trm) trm in
+  ignore (define_term n sigma subbed false);
+  Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n")
+
 (* --- Vernac syntax --- *)
 
 (* Patch command *)
@@ -275,4 +287,10 @@ END
 VERNAC COMMAND EXTEND FactorCandidate CLASSIFIED AS SIDEFF
 | [ "Factor" constr(trm) "using" "prefix" ident(n) ] ->
   [ factor n trm ]
+END
+
+(* Replace subterms with a convertible term *)
+VERNAC COMMAND EXTEND ReplaceConvertible CLASSIFIED AS SIDEFF
+| [ "Replace" "Convertible" constr(conv_trm) "in" constr(def) "as" ident(n) ] ->
+  [ replace_convertible n conv_trm def ]
 END
