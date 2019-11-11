@@ -232,18 +232,17 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
 	                  app (app f final_args_o) (Array.make 1 dummy_arg)) 
 	                f
 	     else
-               let final_args_n = Array.of_list (fst (split_at arity as_n)) in
-               let d_args = final_args_n, final_args_o, no_assumptions in
+               let final_args_n = fst (split_at arity as_n) in
 	       let sigma, args =
                  Util.on_snd
 	           Array.of_list
                    (diff_map
-		      (fun d_a ->
-                        let (arg_o, arg_n, _) = d_a in
+		      (fun _ (arg_o, arg_n) ->
                         let apply p = ret (app p (Array.make 1 arg_n)) in
                         let diff_apply = filter_diff (map_state apply) in
                         diff_terms (diff_apply (diff_arg opts)) opts assums envs terms goals envs (arg_o, arg_n))
-                      d_args
+                      no_assumptions (* TODO just use assums here and inside? *)
+                      (final_args_n, Array.to_list final_args_o)
                       sigma)
 	       in sigma, combine_cartesian app f (combine_cartesian_append args)
            else

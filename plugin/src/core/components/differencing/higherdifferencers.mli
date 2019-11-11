@@ -37,9 +37,21 @@ val diff_reduced :
   proof_differencer
 
 (*
- * Using some term differencer, recursively difference an array
+ * Using some term differencer, recursively difference a list of differencers
+ * in terms, with the environment and goals predetermined.
+ *
+ * TODO move to use term_differencer and arr_list_differencer again
+ * once we finish porting these
  *)
-val diff_map : term_differencer -> arr_list_differencer
+val diff_map :
+  (equal_assumptions ->
+   (constr * constr) ->
+   evar_map ->
+   candidates state) ->
+  equal_assumptions ->
+  (constr list * constr list) ->
+  evar_map ->
+  (candidates list) state
 
 (*
  * Using some term differencer, recursively difference an array
