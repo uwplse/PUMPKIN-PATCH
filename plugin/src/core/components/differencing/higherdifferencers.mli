@@ -39,6 +39,9 @@ val diff_reduced :
 (*
  * Using some term differencer, recursively difference a list of differencers
  * in terms, with the environment and goals predetermined.
+ *
+ * TODO just move to be proof differencers always, for all of these,
+ * after stuff works, before merge, then remove term_differencer
  *)
 val diff_map : term_differencer -> args_differencer
 
@@ -47,11 +50,3 @@ val diff_map : term_differencer -> args_differencer
  *)
 val diff_map_flat : term_differencer -> args_differencer_flat
 
-(*
- * Apply some differencing function
- * Filter the result using the supplied modifier
- *)
-val filter_diff :
-  ('b -> evar_map -> 'b state) ->
-  ('a, 'b) differencer ->
-  ('a, 'b) differencer

@@ -63,9 +63,3 @@ let diff_map diff assums (os, ns) =
 let diff_map_flat diff assums (os, ns) =
   bind (diff_map diff assums (os, ns)) (fun l -> ret (List.flatten l))
 
-(*
- * Apply some differencing function
- * Filter the result using the supplied modifier
- *)
-let filter_diff filter (diff : ('a, 'b) differencer) d =
-  bind (diff d) filter
