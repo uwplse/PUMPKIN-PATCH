@@ -30,7 +30,12 @@ type proof_diff_predicate =
   evar_map ->
   bool state
 
-type term_differencer = types candidate_differencer
+type term_differencer =
+  equal_assumptions ->
+  (constr * constr) ->
+  evar_map ->
+  candidates state
+  
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
 
 type args_differencer_flat =
