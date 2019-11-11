@@ -20,28 +20,13 @@ open Stateutils
 open Convertibility
 open Kindofchange
 
-(* TODO temporary *)
-let temp_from_diff d =
-  let ((goal_o, o), (goal_n, n), assums) = d in
-  let terms = map_tuple only_extension_as_term (o, n) in
-  let goals = map_tuple dest_context_term (goal_o, goal_n) in
-  let envs = map_tuple snd goals in
-  let goals = map_tuple fst goals in
-  (assums, envs, terms, goals)
-
 (*
  * TODO temporary
  *)
 let diff_terms diff opts assums envs terms goals envs_next terms_next =
   bind
     (update_search_goals opts envs terms goals envs_next terms_next)
-    (fun (envs, terms, goals) sigma ->
-      let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
-      let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
-      let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
-      let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
-      let d = ((goal_o, o), (goal_n, n), assums) in
-      diff d sigma)
+    (fun (envs, terms, goals) -> diff assums envs terms goals)
     
 (*
  * Given a search function and a difference between terms,
@@ -83,62 +68,51 @@ let diff_terms diff opts assums envs terms goals envs_next terms_next =
  * TODO: clean up
  *)
 let diff_app diff_f diff_arg opts assums envs terms goals =
-  let diff_f opts d =
-    let assums, envs, terms, goals = temp_from_diff d in
-    diff_f opts assums envs terms goals
+  let diff_rec diff opts _ (t_o, t_n) = (* TODO remove, rename second to diff_rec *)
+    diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
   in
-  let diff_arg opts d =
-    let assums, envs, terms, goals = temp_from_diff d in
-    diff_arg opts assums envs terms goals
+  let diff_update_goals diff terms_next =
+    bind
+      (update_search_goals opts envs terms goals envs terms_next)
+      (fun (envs, terms, goals) -> diff opts assums envs terms goals)
   in
-  let env = fst envs in
+  let diff_all_args =
+    diff_map_flat (fun _ -> diff_update_goals diff_arg)
+  in
   match map_tuple kind terms with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
-     let diff_rec diff opts (t_o, t_n, _) =
-       diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
-     in
-     let diff_rec' diff opts assums (t_o, t_n) =
-       diff_rec diff opts (t_o, t_n, assums)
-     in
-     let d_f = f_o, f_n, no_assumptions in
-     let d_args = args_o, args_n, no_assumptions in
      (match get_change opts with
       | InductiveType (_, _) ->
-         diff_rec diff_f opts d_f
+         diff_update_goals diff_f (f_o, f_n)
       | FixpointCase ((_, _), cut) ->
-         let filter_diff_cut diff (o, n, assums) =
-           bind (diff assums (o, n)) (filter_cut env cut)
+         let diff_filter_cut diff terms_next =
+           bind (diff terms_next) (filter_cut (fst envs) cut)
          in
-         bind (* TODO move back to chain_diff *)
-           (filter_diff_cut (diff_rec' diff_f opts) d_f)
-           (fun fs ->
-             if non_empty fs then
-               ret fs
-             else
-               filter_diff_cut
-                 (fun assums (args_o, args_n) ->
-                   let args_o, args_n = map_tuple Array.to_list (args_o, args_n) in
-                   diff_map_flat (diff_rec' diff_arg opts) assums (args_o, args_n))
-                 (args_n, args_o, no_assumptions))
+         try_chain_diffs
+           [(fun _ _ _ _ ->
+               diff_filter_cut (diff_update_goals diff_f) (f_o, f_n));
+            (fun _ _ _ _ ->
+              diff_filter_cut
+                (diff_map_flat (fun _ -> diff_update_goals diff_arg) assums)
+                (map_tuple Array.to_list (args_n, args_o)))]
+           assums
+           envs
+           terms
+           goals
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          (* TODO clean, make filter exist again when everything
             is back to proof differencers *)
+         let env = fst envs in
          let assums = no_assumptions in
          let os, ns = args_o, args_n in
          bind
            (diff_map_flat
-              (diff_rec'
-                 (fun opts d ->
-                   branch_state
-                    (fun ((goal_o, o), (goal_n, n), assums) ->
-                       let goals = map_tuple dest_context_term (goal_o, goal_n) in
-                       let envs = map_tuple snd goals in
-                       let goals = map_tuple fst goals in
-                       let terms = map_tuple only_extension_as_term (o, n) in
-                       no_diff opts assums envs terms goals)
-                     (fun _ -> ret give_up)
-                     (diff_arg opts)
-                     d)
+              (diff_rec
+                 (fun opts ->
+                   branch_diff
+                     (no_diff opts)
+                     (fun _ _ _ _ -> ret give_up)
+                     (diff_arg opts))
                  (set_change opts Conclusion))
               assums
               (map_tuple Array.to_list (os, ns)))
@@ -149,14 +123,15 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
              else
                ret args)
       | Hypothesis (_, _) ->
+         let env = fst envs in
          let (g_o, g_n) = goals in
          let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
-         let filter_goal trms evd = filter_by_type goal_type env evd trms in
-         let filter_diff_h diff (o, n, assums) =
+         let filter_goal trms sigma = filter_by_type goal_type env sigma trms in
+         let filter_diff_h diff assums (o, n) =
            bind (diff assums (o, n)) filter_goal
          in
          bind
-           (filter_diff_h (diff_rec' diff_f opts) d_f)
+           (filter_diff_h (diff_rec diff_f opts) no_assumptions (f_o, f_n))
            (fun fs ->
              if non_empty fs then
                ret fs
@@ -164,9 +139,11 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
                filter_diff_h
                  (fun assums (os, ns) ->
                    let (os, ns) = map_tuple Array.to_list (os, ns) in
-                   diff_map_flat (diff_rec' diff_arg opts) assums (os, ns))
-                 d_args)
+                   diff_map_flat (diff_rec diff_arg opts) assums (os, ns))
+                 no_assumptions
+                 (args_o, args_n))
       | Conclusion | Identity ->
+         let env = fst envs in
          branch_state
            (fun (args_o, args_n) ->
              forall2_state
@@ -180,7 +157,7 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
              let combine_app = combine_cartesian app in
 	     let args = Array.map (fun a_o -> [a_o]) args_o in
              bind
-               (diff_rec diff_f opts d_f)
+               (diff_rec diff_f opts no_assumptions (f_o, f_n))
                (fun fs -> ret (combine_app fs (combine_cartesian_append args))))
            (fun _ -> ret give_up)
            (args_o, args_n)
@@ -197,10 +174,6 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *)
 let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
-  let diff_arg opts d =
-    let assums, envs, terms, goals = temp_from_diff d in
-    diff_arg opts assums envs terms goals
-  in
   let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
   let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
   let d_ind = (o, 0, []), (n, 0, []), assums in
@@ -266,10 +239,10 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
                    (diff_map
 		      (fun _ (arg_o, arg_n) ->
                         let apply p = ret (app p (Array.make 1 arg_n)) in
-                        let diff_apply diff (o, n, assums) =
-                          bind (diff assums (o, n)) (map_state apply)
+                        let diff_apply diff assums envs terms goals =
+                          bind (diff assums envs terms goals) (map_state apply)
                         in
-                        diff_terms (diff_apply (fun assums (o, n) -> diff_arg opts (o, n, assums))) opts assums envs terms goals envs (arg_o, arg_n))
+                        diff_terms (diff_apply (diff_arg opts)) opts assums envs terms goals envs (arg_o, arg_n))
                       no_assumptions (* TODO just use assums here and inside? *)
                       (final_args_n, Array.to_list final_args_o)
                       sigma)
