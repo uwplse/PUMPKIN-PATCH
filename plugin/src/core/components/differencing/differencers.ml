@@ -8,11 +8,28 @@ open Proofcat
 open Kindofchange
 open Evd
 open Stateutils
+open Assumptions
+open Environ
 
 type ('a, 'b) differencer = 'a proof_diff -> evar_map -> 'b state
 
 type 'a candidate_differencer = ('a, candidates) differencer
-type proof_differencer = (context_object * proof_cat) candidate_differencer
+type proof_differencer =
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  candidates state
+
+type proof_diff_predicate =
+  equal_assumptions ->
+  (env * env) ->
+  (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  bool state
+
 type term_differencer = types candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
 
@@ -24,5 +41,3 @@ type 'a change_detector = ('a, kind_of_change) differencer
 type proof_change_detector = (context_object * proof_cat) change_detector
 
 type 'a predicate_differencer = ('a, bool) differencer
-type proof_diff_predicate = (context_object * proof_cat) predicate_differencer
-

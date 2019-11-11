@@ -15,86 +15,26 @@ open Constr
  * If that fails, then try the next one, and so on
  *)
 val try_chain_diffs :
-  (equal_assumptions ->
-   (env * env) ->
-   (constr * constr) ->
-   (types * types) ->
-   evar_map ->
-   candidates state) list ->
-  equal_assumptions ->
-  (env * env) ->
-  (constr * constr) ->
-  (types * types) ->
-  evar_map ->
-  candidates state
+  proof_differencer list ->
+  proof_differencer
 
 (*
  * If p holds, apply diff_t
  * Otherwise, apply diff_f
- *
- * TODO before merging, move these type sigs back in somewhere
  *)
 val branch_diff :
-  (equal_assumptions ->
-   (env * env) ->
-   (constr * constr) ->
-   (types * types) ->
-   evar_map ->
-   bool state) ->
-  (equal_assumptions ->
-  (env * env) ->
-  (constr * constr) ->
-  (types * types) ->
-  evar_map ->
-  candidates state) ->
-  (equal_assumptions ->
-  (env * env) ->
-  (constr * constr) ->
-  (types * types) ->
-  evar_map ->
-  candidates state) ->
-  equal_assumptions ->
-  (env * env) ->
-  (constr * constr) ->
-  (types * types) ->
-  evar_map ->
-  candidates state
+  proof_diff_predicate ->
+  proof_differencer ->
+  proof_differencer ->
+  proof_differencer
     
 (*
  * Reduce and then diff
  * If reducing has no effect, then give up to prevent inifinite recursion
  *)
 val diff_reduced :
-  (equal_assumptions ->
-   (env * env) ->
-   (constr * constr) ->
-   (types * types) ->
-   evar_map ->
-   candidates state) ->
-  equal_assumptions ->
-  (env * env) ->
-  (constr * constr) ->
-  (types * types) ->
-  evar_map ->
-  candidates state
-
-(*
- * Convert a proof differencer to a term differencer
- *
- * In other words, update the goals and terms of the current diff using
- * the supplied options, then apply the supplied differencing function
- * to the difference in terms.
- *)
-val diff_terms :
   proof_differencer ->
-  (equal_assumptions ->
-   (env * env) ->
-   (constr * constr) ->
-   (types * types) ->
-   (env * env) ->
-   (constr * constr) ->
-   evar_map ->
-   candidates state) configurable
+  proof_differencer
 
 (*
  * Using some term differencer, recursively difference an array
