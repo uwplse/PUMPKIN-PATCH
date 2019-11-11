@@ -34,15 +34,15 @@ let rec get_goal_fix env (o, n, assums) =
   if equal o n then
     ret give_up
   else
-    let rec get_goal_reduced (o, n, assums) =
+    let rec get_goal_reduced assums (o, n) =
       let reduce_hd t sigma = reduce_unfold_whd env sigma t in
       bind
         (map_tuple_state reduce_hd (o, n))
         (fun (red_old, red_new) ->
           match map_tuple kind (red_old, red_new) with
           | (App (f1, args1), App (f2, args2)) when equal f1 f2 ->
-             let d_args = args1, args2, no_assumptions in
-             diff_map_flat get_goal_reduced d_args
+             let args_diff = map_tuple Array.to_list (args1, args2) in
+             diff_map_flat get_goal_reduced assums args_diff
           | _ when not (equal red_old red_new) ->
              let g = mkProd (Names.Name.Anonymous, red_old, shift red_new) in
              bind (fun sigma -> reduce_unfold env sigma g) (fun l -> ret [l])
@@ -58,10 +58,10 @@ let rec get_goal_fix env (o, n, assums) =
              (get_goal_fix (push_local (n1, t1) env) (b1, b2, assums))
              (map_state (fun c -> ret (mkProd (n1, t1, c)))))
          (fun _ ->
-           get_goal_reduced (o, n, no_assumptions))
+           get_goal_reduced no_assumptions (o, n))
          (t1, t2)
     | _ ->
-       get_goal_reduced (o, n, no_assumptions)
+       get_goal_reduced no_assumptions (o, n)
 
 (* Same as the above, but at the top-level for the fixpoint case *)
 let rec diff_fix_case env (o, n, assums) =
@@ -71,11 +71,11 @@ let rec diff_fix_case env (o, n, assums) =
       (fun (m1, m2) ->
         if Array.length bs1 = Array.length bs2 then
           let env_m = push_local (Names.Name.Anonymous, m1) env in
-          let diff_bs = diff_map_flat (get_goal_fix env_m) in
+          let diff_bs = diff_map_flat (fun assums (o, n) -> get_goal_fix env_m (o, n, assums)) in
           bind
             (map_tuple_state
-               diff_bs
-               ((bs1, bs2, assums), (bs2, bs1, assums)))
+               (diff_bs assums)
+               (map_tuple Array.to_list (bs1, bs2), map_tuple Array.to_list (bs2, bs1)))
             (fun (cs1, cs2) -> ret (unshift_all (List.append cs1 cs2)))
         else
           ret give_up)
@@ -116,9 +116,8 @@ let diff_fix_cases env (o, n, assums) =
            (Array.to_list tsn))
        (fun _ ->
          let env_fix = push_rel_context (bindings_for_fix nso tso) env in
-         let d_ds = dso, dsn, assums in
          bind
-           (diff_map_flat (diff_fix_case env_fix) d_ds)
+           (diff_map_flat (fun assums (o, n) -> diff_fix_case env_fix (o, n, assums)) assums (Array.to_list dso, Array.to_list dsn))
            (fun ds ->
              let fs = List.map (reconstruct_lambda env_fix) ds in
              let args = Array.make 1 new_term in

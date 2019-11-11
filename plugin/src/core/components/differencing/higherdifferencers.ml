@@ -51,23 +51,17 @@ let diff_reduced diff assums envs terms goals sigma =
     ret give_up sigma
 
 (*
- * Recursively difference each term in a diff of arrays
+ * Using some term differencer, recursively difference a list of differencers
+ * in terms, with the environment and goals predetermined
  *)
 let diff_map diff assums (os, ns) =
   map2_state (fun t_o t_n -> diff assums (t_o, t_n)) os ns
 
 (*
- * Recursively difference each term in a diff of arrays
- * Flatten the result
+ * Like diff_map, but flatten the result
  *)
-let diff_map_flat (diff : term_differencer) ds =
-  let (os, ns, assums) = ds in
-  bind
-    (diff_map
-       (fun assums (t_o, t_n) -> diff (t_o, t_n, assums))
-       assums
-       (map_tuple Array.to_list (os, ns)))
-    (fun l -> ret (List.flatten l))
+let diff_map_flat diff assums (os, ns) =
+  bind (diff_map diff assums (os, ns)) (fun l -> ret (List.flatten l))
 
 (*
  * Apply some differencing function

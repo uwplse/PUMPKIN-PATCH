@@ -33,9 +33,17 @@ type proof_diff_predicate =
 type term_differencer = types candidate_differencer
 type ind_proof_differencer = (proof_cat * int) candidate_differencer
 
-type arr_differencer = (types array) candidate_differencer
-type 'a candidate_list_differencer = ('a, candidates list) differencer
-type arr_list_differencer = (types array) candidate_list_differencer
+type args_differencer_flat =
+  equal_assumptions ->
+  (constr list * constr list) ->
+  evar_map ->
+  candidates state
+
+type args_differencer =
+  equal_assumptions ->
+  (constr list * constr list) ->
+  evar_map ->
+  (candidates list) state
 
 type 'a change_detector = ('a, kind_of_change) differencer
 type proof_change_detector = (context_object * proof_cat) change_detector

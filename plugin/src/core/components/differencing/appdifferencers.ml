@@ -97,6 +97,9 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
      let diff_rec diff opts (t_o, t_n, _) =
        diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
      in
+     let diff_rec' diff opts assums (t_o, t_n) =
+       diff_rec diff opts (t_o, t_n, assums)
+     in
      let d_f = f_o, f_n, no_assumptions in
      let d_args = args_o, args_n, no_assumptions in
      (match get_change opts with
@@ -111,7 +114,9 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
                ret fs
              else
                filter_diff_cut
-                 (diff_map_flat (diff_rec diff_arg opts))
+                 (fun (args_o, args_n, assums) ->
+                   let args_o, args_n = map_tuple Array.to_list (args_o, args_n) in
+                   diff_map_flat (diff_rec' diff_arg opts) assums (args_o, args_n))
                  (args_n, args_o, no_assumptions))
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          filter_diff
@@ -121,11 +126,12 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
                filter_applies_cut env (Option.get cut) args_lambdas
              else
                ret args)
-           (diff_map_flat
-              (diff_rec
+           (fun (os, ns, assums) ->
+             diff_map_flat
+              (diff_rec'
                  (fun opts d ->
                    branch_state
-                     (fun ((goal_o, o), (goal_n, n), assums) ->
+                    (fun ((goal_o, o), (goal_n, n), assums) ->
                        let goals = map_tuple dest_context_term (goal_o, goal_n) in
                        let envs = map_tuple snd goals in
                        let goals = map_tuple fst goals in
@@ -134,7 +140,9 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
                      (fun _ -> ret give_up)
                      (diff_arg opts)
                      d)
-                 (set_change opts Conclusion)))
+                 (set_change opts Conclusion))
+              assums
+              (map_tuple Array.to_list (os, ns)))
 	   d_args
       | Hypothesis (_, _) ->
          let (g_o, g_n) = goals in
@@ -147,7 +155,11 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
              if non_empty fs then
                ret fs
              else
-               filter_diff_h (diff_map_flat (diff_rec diff_arg opts)) d_args)
+               filter_diff_h
+                 (fun (os, ns, assums) ->
+                   let (os, ns) = map_tuple Array.to_list (os, ns) in
+                   diff_map_flat (diff_rec' diff_arg opts) assums (os, ns))
+                 d_args)
       | Conclusion | Identity ->
          branch_state
            (fun (args_o, args_n) ->
@@ -205,9 +217,16 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
              let diff_rec diff opts (t_o, t_n, _) =
                diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
              in
+             let diff_rec' diff opts assums (t_o, t_n) =
+               diff_rec diff opts (t_o, t_n, assums)
+             in
 	     let as_o, as_n = map_tuple Array.of_list (as_o, as_n) in
              let d_args_rev = as_n, as_o, no_assumptions in
-             filter_diff_cut (diff_map_flat (diff_rec diff_arg opts)) d_args_rev sigma
+             filter_diff_cut
+               (fun (os, ns, assums) ->
+                 let (os, ns) = map_tuple Array.to_list (os, ns) in
+                 diff_map_flat (diff_rec' diff_arg opts) assums (os, ns))
+               d_args_rev sigma
         | _ ->
            if non_empty as_o then
              let env_o = fst envs in
