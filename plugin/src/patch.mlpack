@@ -4,6 +4,7 @@ Apputils
 Funutils
 
 Defutils
+Nameutils
 
 Inference
 Convertibility
@@ -27,6 +28,8 @@ Zooming
 Filters
 
 Indutils
+
+Transform
 
 Printing
 

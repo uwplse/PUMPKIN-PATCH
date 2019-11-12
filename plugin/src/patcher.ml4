@@ -30,6 +30,10 @@ open Stateutils
 open Inference
 open Substitution
 open Pp
+open Nameutils
+open Transform
+open Global
+open Nametab   
 
 module Globmap = Globnames.Refmap
 
@@ -247,6 +251,23 @@ let replace_convertible n conv_trm def : unit =
   ignore (define_term n sigma subbed false);
   Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n")
 
+(*
+ * Same as replace_convertible, but over an entire module, replacing
+ * terms later in the module with renamed versions
+ *)
+let replace_convertible_module n conv_trm mod_ref : unit =
+  let (sigma, env) = Pfedit.get_current_context () in
+  let sigma, conv_trm = intern env sigma conv_trm in
+  let _ =
+    transform_module_structure
+      n
+      (fun env sigma def ->
+        let trm = unwrap_definition env def in
+        all_conv_substs env sigma (conv_trm, conv_trm) trm)
+      (lookup_module (locate_module (qualid_of_reference mod_ref)))
+  in ()
+
+
 (* --- Vernac syntax --- *)
 
 (* Patch command *)
@@ -293,4 +314,6 @@ END
 VERNAC COMMAND EXTEND ReplaceConvertible CLASSIFIED AS SIDEFF
 | [ "Replace" "Convertible" constr(conv_trm) "in" constr(def) "as" ident(n) ] ->
   [ replace_convertible n conv_trm def ]
+| [ "Replace" "Convertible" "Module" constr(conv_trm) "in" reference(mod_ref) "as" ident(n) ] ->
+  [ replace_convertible_module n conv_trm mod_ref ]
 END

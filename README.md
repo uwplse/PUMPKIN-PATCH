@@ -258,12 +258,28 @@ Replace Convertible foo in bar as baz.
 ```
 
 This will replace all subterms of `bar` that are convertible to `foo`
-with `foo` itself, and define it as a new term `baz`. Work is in progress
-for a better interface for this, and for commands that do this over an
-entire file or over multiple files. Please cut an issue if you have any ideas
+with `foo` itself, and define it as a new term `baz`. 
+
+You can also do this over an entire module Bar to get a new module Baz:
+
+```
+Replace Convertible Module foo in Bar as Baz.
+```
+
+Work is in progress for a better interface for this, and for commands that 
+do this over multiple files. Please cut an issue if you have any ideas
 for the ideal interface!
 
-See [Replace.v](/plugin/coq/Replace.v) for an example.
+See [Replace.v](/plugin/coq/Replace.v) for examples.
+
+Two notes on this: First, for now, complete direct support for pattern
+matching is not implemented when it comes to whole module replacement, so you
+need to use `Preprocess`. WIP on supporting that, which should be much easier
+than supporting it for PUMPKIN PATCH more generally. Second, even stating
+what it means for a renaming operation in Coq to be correct requires extremely
+deep type theory (transport) due to the way that equality works, for example
+over inductive types. This is both cool and sad for users. I will consider
+proving that automatically or metatheoretically.
 
 ### Proof Optimization
 
