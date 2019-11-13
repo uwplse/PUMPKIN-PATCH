@@ -28,12 +28,12 @@ open Defutils
 open Envutils
 open Stateutils
 open Inference
-open Substitution
 open Pp
 open Nameutils
 open Transform
 open Global
-open Nametab   
+open Nametab
+open Refactor
 
 module Globmap = Globnames.Refmap
 
@@ -246,8 +246,7 @@ let replace_convertible n conv_trm def : unit =
   let (sigma, env) = Pfedit.get_current_context () in
   let sigma, conv_trm = intern env sigma conv_trm in
   let sigma, def = intern env sigma def in
-  let trm = unwrap_definition env def in
-  let sigma, subbed = all_conv_substs env sigma (conv_trm, conv_trm) trm in
+  let sigma, subbed = replace_all_convertible env conv_trm def sigma in
   ignore (define_term n sigma subbed false);
   Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n")
 
@@ -261,9 +260,7 @@ let replace_convertible_module n conv_trm mod_ref : unit =
   let _ =
     transform_module_structure
       n
-      (fun env sigma def ->
-        let trm = unwrap_definition env def in
-        all_conv_substs env sigma (conv_trm, conv_trm) trm)
+      (fun env sigma def -> replace_all_convertible env conv_trm def sigma)
       (lookup_module (locate_module (qualid_of_reference mod_ref)))
   in ()
 

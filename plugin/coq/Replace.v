@@ -10,7 +10,6 @@ Definition add_three_ugly n :=
   1 + 2 + n.
 
 Replace Convertible 3 in add_three_ugly as add_three.
-Print add_three.
 
 (*
  * We should generate these at some point
@@ -45,12 +44,15 @@ Module Ugly.
   Definition add_three n :=
     1 + 2 + n.
 
+  (* Test function that refers to refactored function *)
   Definition add_four n :=
     S (add_three n).
 
+  (* Test inductive type *)
   Inductive is_one (n : nat) :=
   | silly_constr : add_four n = 5 -> is_one n.
 
+  (* Test induction *)
   Lemma is_one_correct :
     forall (n : nat), is_one n <-> n = 1.
   Proof.
@@ -59,14 +61,18 @@ Module Ugly.
    - apply silly_constr. rewrite H. auto.
   Qed.
 
+  (* Test pattern matching *)
+  Lemma is_one_correct' :
+    forall (n : nat), is_one n <-> n = 1.
+  Proof.
+   intros. split; intros.
+   - destruct H. inversion e. auto.
+   - apply silly_constr. rewrite H. auto.
+  Qed.
+
 End Ugly.
 
 Replace Convertible Module 3 in Ugly as Pretty.
-
-Print Pretty.add_three.
-Print Pretty.add_four.
-Print Pretty.is_one.
-Print Pretty.is_one_correct.
 
 Lemma pretty_add_three_not_broken :
   Ugly.add_three = Pretty.add_three.
@@ -153,36 +159,3 @@ Qed.
  * At this point, I would run into the transport problem again in trying to state
  * these theorems.
  *)
-
-(* Pattern matching also works now: *)
-
-Module Ugly2.
-
-  Definition add_three n :=
-    1 + 2 + n.
-
-  Definition add_four n :=
-    S (add_three n).
-
-  Inductive is_one (n : nat) :=
-  | silly_constr : add_four n = 5 -> is_one n.
-
-  Lemma is_one_simple:
-    forall (n : nat), is_one n -> is_one n.
-  Proof.
-    intros. destruct H. constructor. apply e.
-  Qed.
-
-  Lemma is_one_correct :
-    forall (n : nat), is_one n <-> n = 1.
-  Proof.
-   intros. split; intros.
-   - destruct H. inversion e. auto.
-   - apply silly_constr. rewrite H. auto.
-  Defined.
-
-End Ugly2.
-
-Replace Convertible Module 3 in Ugly2 as Pretty2.
-
-Print Pretty2.is_one_simple.
