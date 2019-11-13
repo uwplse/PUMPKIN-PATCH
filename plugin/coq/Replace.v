@@ -79,10 +79,6 @@ Lemma pretty_add_four_not_broken :
 Proof.
   reflexivity.
 Qed.
-
-Print Ugly.is_one.
-Print Pretty.is_one.
-
 (*
  * NOTE: I think because of the way that equality works in Coq, with inductive
  * types, we can no longer use definitional equality the way we can with
@@ -163,3 +159,35 @@ Qed.
    much easier than supporting this directly in general in PUMPKIN PATCH.
    Note that Preprocess does NOT always preserve definitional equality
    even when Replace Convertible does! Thus, you will want direct support! *)
+
+Module Ugly2.
+
+  Definition add_three n :=
+    1 + 2 + n.
+
+  Definition add_four n :=
+    S (add_three n).
+
+  Inductive is_one (n : nat) :=
+  | silly_constr : add_four n = 5 -> is_one n.
+
+  Lemma is_one_simple:
+    forall (n : nat), is_one n -> is_one n.
+  Proof.
+    intros. destruct H. constructor. apply e.
+  Qed.
+
+ (* TODO 
+  Lemma is_one_correct :
+    forall (n : nat), is_one n <-> n = 1.
+  Proof.
+   intros. split; intros.
+   - destruct H. inversion e. auto.
+   - apply silly_constr. rewrite H. auto.
+  Defined.*)
+
+End Ugly2.
+
+Replace Convertible Module 3 in Ugly2 as Pretty2.
+
+Print Pretty2.is_one_simple.
