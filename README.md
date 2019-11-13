@@ -272,12 +272,8 @@ for the ideal interface!
 
 See [Replace.v](/plugin/coq/Replace.v) for examples.
 
-Two notes on this: First, for now, complete direct support for pattern
-matching is not implemented when it comes to whole module replacement, so you
-need to use `Preprocess`. WIP on supporting that, which should be much easier
-than supporting it for PUMPKIN PATCH more generally. Second, even stating
-what it means for a renaming operation in Coq to be correct requires extremely
-deep type theory (transport) due to the way that equality works, for example
+One note on this: Even stating what it means for a renaming operation in Coq to be correct requires extremely
+deep type theory due to the way that equality works, for example
 over inductive types. This is both cool and sad for users. I will consider
 proving that automatically or metatheoretically.
 
