@@ -1,6 +1,8 @@
 Add LoadPath "coq".
 Require Import Patcher.Patch.
 
+Set PUMPKIN Prove Replace.
+
 (*
  * This is an extremely example showing how
  * we can replace convertible subterms.
@@ -12,21 +14,24 @@ Definition add_three_ugly n :=
 Replace Convertible 3 in add_three_ugly as add_three.
 
 (*
- * We should generate these at some point
+ * We generate refl proofs automatically
+ * with the "Prove Replace" option set:
  *)
 Lemma add_three_not_broken :
   add_three_ugly = add_three.
 Proof.
-  reflexivity.
+  exact add_three_correct.
 Qed.
 
+(* Here we can test that we actually
+   did the replacement. *)
 Definition add_three_expected n :=
   3 + n.
 
 (*
  * This proof should go through _with these specific tactics_
  *)
-Lemma add_three_correct :
+Lemma add_three_is_expected :
   add_three = add_three_expected.
 Proof.
   unfold add_three, add_three_expected.
@@ -77,12 +82,14 @@ Replace Convertible Module 3 in Ugly as Pretty.
 Lemma pretty_add_three_not_broken :
   Ugly.add_three = Pretty.add_three.
 Proof.
+  (*exact Pretty.add_three_correct. TODO *)
   reflexivity.
 Qed.
 
 Lemma pretty_add_four_not_broken :
   Ugly.add_four = Pretty.add_four.
 Proof.
+  (* exact Pretty.add_four_correct. TODO *)
   reflexivity.
 Qed.
 (*
@@ -132,7 +139,7 @@ Definition pretty_add_three_expected n :=
 (*
  * This proof should go through _with these specific tactics_
  *)
-Lemma pretty_add_three_correct :
+Lemma pretty_add_three_is_expected :
   Pretty.add_three = pretty_add_three_expected.
 Proof.
   unfold Pretty.add_three, pretty_add_three_expected.
@@ -145,7 +152,7 @@ Qed.
 Definition pretty_add_four_expected n :=
   S (Pretty.add_three n).
 
-Lemma pretty_add_four_correct :
+Lemma pretty_add_four_is_expected :
   Pretty.add_four = pretty_add_four_expected.
 Proof.
   unfold Pretty.add_four, pretty_add_four_expected.

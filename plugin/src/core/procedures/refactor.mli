@@ -10,6 +10,13 @@ open Stateutils
 (*
  * Find all subterms of the second term convertible with the first term,
  * and replace all of those with the first term itself
+ *
+ * Optionally, also generate correctness proof
  *)
 val replace_all_convertible :
-  env -> constr -> constr -> evar_map -> constr state
+  bool ->
+  env ->
+  constr ->
+  constr ->
+  evar_map ->
+  (constr * (constr * constr) option) state
