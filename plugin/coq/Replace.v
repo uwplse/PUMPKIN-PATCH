@@ -154,11 +154,7 @@ Qed.
  * these theorems.
  *)
 
-(* NOTE: Unfortunately, for now, if you want support for pattern matching instead of
-   induction, you must preprocess. WIP on supporting this directly. Will be
-   much easier than supporting this directly in general in PUMPKIN PATCH.
-   Note that Preprocess does NOT always preserve definitional equality
-   even when Replace Convertible does! Thus, you will want direct support! *)
+(* Pattern matching also works now: *)
 
 Module Ugly2.
 
@@ -177,14 +173,13 @@ Module Ugly2.
     intros. destruct H. constructor. apply e.
   Qed.
 
- (* TODO 
   Lemma is_one_correct :
     forall (n : nat), is_one n <-> n = 1.
   Proof.
    intros. split; intros.
    - destruct H. inversion e. auto.
    - apply silly_constr. rewrite H. auto.
-  Defined.*)
+  Defined.
 
 End Ugly2.
 
