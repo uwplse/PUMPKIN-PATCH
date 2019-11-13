@@ -259,12 +259,16 @@ let replace_convertible n conv def : unit =
   let sigma, (sub, pf) = replace_all_convertible prove env conv def sigma in
   ignore (define_term n sigma sub false);
   Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n");
-  if Option.has_some pf then
-    let pf_n = with_suffix n "correct" in
-    let pf_trm, pf_typ = Option.get pf in
-    let _ = define_term ~typ:pf_typ pf_n sigma pf_trm true in
-    Feedback.msg_notice
-      (str "Defined " ++ str (Id.to_string pf_n) ++ str ("\n"))
+  if prove then
+    if Option.has_some pf then
+      let pf_n = with_suffix n "correct" in
+      let pf_trm, pf_typ = Option.get pf in
+      let _ = define_term ~typ:pf_typ pf_n sigma pf_trm true in
+      Feedback.msg_notice
+        (str "Defined " ++ str (Id.to_string pf_n) ++ str ("\n"))
+    else
+      Feedback.msg_warning
+        (str "Could not find correctness proof---may not yet be implemented")
   else
     ()
 
@@ -276,22 +280,14 @@ let replace_convertible_module n conv mod_ref : unit =
   let (sigma, env) = Pfedit.get_current_context () in
   let sigma, conv = intern env sigma conv in
   let prove = !opt_prove_replace_correct in
+  (if prove then
+     Feedback.msg_warning
+       (str "Correctness proofs for whole module replace not yet supported")
+   else
+     ());
   let replace_in_term env sigma def =
-    let sigma, (sub, pf) = replace_all_convertible prove env conv def sigma in
-    if Option.has_some pf then
-      (* TODO support only once it works (probably need to thread sigmas): *)
-      (*let pf_n = with_suffix n (Printf.sprintf "correct%d" (fid ())) in
-      let pf_trm, pf_typ = Option.get pf in
-      let _ = define_term ~typ:pf_typ pf_n sigma pf_trm true in
-      (* TODO give a meaningful name instead ^ *)
-      Feedback.msg_notice
-        (str "Defined " ++ str (Id.to_string pf_n) ++ str ("\n"));*)
-      let _ =
-        Feedback.msg_warning
-          (str "Correctness proofs for whole module replace not yet supported")
-      in sigma, sub
-    else
-      sigma, sub
+    let sigma, (sub, pf) = replace_all_convertible false env conv def sigma in
+    sigma, sub
   in
   let m = lookup_module (locate_module (qualid_of_reference mod_ref)) in
   ignore (transform_module_structure n replace_in_term m)

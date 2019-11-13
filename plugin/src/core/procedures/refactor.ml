@@ -27,7 +27,8 @@ let maybe_prove_replace_correct prove_correct env trm sub =
         let refl_typ = apply_eq { at_type = typ; trm1 = trm; trm2 = sub} in
         ret (Some (refl, refl_typ)) sigma)
       (fun (trm, sub) ->
-        ret None (* TODO not yet implemented *))
+        (* not yet implemented *)
+        ret None)
       (trm, sub)
   else
     ret None
