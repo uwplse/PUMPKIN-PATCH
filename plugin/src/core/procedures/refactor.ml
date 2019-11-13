@@ -2,10 +2,8 @@ open Envutils
 open Substitution
 open Stateutils
 open Convertibility
-open Zooming
 open Inference
 open Equtils
-open Constr
 
 (*
  * Refactoring functionality
@@ -36,8 +34,15 @@ let maybe_prove_replace_correct prove_correct env trm sub =
 (* --- Top-level refactoring functions --- *)
 
 (* Replace all subterms convertible with conv_trm in trm *)
-let replace_all_convertible prove_correct env conv_trm trm sigma =
+let replace_all_convertible prove_correct env conv_trms trm sigma =
   let trm = unwrap_definition env trm in
-  let sigma, sub = all_conv_substs env sigma (conv_trm, conv_trm) trm in
+  let sigma, sub =
+    fold_right_state
+      (fun conv_trm trm sigma ->
+        all_conv_substs env sigma (conv_trm, conv_trm) trm)
+      conv_trms
+      trm
+      sigma
+  in
   let sigma, pf = maybe_prove_replace_correct prove_correct env trm sub sigma in
   sigma, (sub, pf)

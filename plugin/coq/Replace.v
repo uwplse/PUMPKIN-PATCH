@@ -41,6 +41,53 @@ Proof.
   end.
 Qed.
 
+(* Test function that refers to refactored function *)
+Definition add_four_ugly n :=
+  S (add_three_ugly n).
+
+(* Here we manually replace add_three. The Replace Module function
+   we see later will do all of this automatically for us. *)
+Replace Convertible add_three in add_four_ugly as add_four.
+
+(*
+ * We generate refl proofs automatically
+ * with the "Prove Replace" option set:
+ *)
+Lemma add_four_not_broken :
+  add_four_ugly = add_four.
+Proof.
+  exact add_four_correct.
+Qed.
+
+(* Here we can test that we actually
+   did the replacement. *)
+Definition add_four_expected n :=
+  S (add_three n).
+
+(*
+ * This proof should go through _with these specific tactics_
+ *)
+Lemma add_four_is_expected :
+  add_four = add_four_expected.
+Proof.
+  unfold add_four, add_four_expected.
+  match goal with
+  | |- ?x = ?x => reflexivity
+  | _ => idtac
+  end.
+Qed.
+
+(* Test inductive type (correctness still broken in Type sort, should fix) *)
+Inductive is_one_ugly (n : nat) : Prop :=
+| silly_constr : add_four_ugly n = 5 -> is_one_ugly n.
+
+(* Here we manually replace add_four and 3. The Replace Module function
+   we see later will do all of this automatically for us. *)
+Replace Convertible 3 add_four in is_one_ugly as is_one.
+Print is_one.
+(* ^ Note that correctness proofs are not yet implemented for inductive types.
+   Will need to automatically prove an equivalence here. *)
+
 (*
  * This is silly, but a toy example for whole-module replacement.
  *)
@@ -78,18 +125,20 @@ Module Ugly.
 End Ugly.
 
 Replace Convertible Module 3 in Ugly as Pretty.
+(* Automatic correctness proofs are a WIP over modules.
+   First need the equivalence over inductive types, plus some naming information
+   to assign them names, plus a way to handle proofs about renamed inductive
+   types. For now I can give an idea of this by hand:s *)
 
 Lemma pretty_add_three_not_broken :
   Ugly.add_three = Pretty.add_three.
 Proof.
-  (*exact Pretty.add_three_correct. TODO *)
   reflexivity.
 Qed.
 
 Lemma pretty_add_four_not_broken :
   Ugly.add_four = Pretty.add_four.
 Proof.
-  (* exact Pretty.add_four_correct. TODO *)
   reflexivity.
 Qed.
 (*

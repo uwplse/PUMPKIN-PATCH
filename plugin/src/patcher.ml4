@@ -34,6 +34,7 @@ open Transform
 open Global
 open Nametab
 open Refactor
+open Indutils
 
 module Globmap = Globnames.Refmap
 
@@ -251,18 +252,44 @@ let factor n trm : unit =
   with _ -> failwith "Could not find lemmas"
 
 (* Replace all subterms convertible with conv_trm in trm *)
-let replace_convertible n conv def : unit =
+let replace_convertible n convs def : unit =
   let (sigma, env) = Pfedit.get_current_context () in
-  let sigma, conv = intern env sigma conv in
+  let sigma, convs =
+    map_state (fun conv sigma -> intern env sigma conv) convs sigma
+  in
   let sigma, def = intern env sigma def in
   let prove = !opt_prove_replace_correct in
-  let sigma, (sub, pf) = replace_all_convertible prove env conv def sigma in
-  ignore (define_term n sigma sub false);
-  Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n");
+  let pf_ref = ref None in
+  (match kind def with
+  | Ind (i, u) ->
+     let mind_body = lookup_mind (fst i) in
+     check_inductive_supported mind_body;
+     let ind_body = mind_body.mind_packets.(0) in
+     let mind_consnames =
+       Array.map
+         (fun id -> Nameops.add_suffix id "'") (* for now, hardcoded *)
+         ind_body.mind_consnames
+     in
+     let ind_body' = { ind_body with mind_consnames } in  
+     let sigma, ind =
+       transform_inductive
+         n
+         (fun env sigma def ->
+           let sigma, (sub, pf) =
+             replace_all_convertible false env convs def sigma
+           in sigma, sub)
+         (mind_body, ind_body')
+     in
+     Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n")
+  | _ ->
+     let sigma, (sub, pf) = replace_all_convertible prove env convs def sigma in
+     pf_ref := pf;
+     ignore (define_term n sigma sub false);
+     Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n"));
   if prove then
-    if Option.has_some pf then
+    if Option.has_some (!pf_ref) then
       let pf_n = with_suffix n "correct" in
-      let pf_trm, pf_typ = Option.get pf in
+      let pf_trm, pf_typ = Option.get (!pf_ref) in
       let _ = define_term ~typ:pf_typ pf_n sigma pf_trm true in
       Feedback.msg_notice
         (str "Defined " ++ str (Id.to_string pf_n) ++ str ("\n"))
@@ -276,9 +303,11 @@ let replace_convertible n conv def : unit =
  * Same as replace_convertible, but over an entire module, replacing
  * terms later in the module with renamed versions
  *)
-let replace_convertible_module n conv mod_ref : unit =
+let replace_convertible_module n convs mod_ref : unit =
   let (sigma, env) = Pfedit.get_current_context () in
-  let sigma, conv = intern env sigma conv in
+  let sigma, convs =
+    map_state (fun conv sigma -> intern env sigma conv) convs sigma
+  in
   let prove = !opt_prove_replace_correct in
   (if prove then
      Feedback.msg_warning
@@ -286,7 +315,7 @@ let replace_convertible_module n conv mod_ref : unit =
    else
      ());
   let replace_in_term env sigma def =
-    let sigma, (sub, pf) = replace_all_convertible false env conv def sigma in
+    let sigma, (sub, pf) = replace_all_convertible false env convs def sigma in
     sigma, sub
   in
   let m = lookup_module (locate_module (qualid_of_reference mod_ref)) in
@@ -336,8 +365,8 @@ END
 
 (* Replace subterms with a convertible term *)
 VERNAC COMMAND EXTEND ReplaceConvertible CLASSIFIED AS SIDEFF
-| [ "Replace" "Convertible" constr(conv_trm) "in" constr(def) "as" ident(n) ] ->
-  [ replace_convertible n conv_trm def ]
-| [ "Replace" "Convertible" "Module" constr(conv_trm) "in" reference(mod_ref) "as" ident(n) ] ->
-  [ replace_convertible_module n conv_trm mod_ref ]
+| [ "Replace" "Convertible" constr_list(conv_trms) "in" constr(def) "as" ident(n) ] ->
+  [ replace_convertible n conv_trms def ]
+| [ "Replace" "Convertible" "Module" constr_list(conv_trms) "in" reference(mod_ref) "as" ident(n) ] ->
+  [ replace_convertible_module n conv_trms mod_ref ]
 END
