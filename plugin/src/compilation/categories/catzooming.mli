@@ -105,12 +105,6 @@ val zoom_map :
   'b state
 
 (*
- * Zoom over two inductive proofs that induct over the same hypothesis
- * Return the leftover arguments that aren't applied to the inductive type
- *)
-val zoom_same_hypos : induction_diff -> evar_map -> (induction_diff option) state
-
-(*
  * Default zoom for recursive search
  *)
 val zoom_search : search_function -> goal_proof_diff -> evar_map -> candidates state

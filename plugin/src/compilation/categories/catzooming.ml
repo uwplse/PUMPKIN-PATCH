@@ -113,7 +113,7 @@ let intro_params nparams (o, n, assums) =
        
 
 (* --- Zoomers and using zoomers --- *)
-
+    
 (* Zoom *)
 let zoom expander (introducer : 'a intro_strategy) (a1, a2, assums) =
   bind
@@ -137,9 +137,6 @@ let zoom_map f a expander introducer d =
 	ret a
       else
 	f (Option.get zoomed))
-
-(* Zoom over two inductive proofs that induct over the same hypothesis *)
-let zoom_same_hypos = zoom expand_application (fun d -> ret (Some d))
 
 (* Default zoom for recursive search *)
 let zoom_search f ((_, o), (_, n), assums) =

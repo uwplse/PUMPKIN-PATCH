@@ -32,4 +32,5 @@ val expand_constr : proof_cat expansion_strategy
  * Otherwise, there is an error
  * Like the above, this will not work yet when induction is later in the proof
  *)
-val expand_application : (proof_cat * int * (types list)) expansion_strategy
+val eval_induction_cat :
+  env -> constr -> evar_map -> (proof_cat * int * types list) state

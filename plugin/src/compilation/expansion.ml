@@ -301,27 +301,24 @@ let expand_const_app env (c, u) (f, args) default =
      bind
        (eval_proof env (mkApp (f, args)))
        (fun exp -> ret (exp, 0, default))
-
+       
 (*
  * Expand an application arrow
  *
  * This assumes it's the only arrow in c
  * Otherwise, there is an error
  * Like the above, this will not work yet when induction is later in the proof
+ *
+ * TODO temporary; probably the last to go since it is the most complicated
+ * compiles inductive proofs into trees
  *)
-let expand_application (c, n, l) =
-  map_ext
-    (fun e ->
-      match e with
-      | LazyBinding (trm, env) ->
-         let (f, args) = destApp trm in
-         (match kind f with
-          | Const (c, u) ->
-             expand_const_app env (c, u) (f, args) l
-          | _ ->
-             let c_trm = Context (Term (trm, env), fid ()) in
-	     bind
-	       (expand_term eval_theorem c_trm)
-	       (fun exp -> ret (exp, 0, l)))
-      | _ -> assert false)
-    (only_arrow c)
+let eval_induction_cat env trm =
+  let (f, args) = destApp trm in
+  match kind f with
+  | Const (c, u) ->
+     expand_const_app env (c, u) (f, args) []
+    | _ ->
+       let c_trm = Context (Term (trm, env), fid ()) in
+       bind
+         (expand_term eval_theorem c_trm)
+         (fun exp -> ret (exp, 0, []))
