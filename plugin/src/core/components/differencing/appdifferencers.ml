@@ -20,6 +20,9 @@ open Convertibility
 open Kindofchange
 open Names
 open Expansion
+open Indutils
+open Declarations
+open Environ
 
 (* --- Auxiliary functions (may move later) --- *)
        
@@ -50,6 +53,22 @@ let all_convertible env =
  *)
 let app env f args =
   snd (specialize_using specialize_no_reduce env f args Evd.empty)
+
+(*
+ * TODO temporary while porting induction completely
+ * For now, roundabout/slow because does this twice, so redundant work
+ * But, helps move away from categories
+ *)
+let temp_get_npms env trm =
+  let (f, args) = destApp trm in
+  try
+    let (c, u) = destConst f in
+    let mutind = Option.get (inductive_of_elim env (c, u)) in
+    let mutind_body = lookup_mind mutind env in
+    mutind_body.mind_nparams
+  with _ ->
+    failwith "Not an inductive proof"
+    
 
 (* --- Main functions --- *)
     
@@ -175,10 +194,13 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
   let diff_rec diff opts assums terms_next =
     diff_update_goals (diff opts) opts assums envs terms goals terms_next
   in
-  let sigma, (o, npms_o, as_o) = eval_induction_cat (fst envs) (fst terms) sigma in
-  let sigma, (n, npms_n, as_n) = eval_induction_cat (snd envs) (snd terms) sigma in
-  let sigma_f, f  = diff_ind opts ((o, npms_o), (n, npms_n), assums) sigma in
+  let sigma_f, f  = diff_ind opts assums envs terms goals sigma in
   let env = fst envs in
+  (* V TODO consolidate after porting induction *)
+  let npms_o = temp_get_npms env (fst terms) in
+  (* v TODO remove/get as_o and as_n elsewhere *)
+  let sigma, (o, _, as_o) = eval_induction_cat (fst envs) (fst terms) sigma in
+  let sigma, (o, _, as_n) = eval_induction_cat (snd envs) (snd terms) sigma in
   match get_change opts with
   | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
      sigma_f, f

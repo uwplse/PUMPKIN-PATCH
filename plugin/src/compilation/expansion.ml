@@ -282,43 +282,22 @@ let expand_constr (c : proof_cat) =
 	      bind
 		(objects c_exp)
 		(fun os -> make_category os ms (initial_opt c_exp) (Some tr)))))
-
+       
 (*
- * Expand the application of a constant function
- * TODO, do we need this in expand_app? How is this used right now?
+ * TODO temporary; probably the last to go since it is the most complicated
+ * compiles inductive proofs into trees
  *)
-let expand_const_app env (c, u) (f, args) default =
-  match inductive_of_elim env (c, u) with
-  | Some mutind ->
-     let mutind_body = lookup_mind mutind env in
+let eval_induction_cat env trm =
+  let (f, args) = destApp trm in
+  try
+    let (c, u) = destConst f in
+    let mutind = Option.get (inductive_of_elim env (c, u)) in
+    let mutind_body = lookup_mind mutind env in
      bind
        (bind
 	  (eval_proof env f)
 	  (expand_inductive_params mutind_body.mind_nparams))
        (fun f_exp ->
 	 eval_induction mutind_body f_exp args)
-  | None ->
-     bind
-       (eval_proof env (mkApp (f, args)))
-       (fun exp -> ret (exp, 0, default))
-       
-(*
- * Expand an application arrow
- *
- * This assumes it's the only arrow in c
- * Otherwise, there is an error
- * Like the above, this will not work yet when induction is later in the proof
- *
- * TODO temporary; probably the last to go since it is the most complicated
- * compiles inductive proofs into trees
- *)
-let eval_induction_cat env trm =
-  let (f, args) = destApp trm in
-  match kind f with
-  | Const (c, u) ->
-     expand_const_app env (c, u) (f, args) []
-    | _ ->
-       let c_trm = Context (Term (trm, env), fid ()) in
-       bind
-         (expand_term eval_theorem c_trm)
-         (fun exp -> ret (exp, 0, []))
+  with _ ->
+    failwith "Not an inductive proof"

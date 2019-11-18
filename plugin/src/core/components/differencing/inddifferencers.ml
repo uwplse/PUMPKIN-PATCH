@@ -214,13 +214,15 @@ let temp_to_diff assums envs terms goals sigma =
  * This does not yet handle the case when the inductive parameters
  * are lists of different lengths, or where there is a change in hypothesis.
  *)
-let diff_inductive diff assums_old envs_old terms_old goals_old opts (d : (proof_cat * int) proof_diff) sigma =
+let diff_inductive diff envs_old terms_old goals_old opts assums envs terms goals sigma =
+  let sigma, (o, nparams_o, as_o) = eval_induction_cat (fst envs) (fst terms) sigma in
+  let sigma, (n, nparams_n, as_n) = eval_induction_cat (snd envs) (snd terms) sigma in
+  (* ^ TODO finish porting *)
   let diff opts d =
     let assums, envs, terms, goals = temp_from_diff d in
     diff opts assums envs terms goals
   in
-  let sigma, d_old = temp_to_diff assums_old envs_old terms_old goals_old sigma in
-  let ((o, nparams_o), (n, nparams_n), assums) = d in
+  let sigma, d_old = temp_to_diff assums envs_old terms_old goals_old sigma in
   if not (nparams_o = nparams_n) then
     ret give_up sigma
   else

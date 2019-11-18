@@ -35,8 +35,6 @@ type term_differencer =
   evar_map ->
   candidates state
 
-type ind_proof_differencer = (proof_cat * int) candidate_differencer
-
 type args_differencer_flat =
   equal_assumptions ->
   (constr list * constr list) ->

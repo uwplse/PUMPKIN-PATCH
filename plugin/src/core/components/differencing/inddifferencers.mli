@@ -21,16 +21,12 @@ open Candidates
  *
  * Use the old goal_proof_diff along with the options to determine how
  * to update the goals for the next iteration.
+ *
+ * TODO clean type more later
  *)
 val diff_inductive :
-  (equal_assumptions ->
-   (env * env) ->
-   (constr * constr) ->
-   (types * types) ->
-   evar_map ->
-   candidates state) configurable ->
-  equal_assumptions ->
+  proof_differencer configurable ->
   (env * env) ->
   (constr * constr) ->
   (types * types) ->
-  ind_proof_differencer configurable
+  proof_differencer configurable
