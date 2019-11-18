@@ -21,9 +21,9 @@ open Convertibility
 open Kindofchange
 
 (*
- * TODO temporary
+ * Update search goals and then recursively diff
  *)
-let diff_terms diff opts assums envs terms goals envs_next terms_next =
+let diff_update_goals diff opts assums envs terms goals envs_next terms_next =
   bind
     (update_search_goals opts envs terms goals envs_next terms_next)
     (fun (envs, terms, goals) -> diff assums envs terms goals)
@@ -69,7 +69,7 @@ let diff_terms diff opts assums envs terms goals envs_next terms_next =
  *)
 let diff_app diff_f diff_arg opts assums envs terms goals =
   let diff_rec diff opts _ (t_o, t_n) = (* TODO remove, rename second to diff_rec *)
-    diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
+    diff_update_goals (diff opts) opts assums envs terms goals envs (t_o, t_n)
   in
   let diff_update_goals diff terms_next =
     bind
@@ -192,7 +192,7 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
            else
              (* Note that state is relevant here; don't use sigma_f *)
              let diff_rec diff opts (t_o, t_n, _) =
-               diff_terms (diff opts) opts assums envs terms goals envs (t_o, t_n)
+               diff_update_goals (diff opts) opts assums envs terms goals envs (t_o, t_n)
              in
              let diff_rec' diff opts assums (t_o, t_n) =
                diff_rec diff opts (t_o, t_n, assums)
@@ -238,7 +238,7 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
                         let diff_apply diff assums envs terms goals =
                           bind (diff assums envs terms goals) (map_state apply)
                         in
-                        diff_terms (diff_apply (diff_arg opts)) opts assums envs terms goals envs (arg_o, arg_n))
+                        diff_update_goals (diff_apply (diff_arg opts)) opts assums envs terms goals envs (arg_o, arg_n))
                       no_assumptions (* TODO just use assums here and inside? *)
                       (final_args_n, Array.to_list final_args_o)
                       sigma)
