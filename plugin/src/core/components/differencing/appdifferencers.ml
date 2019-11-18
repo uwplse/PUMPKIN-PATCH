@@ -19,7 +19,10 @@ open Filters
 open Stateutils
 open Convertibility
 open Kindofchange
+open Names
 
+(* --- Auxiliary functions (may move later) --- *)
+       
 (*
  * Update search goals and then recursively diff
  *)
@@ -27,6 +30,28 @@ let diff_update_goals diff opts assums envs terms goals terms_next =
   bind
     (update_search_goals opts envs terms goals envs terms_next)
     (fun (envs, terms, goals) -> diff assums envs terms goals)
+
+(*
+ * Lift give_up to a proof_differencer
+ *)
+let diff_give_up _ _ _ _ =
+  ret give_up
+
+(*
+ * All convertible that places nicely with state
+ *)
+let all_convertible env =
+  fold_tuple_state
+    (forall2_state (fun t1 t2 sigma -> convertible env sigma t1 t2))
+
+(*
+ * Wrapper for specialization without reduction that ignores state
+ * (since state is never used here)
+ *)
+let app env f args =
+  snd (specialize_using specialize_no_reduce env f args Evd.empty)
+
+(* --- Main functions --- *)
     
 (*
  * Given a search function and a difference between terms,
@@ -64,91 +89,74 @@ let diff_update_goals diff opts assums envs terms goals terms_next =
  * We need to improve semantic differencing for those cases,
  * For example, if one application passes through an intermediate lemma
  * but the other doesn't, this function has no clue what to do.
- *
- * TODO: clean up, make filter exist again once we port everything
  *)
 let diff_app diff_f diff_arg opts assums envs terms goals =
   let diff_rec diff opts assums terms_next =
     diff_update_goals (diff opts) opts assums envs terms goals terms_next
   in
+  let chain_diff_app diff_f diff_args =
+    try_chain_diffs [diff_f; diff_args] assums envs terms goals
+  in
+  let env = fst envs in
   match map_tuple kind terms with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
+     let diff_f_rec = diff_rec diff_f in
+     let diff_args_rec opts = diff_map_flat (diff_rec diff_arg opts) in
+     let fs = (f_o, f_n) in
+     let argss = map_tuple Array.to_list (args_o, args_n) in
      (match get_change opts with
       | InductiveType (_, _) ->
-         diff_rec diff_f opts assums (f_o, f_n)
+         diff_f_rec opts assums fs
       | FixpointCase ((_, _), cut) ->
-         let diff_filter_cut diff terms_next assums envs _ _ =
-           bind (diff opts assums terms_next) (filter_cut (fst envs) cut)
+         let diff_filter_cut diff terms_next assums _ _ _ =
+           bind (diff opts assums terms_next) (filter_cut env cut)
          in
-         try_chain_diffs
-           [(diff_filter_cut (diff_rec diff_f) (f_o, f_n));
-            (diff_filter_cut
-               (fun _ -> diff_map_flat (diff_rec diff_arg opts))
-               (map_tuple Array.to_list (args_n, args_o)))]
-           assums
-           envs
-           terms
-           goals
+         chain_diff_app
+           (diff_filter_cut diff_f_rec fs)
+           (diff_filter_cut diff_args_rec (reverse argss))
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
-         (* TODO clean, left off here *)
-         let env = fst envs in
-         let os, ns = args_o, args_n in
-         bind
-           (diff_map_flat
-              (diff_rec
-                 (fun opts ->
-                   branch_diff
-                     (no_diff opts)
-                     (fun _ _ _ _ -> ret give_up)
-                     (diff_arg opts))
-                 (set_change opts Conclusion))
-              assums
-              (map_tuple Array.to_list (os, ns)))
-	   (fun args ->
-             if Option.has_some cut then
-               let args_lambdas = List.map (reconstruct_lambda env) args in
-               filter_applies_cut env (Option.get cut) args_lambdas
-             else
-               ret args)
-      | Hypothesis (_, _) ->
-         let env = fst envs in
-         let (g_o, g_n) = goals in
-         let goal_type = mkProd (Names.Name.Anonymous, g_n, shift g_o) in
-         let filter_goal trms sigma = filter_by_type goal_type env sigma trms in
-         let filter_diff_h diff assums (o, n) =
-           bind (diff assums (o, n)) filter_goal
+         let opts = set_change opts Conclusion in
+         let diff_filter_applies_cut diff terms_next =
+           bind
+             (diff opts assums terms_next)
+             (fun args ->
+               if Option.has_some cut then
+                 filter_applies_cut
+                   env
+                   (Option.get cut)
+                   (List.map (reconstruct_lambda env) args)
+               else
+                 ret args)
          in
-         bind
-           (filter_diff_h (diff_rec diff_f opts) assums (f_o, f_n))
-           (fun fs ->
-             if non_empty fs then
-               ret fs
-             else
-               filter_diff_h
-                 (fun assums (os, ns) ->
-                   let (os, ns) = map_tuple Array.to_list (os, ns) in
-                   diff_map_flat (diff_rec diff_arg opts) assums (os, ns))
-                 assums
-                 (args_o, args_n))
+         diff_filter_applies_cut
+           (fun opts ->
+             diff_map_flat
+               (diff_rec
+                  (fun opts ->
+                    branch_diff (no_diff opts) diff_give_up (diff_arg opts))
+                  opts))
+           argss
+      | Hypothesis (_, _) ->
+         let goal_type = mkProd (Anonymous, snd goals, shift (fst goals)) in
+         let filter_diff_h diff terms_next assums _ _ _ =
+           bind
+             (diff opts assums terms_next)
+             (fun trms sigma -> filter_by_type goal_type env sigma trms)
+         in
+         chain_diff_app
+           (filter_diff_h diff_f_rec fs)
+           (filter_diff_h diff_args_rec argss)
       | Conclusion | Identity ->
-         let env = fst envs in
          branch_state
-           (fun (args_o, args_n) ->
-             forall2_state
-               (fun t1 t2 sigma -> convertible env sigma t1 t2)
-               (Array.to_list args_o)
-               (Array.to_list args_n))
-           (fun (args_o, args_n) ->
-             let app f args =
-               snd (specialize_using specialize_no_reduce env f args Evd.empty)
-             in
-             let combine_app = combine_cartesian app in
+           (all_convertible env)
+           (fun _ ->
+             let combine_app = combine_cartesian (app env) in
 	     let args = Array.map (fun a_o -> [a_o]) args_o in
              bind
-               (diff_rec diff_f opts assums (f_o, f_n))
+               (diff_f_rec opts assums fs)
                (fun fs -> ret (combine_app fs (combine_cartesian_append args))))
            (fun _ -> ret give_up)
-           (args_o, args_n)
+           argss
       | _ ->
          ret give_up)
   | _ ->
