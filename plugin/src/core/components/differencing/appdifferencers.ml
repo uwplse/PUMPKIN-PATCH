@@ -68,7 +68,7 @@ let diff_update_goals diff opts assums envs terms goals terms_next =
  * TODO: clean up, make filter exist again once we port everything
  *)
 let diff_app diff_f diff_arg opts assums envs terms goals =
-  let diff_rec diff opts assums terms_next = (* TODO can remove opts, assums everywhere tbh *)
+  let diff_rec diff opts assums terms_next =
     diff_update_goals (diff opts) opts assums envs terms goals terms_next
   in
   match map_tuple kind terms with
@@ -77,16 +77,14 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
       | InductiveType (_, _) ->
          diff_rec diff_f opts assums (f_o, f_n)
       | FixpointCase ((_, _), cut) ->
-         let diff_filter_cut diff terms_next =
+         let diff_filter_cut diff terms_next assums envs _ _ =
            bind (diff opts assums terms_next) (filter_cut (fst envs) cut)
          in
          try_chain_diffs
-           [(fun _ _ _ _ ->
-               diff_filter_cut (diff_rec diff_f) (f_o, f_n));
-            (fun _ _ _ _ ->
-              diff_filter_cut
-                (fun _ -> diff_map_flat (diff_rec diff_arg opts))
-                (map_tuple Array.to_list (args_n, args_o)))]
+           [(diff_filter_cut (diff_rec diff_f) (f_o, f_n));
+            (diff_filter_cut
+               (fun _ -> diff_map_flat (diff_rec diff_arg opts))
+               (map_tuple Array.to_list (args_n, args_o)))]
            assums
            envs
            terms
