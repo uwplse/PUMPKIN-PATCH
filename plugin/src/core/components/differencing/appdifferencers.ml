@@ -68,29 +68,24 @@ let diff_update_goals diff opts assums envs terms goals terms_next =
  * TODO: clean up, make filter exist again once we port everything
  *)
 let diff_app diff_f diff_arg opts assums envs terms goals =
-  let diff_rec diff opts assums (t_o, t_n) =
-    diff_update_goals (diff opts) opts assums envs terms goals (t_o, t_n)
-  in
-  let diff_update_goals diff terms_next =
-    bind
-      (update_search_goals opts envs terms goals envs terms_next)
-      (fun (envs, terms, goals) -> diff opts assums envs terms goals)
+  let diff_rec diff opts assums terms_next = (* TODO can remove opts, assums everywhere tbh *)
+    diff_update_goals (diff opts) opts assums envs terms goals terms_next
   in
   match map_tuple kind terms with
   | (App (f_o, args_o), App (f_n, args_n)) when Array.length args_o = Array.length args_n ->
      (match get_change opts with
       | InductiveType (_, _) ->
-         diff_update_goals diff_f (f_o, f_n)
+         diff_rec diff_f opts assums (f_o, f_n)
       | FixpointCase ((_, _), cut) ->
          let diff_filter_cut diff terms_next =
-           bind (diff terms_next) (filter_cut (fst envs) cut)
+           bind (diff opts assums terms_next) (filter_cut (fst envs) cut)
          in
          try_chain_diffs
            [(fun _ _ _ _ ->
-               diff_filter_cut (diff_update_goals diff_f) (f_o, f_n));
+               diff_filter_cut (diff_rec diff_f) (f_o, f_n));
             (fun _ _ _ _ ->
               diff_filter_cut
-                (diff_map_flat (fun _ -> diff_update_goals diff_arg) assums)
+                (fun _ -> diff_map_flat (diff_rec diff_arg opts))
                 (map_tuple Array.to_list (args_n, args_o)))]
            assums
            envs
