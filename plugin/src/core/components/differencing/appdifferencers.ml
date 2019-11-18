@@ -68,7 +68,7 @@ let diff_update_goals diff opts assums envs terms goals terms_next =
  * TODO: clean up, make filter exist again once we port everything
  *)
 let diff_app diff_f diff_arg opts assums envs terms goals =
-  let diff_rec diff opts _ (t_o, t_n) = (* TODO remove, rename second to diff_rec *)
+  let diff_rec diff opts assums (t_o, t_n) =
     diff_update_goals (diff opts) opts assums envs terms goals (t_o, t_n)
   in
   let diff_update_goals diff terms_next =
@@ -99,7 +99,6 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
       | ConclusionCase cut when isConstruct f_o && isConstruct f_n ->
          (* TODO clean, left off here *)
          let env = fst envs in
-         let assums = no_assumptions in
          let os, ns = args_o, args_n in
          bind
            (diff_map_flat
@@ -127,7 +126,7 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
            bind (diff assums (o, n)) filter_goal
          in
          bind
-           (filter_diff_h (diff_rec diff_f opts) no_assumptions (f_o, f_n))
+           (filter_diff_h (diff_rec diff_f opts) assums (f_o, f_n))
            (fun fs ->
              if non_empty fs then
                ret fs
@@ -136,7 +135,7 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
                  (fun assums (os, ns) ->
                    let (os, ns) = map_tuple Array.to_list (os, ns) in
                    diff_map_flat (diff_rec diff_arg opts) assums (os, ns))
-                 no_assumptions
+                 assums
                  (args_o, args_n))
       | Conclusion | Identity ->
          let env = fst envs in
@@ -153,7 +152,7 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
              let combine_app = combine_cartesian app in
 	     let args = Array.map (fun a_o -> [a_o]) args_o in
              bind
-               (diff_rec diff_f opts no_assumptions (f_o, f_n))
+               (diff_rec diff_f opts assums (f_o, f_n))
                (fun fs -> ret (combine_app fs (combine_cartesian_append args))))
            (fun _ -> ret give_up)
            (args_o, args_n)
