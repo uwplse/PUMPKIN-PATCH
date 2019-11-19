@@ -189,6 +189,9 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
  *
  * TODO finish cleaning after you clean diff_ind
+ * TODO!!! For these and the rest, take an eliminator application
+ * instead of a term, as in DEVOID; or, compile that from the term itself
+ * inside of here
  *)
 let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
   let diff_rec diff opts assums terms_next =
