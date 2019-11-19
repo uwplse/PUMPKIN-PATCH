@@ -54,22 +54,6 @@ let all_convertible env =
 let app env f args =
   snd (specialize_using specialize_no_reduce env f args Evd.empty)
 
-(*
- * TODO temporary while porting induction completely
- * For now, roundabout/slow because does this twice, so redundant work
- * But, helps move away from categories
- *)
-let temp_get_npms env trm =
-  let (f, args) = destApp trm in
-  try
-    let (c, u) = destConst f in
-    let mutind = Option.get (inductive_of_elim env (c, u)) in
-    let mutind_body = lookup_mind mutind env in
-    mutind_body.mind_nparams
-  with _ ->
-    failwith "Not an inductive proof"
-    
-
 (* --- Main functions --- *)
     
 (*
@@ -187,23 +171,18 @@ let diff_app diff_f diff_arg opts assums envs terms goals =
  * then specialize to any final arguments.
  *
  * For changes in constructors, hypotheses, or fixpoint cases, don't specialize.
- *
- * TODO finish cleaning after you clean diff_ind
- * TODO!!! For these and the rest, take an eliminator application
- * instead of a term, as in DEVOID; or, compile that from the term itself
- * inside of here
  *)
 let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
   let diff_rec diff opts assums terms_next =
     diff_update_goals (diff opts) opts assums envs terms goals terms_next
   in
+  (* V TODO in diff_ind, also take eliminator applications and just use those *)
   let sigma_f, f  = diff_ind opts assums envs terms goals sigma in
   let env = fst envs in
-  (* V TODO consolidate after porting induction *)
-  let npms_o = temp_get_npms env (fst terms) in
-  (* v TODO remove/get as_o and as_n elsewhere *)
-  let sigma, (_, _, as_o) = eval_induction_cat (fst envs) (fst terms) sigma in
-  let sigma, (_, _, as_n) = eval_induction_cat (snd envs) (snd terms) sigma in
+  let sigma, elim_o = deconstruct_eliminator (fst envs) sigma (fst terms) in
+  let sigma, elim_n = deconstruct_eliminator (snd envs) sigma (snd terms) in
+  let as_o = elim_o.final_args in
+  let as_n = elim_n.final_args in (* TODO before had split_at; still have below. why? *)
   match get_change opts with
   | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
      sigma_f, f
@@ -222,7 +201,7 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
          sigma
   | _ ->
      if non_empty as_o then
-       let prop_trm = motive (fst terms) npms_o in
+       let prop_trm = elim_o.p in
        let rec prop_arity p =
          match kind p with
          | Lambda (_, _, b) ->
