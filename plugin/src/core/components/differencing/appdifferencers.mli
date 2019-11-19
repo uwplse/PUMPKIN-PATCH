@@ -28,7 +28,7 @@ val diff_app :
  * Use the options to determine how to combine the results.
  *)
 val diff_app_ind :
-  proof_differencer configurable -> (* diff f *)
-  proof_differencer configurable -> (* diff each arg *)
+  ind_proof_differencer configurable -> (* diff the inductive proof *)
+  proof_differencer configurable -> (* diff the arguments after the proof *)
   proof_differencer configurable
 

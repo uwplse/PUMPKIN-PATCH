@@ -29,4 +29,4 @@ val diff_inductive :
   (env * env) ->
   (constr * constr) ->
   (types * types) ->
-  proof_differencer configurable
+  ind_proof_differencer configurable

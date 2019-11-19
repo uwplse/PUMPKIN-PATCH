@@ -19,6 +19,7 @@ open Evd
 open Higherdifferencers
 open Stateutils
 open Envutils
+open Indutils
 
 let temp_from_diff d =
   let ((goal_o, o), (goal_n, n), assums) = d in
@@ -214,9 +215,12 @@ let temp_to_diff assums envs terms goals sigma =
  * This does not yet handle the case when the inductive parameters
  * are lists of different lengths, or where there is a change in hypothesis.
  *)
-let diff_inductive diff envs_old terms_old goals_old opts assums envs terms goals sigma =
-  let sigma, (o, nparams_o, as_o) = eval_induction_cat (fst envs) (fst terms) sigma in
-  let sigma, (n, nparams_n, as_n) = eval_induction_cat (snd envs) (snd terms) sigma in
+let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goals sigma =
+  let elim_o, elim_n = elims in
+  let nparams_o, nparams_n = map_tuple List.length (elim_o.pms, elim_n.pms) in
+  let terms = map_tuple apply_eliminator elims in
+  let sigma, (o, _, _) = eval_induction_cat (fst envs) (fst terms) sigma in
+  let sigma, (n, _, _) = eval_induction_cat (snd envs) (snd terms) sigma in
   (* ^ TODO finish porting *)
   let diff opts d =
     let assums, envs, terms, goals = temp_from_diff d in

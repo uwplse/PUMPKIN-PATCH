@@ -9,6 +9,7 @@ open Evd
 open Stateutils
 open Assumptions
 open Environ
+open Indutils
 
 type ('a, 'b) differencer = 'a proof_diff -> evar_map -> 'b state
 
@@ -17,6 +18,14 @@ type proof_differencer =
   equal_assumptions ->
   (env * env) ->
   (constr * constr) ->
+  (types * types) ->
+  evar_map ->
+  candidates state
+
+type ind_proof_differencer =
+  equal_assumptions ->
+  (env * env) ->
+  (elim_app * elim_app) ->
   (types * types) ->
   evar_map ->
   candidates state

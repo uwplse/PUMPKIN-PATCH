@@ -176,11 +176,10 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
   let diff_rec diff opts assums terms_next =
     diff_update_goals (diff opts) opts assums envs terms goals terms_next
   in
-  (* V TODO in diff_ind, also take eliminator applications and just use those *)
-  let sigma_f, f  = diff_ind opts assums envs terms goals sigma in
-  let env = fst envs in
   let sigma, elim_o = deconstruct_eliminator (fst envs) sigma (fst terms) in
   let sigma, elim_n = deconstruct_eliminator (snd envs) sigma (snd terms) in
+  let sigma_f, f  = diff_ind opts assums envs (elim_o, elim_n) goals sigma in
+  let env = fst envs in
   let as_o = elim_o.final_args in
   let as_n = elim_n.final_args in (* TODO before had split_at; still have below. why? *)
   match get_change opts with
