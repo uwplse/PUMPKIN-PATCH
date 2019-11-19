@@ -219,8 +219,7 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
          sigma
   | _ ->
      if non_empty as_o then
-       let _, (_, prop_trm_ext, _) = prop o npms_o sigma in
-       let prop_trm = ext_term prop_trm_ext in
+       let prop_trm = motive (fst terms) npms_o in
        let rec prop_arity p =
          match kind p with
          | Lambda (_, _, b) ->

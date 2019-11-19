@@ -86,8 +86,11 @@ val params : proof_cat -> int -> evar_map -> (arrow list) state
  *
  * This assumes the proof category represents an inductive proof
  * It has undefined behavior if you call it otherwise
+ *
+ * TODO now that this is off of proof cats, move to a different place
+ * once we move proof cats
  *)
-val prop : proof_cat -> int -> evar_map -> arrow state
+val motive : constr -> int -> constr
 
 (*
  * Get the only extension in a proof category as a term

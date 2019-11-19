@@ -130,7 +130,7 @@ let unique_common_subpath (paths : arrow list list) =
  *
  * Not sure about reversal
  *)
-let params_and_prop (c : proof_cat) (npms : int) =
+let params_and_motive (c : proof_cat) (npms : int) =
   let i = initial c in
   bind
     (paths_from c i)
@@ -149,14 +149,15 @@ let params_and_prop (c : proof_cat) (npms : int) =
  * the inductive parameters
  *)
 let params (c : proof_cat) (npms : int) =
-  bind (params_and_prop c npms) (fun pair -> ret (fst pair))
+  bind (params_and_motive c npms) (fun pair -> ret (fst pair))
 
 (*
  * From a proof category that represents an inductive proof,
  * get the inductive property
  *)
-let prop (c : proof_cat) (npms : int) =
-  bind (params_and_prop c npms) (fun pair -> ret (snd pair))
+let motive term npms =
+  let args = Array.of_list (Apputils.unfold_args term) in
+  args.(npms)
 
 (*
  * Get the only extension in a proof category as a term
