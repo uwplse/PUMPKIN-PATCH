@@ -199,8 +199,8 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
   (* V TODO consolidate after porting induction *)
   let npms_o = temp_get_npms env (fst terms) in
   (* v TODO remove/get as_o and as_n elsewhere *)
-  let sigma, (o, _, as_o) = eval_induction_cat (fst envs) (fst terms) sigma in
-  let sigma, (o, _, as_n) = eval_induction_cat (snd envs) (snd terms) sigma in
+  let sigma, (_, _, as_o) = eval_induction_cat (fst envs) (fst terms) sigma in
+  let sigma, (_, _, as_n) = eval_induction_cat (snd envs) (snd terms) sigma in
   match get_change opts with
   | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
      sigma_f, f
