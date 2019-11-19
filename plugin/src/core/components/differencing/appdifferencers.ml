@@ -23,6 +23,7 @@ open Expansion
 open Indutils
 open Declarations
 open Environ
+open Funutils
 
 (* --- Auxiliary functions (may move later) --- *)
        
@@ -178,61 +179,69 @@ let diff_app_ind diff_ind diff_arg opts assums envs terms goals sigma =
   in
   let sigma, elim_o = deconstruct_eliminator (fst envs) sigma (fst terms) in
   let sigma, elim_n = deconstruct_eliminator (snd envs) sigma (snd terms) in
-  let sigma_f, f  = diff_ind opts assums envs (elim_o, elim_n) goals sigma in
   let env = fst envs in
-  let as_o = elim_o.final_args in
-  let as_n = elim_n.final_args in (* TODO before had split_at; still have below. why? *)
+  let final_args_o = elim_o.final_args in
+  let final_args_n = elim_n.final_args in
   match get_change opts with
   | (InductiveType (_, _)) | (Hypothesis (_, _)) ->
-     sigma_f, f
+     diff_ind opts assums envs (elim_o, elim_n) goals sigma
   | FixpointCase ((_, _), cut) ->
-     let diff_filter_cut diff terms_next assums =
+     let diff_filter_cut diff terms_next assums _ _ _ =
        bind (diff opts assums terms_next) (filter_cut env cut)
      in
-     if non_empty f then
-       sigma_f, f
-     else
-       (* Note that state is relevant here; don't use sigma_f *)
-       diff_filter_cut
-         (fun opts -> diff_map_flat (diff_rec diff_arg opts))
-         (as_n, as_o)
-         assums
-         sigma
+     try_chain_diffs
+       [(fun assums envs _ ->
+           diff_ind opts assums envs (elim_o, elim_n));
+        (diff_filter_cut
+           (fun opts -> diff_map_flat (diff_rec diff_arg opts))
+           (final_args_n, final_args_o))]
+       assums
+       envs
+       terms
+       goals
+       sigma
   | _ ->
-     if non_empty as_o then
-       let prop_trm = elim_o.p in
-       let rec prop_arity p =
-         match kind p with
-         | Lambda (_, _, b) ->
-            1 + prop_arity b
-         | Prod (_, _, b) ->
-            1 + prop_arity b
-         | _ ->
-            0
-       in
-       let arity = prop_arity prop_trm in
-       let final_args_o = Array.of_list (fst (split_at arity as_o)) in
-       if is_identity (get_change opts) then (* TODO explain *)
-	 sigma, List.map 
-	          (fun f -> 
-	            let dummy_arg = mkRel 1 in
-	            (app env) (app env f final_args_o) (Array.make 1 dummy_arg)) 
-	          f
+     if non_empty final_args_o then
+       let m_arity = arity elim_o.p in
+       let ind_args_o, _ = split_at m_arity final_args_o in
+       let ind_args_n, _ = split_at m_arity final_args_n in
+       if is_identity (get_change opts) then
+         (* optimization *)
+         bind
+           (diff_ind opts assums envs (elim_o, elim_n) goals)
+           (map_state
+              (fun f -> 
+	        let dummy_arg = mkRel 1 in
+                let f_args = Array.of_list ind_args_o in
+	        ret (app env (app env f f_args) (Array.make 1 dummy_arg))))
+           sigma
        else
-         let final_args_n = fst (split_at arity as_n) in
-	 let sigma, args =
-           Util.on_snd
-	     Array.of_list
-             (diff_map
-		(fun assums (arg_o, arg_n) ->
-                  let apply p = ret (app env p (Array.make 1 arg_n)) in
-                  let diff_apply diff assums envs terms goals =
-                    bind (diff assums envs terms goals) (map_state apply)
-                  in
-                  diff_update_goals (diff_apply (diff_arg opts)) opts assums envs terms goals (arg_o, arg_n))
-                assums
-                (final_args_n, Array.to_list final_args_o)
-                sigma)
-	 in sigma, combine_cartesian (app env) f (combine_cartesian_append args)
+         (* proof differencing *)
+         let diff_apply diff arg_n opts assums envs terms goals =
+           bind
+             (diff opts assums envs terms goals)
+             (map_state
+                (fun p -> ret (app env p (Array.make 1 arg_n))))
+         in
+         bind
+           (diff_ind opts assums envs (elim_o, elim_n) goals)
+           (fun f ->
+             bind
+               (diff_map
+		  (fun assums (arg_o, arg_n) ->                
+                    diff_update_goals
+                      (diff_apply diff_arg arg_n opts)
+                      opts
+                      assums
+                      envs
+                      terms
+                      goals
+                      (arg_o, arg_n))
+                  assums
+                  (ind_args_n, ind_args_o))
+               (fun argss ->
+                 let argss = combine_cartesian_append (Array.of_list argss) in
+                 ret (combine_cartesian (app env) f argss)))
+           sigma
      else
-       sigma_f, f
+       diff_ind opts assums envs (elim_o, elim_n) goals sigma
