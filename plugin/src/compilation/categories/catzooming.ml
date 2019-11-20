@@ -84,34 +84,6 @@ let intro_n n (c1, c2, assums) sigma =
  *)
 let intro = intro_n 1
 
-(*
- * Introduce nparams parameters to an inductive diff d
-  *
- * This assumes both proofs have the same number of parameters,
- * otherwise it will fail.
- *)
-let intro_params nparams (o, n, assums) =
-  bind
-    (bind
-       (params o nparams)
-       (fun pms_o ->
-	 bind
-	   (params n nparams)
-	   (fun pms_n ->
-	     fold_right2_state
-	       (fun (_, e1, _) (_, e2, _) d_opt ->
-		 let d = Option.get d_opt in
-		 branch_state
-		   (fun (_, _, assums) -> extensions_equal_assums assums e1 e2)
-		   intro_common
-		   intro
-		   d)
-	       pms_o
-	       pms_n
-               (Some (o, n, assums)))))
-    (fun o -> intro_common (Option.get o))
-       
-
 (* --- Zoomers and using zoomers --- *)
     
 (* Zoom *)

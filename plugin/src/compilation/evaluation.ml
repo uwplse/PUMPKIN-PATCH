@@ -13,6 +13,7 @@ open Indutils
 open Contextutils
 open Stateutils
 open Inference
+open Assumptions
 
 (*
  * Note: Evar discipline is not good yet, but should wait until after
@@ -133,26 +134,131 @@ let combine_constrs (default : proof_cat) (cs : proof_cat list) =
   | [] -> 
      ret default
 
+(* --- TODO temp --- *)
+
+(* Remove the initial object of c *)
+let remove_initial (c : proof_cat) =
+  let i = initial c in
+  let ms = morphisms c in
+  bind
+    (bind (objects c) (all_objects_except i))
+    (fun os' ->
+      bind
+        (partition_state (map_source (objects_not_equal i)) ms)
+	(fun (ms', ims) ->
+	  let (_, _, i') = List.hd ims in
+	  make_category os' ms' (Some i') (terminal_opt c)))
+
+(* Remove the first n contexts *)
+let rec remove_first_n (n : int) (c : proof_cat) =
+  if n = 0 then
+    ret c
+  else
+    bind (remove_initial c) (remove_first_n (n - 1))
+
+(*
+ * Introduce n common elements of c1 and c2 if possible
+ * Remove those elements from the premise of c1 and c2
+ * Add them to assums
+ *)
+let intro_common_n n (c1, c2, assums) sigma =
+  if (List.length (morphisms c1) <= n) || (List.length (morphisms c2) <= n) then
+    sigma, None
+  else
+    let sigma, c1' = remove_first_n n c1 sigma in
+    let sigma, c2' = remove_first_n n c2 sigma in
+    sigma, Some (c1', c2', assume_local_n_equal n assums)
+
+(*
+ * Introduce a common element of c1 and c2 if possible
+ * Remove that element from the premise of c1 and c2
+ * Add it to assums
+ *)
+let intro_common = intro_common_n 1
+
+(*
+ * Introduce n elements of c1 and c2 if possible
+ * Remove those elements from the premise of c1 and c2
+ * Shift the assumptions
+ *)
+let intro_n n (c1, c2, assums) sigma =
+  if (List.length (morphisms c1) <= n) || (List.length (morphisms c2) <= n) then
+    sigma, None
+  else
+    let sigma, c1' = remove_first_n n c1 sigma in
+    let sigma, c2' = remove_first_n n c2 sigma in
+    sigma, Some (c1', c2', shift_assumptions_by n assums)
+
+(*
+ * Introduce an element of c1 and c2 if possible
+ * Remove it from the premise of c1 and c2
+ * Shift the assumptions
+ *)
+let intro = intro_n 1
+         
+(*
+ * Introduce nparams parameters to an inductive diff d
+  *
+ * This assumes both proofs have the same number of parameters,
+ * otherwise it will fail.
+ *
+ * TODO for now combining into one process; later consolidate by slowly
+ * removing, until proof cats are gone
+ *)
+let intro_params nparams (o, n, assums) =
+  bind
+    (bind
+       (params o nparams)
+       (fun pms_o ->
+	 bind
+	   (params n nparams)
+	   (fun pms_n ->
+	     fold_right2_state
+	       (fun (_, e1, _) (_, e2, _) d_opt ->
+		 let d = Option.get d_opt in
+		 branch_state
+		   (fun (_, _, assums) -> extensions_equal_assums assums e1 e2)
+		   intro_common
+		   intro
+		   d)
+	       pms_o
+	       pms_n
+               (Some (o, n, assums)))))
+    (fun o -> intro_common (Option.get o))
+
+(* --- End TODO --- *)
+         
 (*
  * Evaluate an inductive proof
  * Bind the arguments to the application of the induction principle
  * Return any leftover arguments after induction
  *)
-let eval_induction (mutind_body : mutual_inductive_body) (fc : proof_cat) (args : types array) =
-  let t = terminal fc in
-  let npms = mutind_body.mind_nparams in
-  if context_is_product t then
-    let ncs = num_constrs mutind_body in
-    let arg_partition = partition_args npms ncs (Array.to_list args) in
-    let property = arg_partition.property in
-    let params = arg_partition.params in
-    bind
-      (induction_constrs ncs (context_env t) (context_as_product t))
-      (fun cs ->
-	bind
-	  (bind 
-	     (bind_constrs_to_args fc cs ncs arg_partition)
-	     (combine_constrs fc))
-	  (bind_property_and_params property params npms))
-  else
-    ret fc
+let eval_induction (mutind_body_o, mutind_body_n) assums (fc_o, fc_n) (args_o, args_n) =
+  let npms = mutind_body_o.mind_nparams in
+  let eval_induction_1 mutind_body assums fc args =
+    let t = terminal fc in
+    if context_is_product t then
+      let ncs = num_constrs mutind_body in
+      let arg_partition = partition_args npms ncs (Array.to_list args) in
+      let property = arg_partition.property in
+      let params = arg_partition.params in
+      bind
+        (induction_constrs ncs (context_env t) (context_as_product t))
+        (fun cs ->
+	  bind
+	    (bind 
+	       (bind_constrs_to_args fc cs ncs arg_partition)
+	       (combine_constrs fc))
+	    (bind_property_and_params property params npms))
+    else
+      ret fc
+  in
+  bind
+    (eval_induction_1 mutind_body_o assums fc_o args_o)
+    (fun c_o ->
+      bind
+        (eval_induction_1 mutind_body_n assums fc_n args_n)
+        (fun c_n ->
+          bind
+            (intro_params npms (c_o, c_n, assums))
+            (fun o -> ret (Option.get o))))

@@ -287,17 +287,25 @@ let expand_constr (c : proof_cat) =
  * TODO temporary; probably the last to go since it is the most complicated
  * compiles inductive proofs into trees
  *)
-let eval_induction_cat env trm =
-  let (f, args) = destApp trm in
+let eval_induction_cat assums envs trms =
+  let (f_o, args_o), (f_n, args_n) = map_tuple destApp trms in
   try
-    let (c, u) = destConst f in
-    let mutind = Option.get (inductive_of_elim env (c, u)) in
-    let mutind_body = lookup_mind mutind env in
+    let (c_o, u_o), (c_n, u_n) = map_tuple destConst (f_o, f_n) in
+    let mutind_o = Option.get (inductive_of_elim (fst envs) (c_o, u_o)) in
+    let mutind_n = Option.get (inductive_of_elim (snd envs) (c_n, u_n)) in
+    let mutind_body_o = lookup_mind mutind_o (fst envs) in
+    let mutind_body_n = lookup_mind mutind_n (snd envs) in
      bind
        (bind
-	  (eval_proof env f)
-	  (expand_inductive_params mutind_body.mind_nparams))
-       (fun f_exp ->
-	 eval_induction mutind_body f_exp args)
+	  (eval_proof (fst envs) f_o)
+	  (fun c_o ->
+            bind
+              (eval_proof (snd envs) f_n)
+              (fun c_n sigma ->
+                let sigma, f_exp_o = expand_inductive_params mutind_body_o.mind_nparams c_o sigma in
+                let sigma, f_exp_n = expand_inductive_params mutind_body_n.mind_nparams c_n sigma in
+                sigma, (f_exp_o, f_exp_n))))
+       (fun (f_exp_o, f_exp_n) ->
+	 eval_induction (mutind_body_o, mutind_body_n) assums (f_exp_o, f_exp_n) (args_o, args_n))
   with _ ->
     failwith "Not an inductive proof"

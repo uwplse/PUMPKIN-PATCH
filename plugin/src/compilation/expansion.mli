@@ -33,4 +33,4 @@ val expand_constr : proof_cat expansion_strategy
  * Like the above, this will not work yet when induction is later in the proof
  *)
 val eval_induction_cat :
-  env -> constr -> evar_map -> proof_cat state
+  Assumptions.equal_assumptions -> env * env -> constr * constr -> evar_map -> (proof_cat * proof_cat * Assumptions.equal_assumptions) state

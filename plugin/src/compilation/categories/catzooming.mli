@@ -47,42 +47,6 @@ type 'a zoomer =
   evar_map ->
   ('a proof_diff option) state
 
-(* --- Introduction strategies --- *)
-
-(*
- * Introduce a common element of two categories if possible
- * Remove that element from the premise of both
- * Add it to the assumptions
- *)
-val intro_common : proof_cat intro_strategy
-
-(*
- * Introduce n common elements of two categories if possible
- * Remove those elements from the premise of both
- * Add them to the assumptions
- *)
-val intro_common_n : int -> proof_cat intro_strategy
-
-(*
- * Introduce an element of two categories if possible
- * Remove it from the premise of c1 and c2
- * Shift the assumptions
- *)
-val intro : proof_cat intro_strategy
-
-(*
- * Introduce n elements of two cateogries if possible
- * Remove those elements from the premise of both
- * Shift the assumptions
- *)
-val intro_n : int -> proof_cat intro_strategy
-
-(*
- * Introduce the provided number of parameters to an inductive diff
- * Fail if both proofs do not have the same number of parameters
- *)
-val intro_params : int -> proof_cat intro_strategy
-
 (* --- Zoomers and applying them --- *)
 
 (*

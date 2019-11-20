@@ -232,8 +232,7 @@ let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goal
         (bind (split c) (map_state expand_constr))
         (fun cs -> ret (base_cases_first cs))
     in
-    let sigma, o = eval_induction_cat (fst envs) (fst terms) sigma in
-    let sigma, n = eval_induction_cat (snd envs) (snd terms) sigma in
+    let sigma, (o, n, assums) = eval_induction_cat assums envs terms sigma in
     (* ^ TODO finish porting *)
     zoom_map
       (fun d ->
@@ -246,6 +245,6 @@ let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goal
               (map_state (fun d -> ret (unshift_by nparams_o d)))))
       []
       ret
-      (intro_params nparams_o)
+      (fun c -> ret (Some c)) (* TODO remove zoom_map *)
       (o, n, assums)
       sigma
