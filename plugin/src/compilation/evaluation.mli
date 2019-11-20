@@ -33,4 +33,4 @@ val eval_proof_arrow : arrow -> evar_map -> proof_cat state
  * Return the number of params and any leftover arguments after induction
  *)
 val eval_induction :
-  mutual_inductive_body -> proof_cat -> types array -> evar_map -> (proof_cat * int * types list) state
+  mutual_inductive_body -> proof_cat -> types array -> evar_map -> proof_cat state

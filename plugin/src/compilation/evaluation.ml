@@ -153,9 +153,6 @@ let eval_induction (mutind_body : mutual_inductive_body) (fc : proof_cat) (args 
 	  (bind 
 	     (bind_constrs_to_args fc cs ncs arg_partition)
 	     (combine_constrs fc))
-	  (fun c -> 
-	    bind
-	      (bind_property_and_params property params npms c)
-	      (fun c_bound -> ret (c_bound, npms, arg_partition.final_args))))
+	  (bind_property_and_params property params npms))
   else
-    ret (fc, npms, [])
+    ret fc
