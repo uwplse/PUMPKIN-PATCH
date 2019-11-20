@@ -325,13 +325,13 @@ let expand_terminal (c : proof_cat) =
 
 (* For an inductive proof, expand n inductive parameters and the principle P
   TODO temporary *)
-let expand_inductive_params (n : int) (c : proof_cat) =
+let eval_inductive_params (n : int) env f =
   let rec expand n' c' =
     if n' < 0 || (not (context_is_product (terminal c'))) then
       ret c'
     else
       bind (expand_terminal c') (expand (n' - 1))
-  in expand n c
+  in bind (eval_proof env f) (expand n)
 
 (*
  * Evaluate an inductive proof
@@ -379,10 +379,8 @@ let eval_induction_cat assums envs elims sigma =
     let mutind_n = Option.get (inductive_of_elim (snd envs) (c_n, u_n)) in
     let mutind_body_o = lookup_mind mutind_o (fst envs) in
     let mutind_body_n = lookup_mind mutind_n (snd envs) in
-    let sigma, c_o = eval_proof (fst envs) f_o sigma in
-    let sigma, c_n = eval_proof (snd envs) f_n sigma in
-    let sigma, f_exp_o = expand_inductive_params mutind_body_o.mind_nparams c_o sigma in
-    let sigma, f_exp_n = expand_inductive_params mutind_body_n.mind_nparams c_n sigma in
+    let sigma, f_exp_o = eval_inductive_params mutind_body_o.mind_nparams (fst envs) f_o sigma in
+    let sigma, f_exp_n = eval_inductive_params mutind_body_n.mind_nparams (snd envs) f_n sigma in
     eval_induction (mutind_body_o, mutind_body_n) assums (f_exp_o, f_exp_n) elims sigma
   with _ ->
     failwith "Not an inductive proof"
