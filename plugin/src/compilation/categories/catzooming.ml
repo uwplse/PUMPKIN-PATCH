@@ -93,22 +93,22 @@ let intro = intro_n 1
 let intro_params nparams (o, n, assums) =
   bind
     (bind
-       (bind (params o nparams) (fun l -> ret (List.rev l)))
+       (params o nparams)
        (fun pms_o ->
 	 bind
-	   (bind (params n nparams) (fun l -> ret (List.rev l)))
+	   (params n nparams)
 	   (fun pms_n ->
-	     fold_left2_state
-	       (fun d_opt (_, e1, _) (_, e2, _) ->
+	     fold_right2_state
+	       (fun (_, e1, _) (_, e2, _) d_opt ->
 		 let d = Option.get d_opt in
 		 branch_state
 		   (fun (_, _, assums) -> extensions_equal_assums assums e1 e2)
 		   intro_common
 		   intro
 		   d)
-	       (Some (o, n, assums))
 	       pms_o
-	       pms_n)))
+	       pms_n
+               (Some (o, n, assums)))))
     (fun o -> intro_common (Option.get o))
        
 
