@@ -337,50 +337,47 @@ let eval_inductive_params (n : int) env f =
  * Evaluate an inductive proof
  * Bind the arguments to the application of the induction principle
  * Return any leftover arguments after induction
- *)
-let eval_induction (mutind_body_o, mutind_body_n) assums (fc_o, fc_n) elims =
-  let npms = mutind_body_o.mind_nparams in
-  let eval_induction_1 mutind_body assums fc elim =
-    let t = terminal fc in
-    if context_is_product t then
-      let ncs = num_constrs mutind_body in
-      let motive = elim.p in
-      let params = elim.pms in
-      bind
-        (induction_constrs ncs (context_env t) (context_as_product t))
-        (fun cs ->
-	  bind
-	    (bind 
-	       (bind_constrs_to_args fc cs ncs elim)
-	       (combine_constrs fc))
-	    (bind_property_and_params (Some motive) params npms))
-    else
-      ret fc
-  in
-  bind
-    (eval_induction_1 mutind_body_o assums fc_o (fst elims))
-    (fun c_o ->
-      bind
-        (eval_induction_1 mutind_body_n assums fc_n (snd elims))
-        (fun c_n ->
-          bind
-            (intro_params npms (c_o, c_n, assums))
-            (fun o -> ret (Option.get o))))
-            
-(*
  * TODO temporary; probably the last to go since it is the most complicated
  * compiles inductive proofs into trees
  *)
 let eval_induction_cat assums envs elims sigma =
   let f_o, f_n = (map_tuple (fun e -> e.elim) elims) in
+  let env_o, env_n = envs in
   try
     let (c_o, u_o), (c_n, u_n) = map_tuple destConst (f_o, f_n) in
-    let mutind_o = Option.get (inductive_of_elim (fst envs) (c_o, u_o)) in
-    let mutind_n = Option.get (inductive_of_elim (snd envs) (c_n, u_n)) in
-    let mutind_body_o = lookup_mind mutind_o (fst envs) in
-    let mutind_body_n = lookup_mind mutind_n (snd envs) in
-    let sigma, f_exp_o = eval_inductive_params mutind_body_o.mind_nparams (fst envs) f_o sigma in
-    let sigma, f_exp_n = eval_inductive_params mutind_body_n.mind_nparams (snd envs) f_n sigma in
-    eval_induction (mutind_body_o, mutind_body_n) assums (f_exp_o, f_exp_n) elims sigma
+    let mutind_o = Option.get (inductive_of_elim env_o (c_o, u_o)) in
+    let mutind_n = Option.get (inductive_of_elim env_n (c_n, u_n)) in
+    let mutind_body_o = lookup_mind mutind_o env_o in
+    let mutind_body_n = lookup_mind mutind_n env_n in
+    let sigma, f_exp_o = eval_inductive_params mutind_body_o.mind_nparams env_o f_o sigma in
+    let sigma, f_exp_n = eval_inductive_params mutind_body_n.mind_nparams env_n f_n sigma in
+    let npms = mutind_body_o.mind_nparams in
+    let eval_induction_1 mutind_body assums fc elim =
+      let t = terminal fc in
+      if context_is_product t then
+        let ncs = num_constrs mutind_body in
+        let motive = elim.p in
+        let params = elim.pms in
+        bind
+          (induction_constrs ncs (context_env t) (context_as_product t))
+          (fun cs ->
+	    bind
+	      (bind 
+	         (bind_constrs_to_args fc cs ncs elim)
+	         (combine_constrs fc))
+	      (bind_property_and_params (Some motive) params npms))
+      else
+        ret fc
+    in
+    bind
+      (eval_induction_1 mutind_body_o assums f_exp_o (fst elims))
+      (fun c_o ->
+        bind
+          (eval_induction_1 mutind_body_n assums f_exp_n (snd elims))
+          (fun c_n ->
+            bind
+              (intro_params npms (c_o, c_n, assums))
+              (fun o -> ret (Option.get o))))
+      sigma
   with _ ->
     failwith "Not an inductive proof"
