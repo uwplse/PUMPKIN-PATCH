@@ -14,6 +14,7 @@ open Contextutils
 open Stateutils
 open Inference
 open Assumptions
+open Envutils
 
 (*
  * Note: Evar discipline is not good yet, but should wait until after
@@ -262,3 +263,169 @@ let eval_induction (mutind_body_o, mutind_body_n) assums (fc_o, fc_n) (args_o, a
           bind
             (intro_params npms (c_o, c_n, assums))
             (fun o -> ret (Option.get o))))
+
+(* Expand a product type exactly once *)
+let expand_product (env : env) ((n, t, b) : Name.t * types * types) =
+  bind
+    (eval_theorem env t)
+    (fun t' ->
+      let env' = push_local (n, t) env in
+      bind
+	(bind (eval_theorem env' b) (substitute_categories t'))
+	(fun c ->
+	  bind_cat c (initial c, LazyBinding (mkRel 1, env'), terminal t')))
+
+(* Expand a lambda term exactly once *)
+let expand_lambda (env : env) ((n, t, b) : Name.t * types * types) =
+  expand_product env (n, t, b)
+
+(*
+ * Expand an inductive type
+ * This is unfinished, and currently unused for any benchmarks
+*)
+let expand_inductive (env : env) (((i, ii), u) : pinductive) =
+  let mbody = lookup_mind i env in
+  check_inductive_supported mbody;
+  let bodies = mbody.mind_packets in
+  let env_ind = push_rel_context (bindings_for_inductive env mbody bodies) env in
+  let body = bodies.(ii) in
+  let constrs =
+    List.map
+      (fun ci -> mkConstructU (((i, ii), ci), u))
+      (from_one_to (Array.length body.mind_consnames))
+  in
+  bind
+    (map_state (eval_proof env_ind) constrs)
+    (fun cs ->
+      fold_left_state
+	(fun cind c ->
+	  let ms = List.append (morphisms c) (morphisms cind) in
+	  bind 
+	    (bind (objects cind) (fun tl -> ret (terminal c :: tl)))
+	    (fun os -> make_category os ms (initial_opt cind) None))
+	(List.hd cs)
+	(List.tl cs))
+
+(*
+ * Expand application exactly once
+ * Assumes there is at least one argument
+ *)
+let expand_app (env : env) ((f, args) : types * types array) =
+  assert (Array.length args > 0);
+  let arg = args.(0) in
+  bind
+    (eval_proof env (mkApp (f, Array.make 1 arg)))
+    (fun f' ->
+      bind
+	(bind (eval_proof env arg) (fun c -> substitute_categories c f'))
+	(bind_apply_function (LazyBinding (f, env)) 1))
+
+    (* Expand a product type as far as its conclusion goes *)
+let expand_product_fully (o : context_object) =
+  let rec expand_fully env (n, t, b) =
+    match kind b with
+    | Prod (n', t', b') ->
+       bind
+	 (eval_theorem env t)
+	 (fun t'' ->
+	   let env' = push_local (n, t) env in
+	   bind
+	     (bind (expand_fully env' (n', t', b')) (substitute_categories t''))
+	     (fun c ->
+	       let init_o = initial c in
+	       let term_o = terminal t'' in
+	       bind_cat c (init_o, LazyBinding (mkRel 1, env'), term_o)))
+    | _ ->
+       expand_product env (n, t, b)
+  in expand_fully (context_env o) (destProd (fst (dest_context_term o)))
+    
+(*
+ * Expand a term exactly once
+ * Default to using f when it cannot be expanded further
+ * Error if the type context doesn't hold any terms
+ * TODO temporary
+ *)
+let expand_term (default : env -> types -> evar_map -> proof_cat state) (o : context_object) =
+  let (trm, env) = dest_context_term o in
+  match kind trm with
+  | Prod (n, t, b) ->
+     expand_product env (n, t, b)
+  | Lambda (n, t, b) ->
+     expand_lambda env (n, t, b)
+  | Ind ((i, ii), u) ->
+     expand_inductive env ((i, ii), u)
+  | App (f, args) ->
+     (match kind f with
+     | Lambda (n, t, b) ->
+        (* Does not yet delta-reduce *)
+        if Array.length args > 0 then
+          expand_app env (f, args)
+        else
+          default env trm
+     | _ ->
+        default env trm)
+  | _ ->
+     default env trm
+    
+(*
+ * Expand the terminal object of c exactly once
+ * Return c if it cannot be expanded
+ * TODO temporary
+ *)
+let expand_terminal (c : proof_cat) =
+  let t = terminal c in
+  match t with
+  | Context (Term (trm, env), i) ->
+     let ms = morphisms c in
+     bind
+       (arrows_with_dest t ms)
+       (fun concls ->
+	 let binding =
+	   if non_empty concls then
+             let (_, ext, _) = List.hd concls in (* arbitrary for now *)
+             ext
+	   else
+             AnonymousBinding
+	 in
+	 bind 
+	   (expand_term (eval_theorem_bind binding) t) 
+	   (substitute_terminal c))
+  | _ ->
+     ret c
+
+(* For an inductive proof, expand n inductive parameters and the principle P
+  TODO temporary *)
+let expand_inductive_params (n : int) (c : proof_cat) =
+  let rec expand n' c' =
+    if n' < 0 || (not (context_is_product (terminal c'))) then
+      ret c'
+    else
+      bind (expand_terminal c') (expand (n' - 1))
+  in expand n c
+    
+(*
+ * TODO temporary; probably the last to go since it is the most complicated
+ * compiles inductive proofs into trees
+ *)
+let eval_induction_cat assums envs trms =
+  let (f_o, args_o), (f_n, args_n) = map_tuple destApp trms in
+  try
+    let (c_o, u_o), (c_n, u_n) = map_tuple destConst (f_o, f_n) in
+    let mutind_o = Option.get (inductive_of_elim (fst envs) (c_o, u_o)) in
+    let mutind_n = Option.get (inductive_of_elim (snd envs) (c_n, u_n)) in
+    let mutind_body_o = lookup_mind mutind_o (fst envs) in
+    let mutind_body_n = lookup_mind mutind_n (snd envs) in
+     bind
+       (bind
+	  (eval_proof (fst envs) f_o)
+	  (fun c_o ->
+            bind
+              (eval_proof (snd envs) f_n)
+              (fun c_n sigma ->
+                let sigma, f_exp_o = expand_inductive_params mutind_body_o.mind_nparams c_o sigma in
+                let sigma, f_exp_n = expand_inductive_params mutind_body_n.mind_nparams c_n sigma in
+                sigma, (f_exp_o, f_exp_n))))
+       (fun (f_exp_o, f_exp_n) ->
+	 eval_induction (mutind_body_o, mutind_body_n) assums (f_exp_o, f_exp_n) (args_o, args_n))
+  with _ ->
+    failwith "Not an inductive proof"

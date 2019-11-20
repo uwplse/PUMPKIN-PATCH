@@ -9,6 +9,7 @@ open Candidates
 open Constr
 open Debruijn
 open Evd
+open Evaluation
 
 (* --- Zooming --- *)
 

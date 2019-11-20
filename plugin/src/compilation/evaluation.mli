@@ -6,6 +6,19 @@ open Proofcat
 open Declarations
 open Stateutils
 open Evd
+open Expansion
+
+(*
+ * TODO temporary
+ *)
+val expand_product_fully : context_object -> evar_map -> proof_cat state
+
+(*
+ * Expand the terminal object of a proof category exactly once
+ * Return the original category if it cannot be exapnded
+ * TODO temporary, remove eventually
+ *)
+val expand_terminal : proof_cat expansion_strategy
 
 (*
  * Evaluate a term one step in an environment
@@ -30,7 +43,6 @@ val eval_proof_arrow : arrow -> evar_map -> proof_cat state
  * 4. Other arguments that may be leftover after induction
  *
  * Bind the arguments to the application of the induction principle
- * Return the number of params and any leftover arguments after induction
  *)
-val eval_induction :
-  mutual_inductive_body * mutual_inductive_body -> Assumptions.equal_assumptions -> proof_cat * proof_cat -> types array * types array -> evar_map -> (proof_cat * proof_cat * Assumptions.equal_assumptions) state
+val eval_induction_cat :
+  Assumptions.equal_assumptions -> env * env -> constr * constr -> evar_map -> (proof_cat * proof_cat * Assumptions.equal_assumptions) state
