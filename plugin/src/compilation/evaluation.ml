@@ -344,18 +344,13 @@ let eval_induction_cat assums envs elims sigma =
   let f_o, f_n = (map_tuple (fun e -> e.elim) elims) in
   let env_o, env_n = envs in
   try
-    let (c_o, u_o), (c_n, u_n) = map_tuple destConst (f_o, f_n) in
-    let mutind_o = Option.get (inductive_of_elim env_o (c_o, u_o)) in
-    let mutind_n = Option.get (inductive_of_elim env_n (c_n, u_n)) in
-    let mutind_body_o = lookup_mind mutind_o env_o in
-    let mutind_body_n = lookup_mind mutind_n env_n in
-    let sigma, f_exp_o = eval_inductive_params mutind_body_o.mind_nparams env_o f_o sigma in
-    let sigma, f_exp_n = eval_inductive_params mutind_body_n.mind_nparams env_n f_n sigma in
-    let npms = mutind_body_o.mind_nparams in
-    let eval_induction_1 mutind_body assums fc elim =
+    let npms = List.length ((fst elims).pms) in
+    let sigma, fc_o = eval_inductive_params npms env_o f_o sigma in
+    let sigma, fc_n = eval_inductive_params npms env_n f_n sigma in
+    let eval_induction_1 assums fc elim =
       let t = terminal fc in
       if context_is_product t then
-        let ncs = num_constrs mutind_body in
+        let ncs = List.length (elim.cs) in
         let motive = elim.p in
         let params = elim.pms in
         bind
@@ -370,10 +365,10 @@ let eval_induction_cat assums envs elims sigma =
         ret fc
     in
     bind
-      (eval_induction_1 mutind_body_o assums f_exp_o (fst elims))
+      (eval_induction_1 assums fc_o (fst elims))
       (fun c_o ->
         bind
-          (eval_induction_1 mutind_body_n assums f_exp_n (snd elims))
+          (eval_induction_1 assums fc_n (snd elims))
           (fun c_n ->
             bind
               (intro_params npms (c_o, c_n, assums))
