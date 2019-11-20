@@ -218,7 +218,6 @@ let temp_to_diff assums envs terms goals sigma =
 let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goals sigma =
   let elim_o, elim_n = elims in
   let nparams_o, nparams_n = map_tuple List.length (elim_o.pms, elim_n.pms) in
-  let terms = map_tuple apply_eliminator elims in
   let diff opts d =
     let assums, envs, terms, goals = temp_from_diff d in
     diff opts assums envs terms goals
@@ -232,7 +231,7 @@ let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goal
         (bind (split c) (map_state expand_constr))
         (fun cs -> ret (base_cases_first cs))
     in
-    let sigma, (o, n, assums) = eval_induction_cat assums envs terms sigma in
+    let sigma, (o, n, assums) = eval_induction_cat assums envs elims sigma in
     (* ^ TODO finish porting *)
     zoom_map
       (fun d ->

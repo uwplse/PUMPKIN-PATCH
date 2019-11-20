@@ -7,6 +7,8 @@ open Declarations
 open Stateutils
 open Evd
 open Expansion
+open Indutils
+open Assumptions
 
 (*
  * TODO temporary
@@ -45,4 +47,4 @@ val eval_proof_arrow : arrow -> evar_map -> proof_cat state
  * Bind the arguments to the application of the induction principle
  *)
 val eval_induction_cat :
-  Assumptions.equal_assumptions -> env * env -> constr * constr -> evar_map -> (proof_cat * proof_cat * Assumptions.equal_assumptions) state
+  equal_assumptions -> env * env -> elim_app * elim_app -> evar_map -> (proof_cat * proof_cat * equal_assumptions) state

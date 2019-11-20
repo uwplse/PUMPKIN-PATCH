@@ -71,56 +71,21 @@ let rec induction_constrs (nc : int) (env : env) ((n, t, b) : Name.t * types * t
 	   ret [c])
 
 (*
- * A partitition of arguments to an inductive proof into four parts:
- * 1. A list of inductive parameters
- * 2. An optional inductive property
- * 3. A list of non-parameter arguments to the induction principle
- * 4. A list of arguments that follow the entire application of the principle
- *
- * Because of partial application, any of these may be empty/None.
- *)
-type 'a argument_partition =
-  {
-    params : 'a list;
-    property : 'a option;
-    non_params : 'a list;
-    final_args : 'a list;
-  }
-
-(*
- * Partition arguments to an inductive proof into parts.
- * nparams is the number of parameters in the inductive type.
- * nconstrs is the number of constructors in the inductive type.
- * args is the list of arguments before partition.
- *)
-let partition_args (nparams : int) (nconstrs : int) (args : 'a list) : 'a argument_partition =
-  let (params, rest) = split_at nparams args in
-  match rest with
-  | h :: t ->
-     let property = Some h in
-     let (non_params, final_args) = split_at nconstrs t in
-     {params; property; non_params; final_args}
-  | [] ->
-     let property = None in
-     let (non_params, final_args) = ([], []) in
-     {params; property; non_params; final_args}
-
-(*
  * Auxiliary function for eval_induction
  * Bind arguments in a list of constructors
  *)
-let bind_constrs_to_args fc cs ncs arg_partition =
-  let non_params = Array.of_list arg_partition.non_params in
-  let num_non_params = Array.length non_params in
+let bind_constrs_to_args fc cs ncs elim =
+  let constrs = Array.of_list elim.cs in
+  let num_constrs = Array.length constrs in
   bind
     (map_state (substitute_terminal fc) cs)
     (fun ps ->
       let cs_params = Array.of_list ps in
       bind
-	(bind_inductive_args non_params cs_params)
+	(bind_inductive_args constrs cs_params)
 	(fun args ->
 	  let cs_args = Array.to_list args in
-	  let cs_no_args = List.map (Array.get cs_params) (range num_non_params (List.length cs)) in
+	  let cs_no_args = List.map (Array.get cs_params) (range num_constrs (List.length cs)) in
 	  ret (List.append cs_args cs_no_args)))
 
 (*
@@ -228,41 +193,6 @@ let intro_params nparams (o, n, assums) =
     (fun o -> intro_common (Option.get o))
 
 (* --- End TODO --- *)
-         
-(*
- * Evaluate an inductive proof
- * Bind the arguments to the application of the induction principle
- * Return any leftover arguments after induction
- *)
-let eval_induction (mutind_body_o, mutind_body_n) assums (fc_o, fc_n) (args_o, args_n) =
-  let npms = mutind_body_o.mind_nparams in
-  let eval_induction_1 mutind_body assums fc args =
-    let t = terminal fc in
-    if context_is_product t then
-      let ncs = num_constrs mutind_body in
-      let arg_partition = partition_args npms ncs (Array.to_list args) in
-      let property = arg_partition.property in
-      let params = arg_partition.params in
-      bind
-        (induction_constrs ncs (context_env t) (context_as_product t))
-        (fun cs ->
-	  bind
-	    (bind 
-	       (bind_constrs_to_args fc cs ncs arg_partition)
-	       (combine_constrs fc))
-	    (bind_property_and_params property params npms))
-    else
-      ret fc
-  in
-  bind
-    (eval_induction_1 mutind_body_o assums fc_o args_o)
-    (fun c_o ->
-      bind
-        (eval_induction_1 mutind_body_n assums fc_n args_n)
-        (fun c_n ->
-          bind
-            (intro_params npms (c_o, c_n, assums))
-            (fun o -> ret (Option.get o))))
 
 (* Expand a product type exactly once *)
 let expand_product (env : env) ((n, t, b) : Name.t * types * types) =
@@ -402,13 +332,47 @@ let expand_inductive_params (n : int) (c : proof_cat) =
     else
       bind (expand_terminal c') (expand (n' - 1))
   in expand n c
-    
+
+(*
+ * Evaluate an inductive proof
+ * Bind the arguments to the application of the induction principle
+ * Return any leftover arguments after induction
+ *)
+let eval_induction (mutind_body_o, mutind_body_n) assums (fc_o, fc_n) elims =
+  let npms = mutind_body_o.mind_nparams in
+  let eval_induction_1 mutind_body assums fc elim =
+    let t = terminal fc in
+    if context_is_product t then
+      let ncs = num_constrs mutind_body in
+      let motive = elim.p in
+      let params = elim.pms in
+      bind
+        (induction_constrs ncs (context_env t) (context_as_product t))
+        (fun cs ->
+	  bind
+	    (bind 
+	       (bind_constrs_to_args fc cs ncs elim)
+	       (combine_constrs fc))
+	    (bind_property_and_params (Some motive) params npms))
+    else
+      ret fc
+  in
+  bind
+    (eval_induction_1 mutind_body_o assums fc_o (fst elims))
+    (fun c_o ->
+      bind
+        (eval_induction_1 mutind_body_n assums fc_n (snd elims))
+        (fun c_n ->
+          bind
+            (intro_params npms (c_o, c_n, assums))
+            (fun o -> ret (Option.get o))))
+            
 (*
  * TODO temporary; probably the last to go since it is the most complicated
  * compiles inductive proofs into trees
  *)
-let eval_induction_cat assums envs trms =
-  let (f_o, args_o), (f_n, args_n) = map_tuple destApp trms in
+let eval_induction_cat assums envs elims =
+  let f_o, f_n = (map_tuple (fun e -> e.elim) elims) in
   try
     let (c_o, u_o), (c_n, u_n) = map_tuple destConst (f_o, f_n) in
     let mutind_o = Option.get (inductive_of_elim (fst envs) (c_o, u_o)) in
@@ -426,6 +390,6 @@ let eval_induction_cat assums envs trms =
                 let sigma, f_exp_n = expand_inductive_params mutind_body_n.mind_nparams c_n sigma in
                 sigma, (f_exp_o, f_exp_n))))
        (fun (f_exp_o, f_exp_n) ->
-	 eval_induction (mutind_body_o, mutind_body_n) assums (f_exp_o, f_exp_n) (args_o, args_n))
+	 eval_induction (mutind_body_o, mutind_body_n) assums (f_exp_o, f_exp_n) elims)
   with _ ->
     failwith "Not an inductive proof"
