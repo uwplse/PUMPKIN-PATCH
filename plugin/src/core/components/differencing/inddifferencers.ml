@@ -21,12 +21,8 @@ open Stateutils
 open Envutils
 open Indutils
 
-let temp_from_diff d =
-  let ((goal_o, o), (goal_n, n), assums) = d in
+let temp_from_diff assums envs (o, n) goals =
   let terms = map_tuple only_extension_as_term (o, n) in
-  let goals = map_tuple dest_context_term (goal_o, goal_n) in
-  let envs = map_tuple snd goals in
-  let goals = map_tuple fst goals in
   (assums, envs, terms, goals)
 
 (* --- Cases --- *)
@@ -43,17 +39,15 @@ let temp_from_diff d =
  * To improve this, we need benchmarks for which the head is not the patch,
  * but another arrow is.
  *)
-let rec diff_case abstract diff d sigma =
-  match diff_proofs d with
+let rec diff_case abstract diff assums envs (os, ns) goals sigma =
+  match os, ns with
   | ((h1 :: t1), (h2 :: t2)) ->
-     let ((goal1, _), (goal2, _), assums) = d in
-     let d_t = (goal1, t1), (goal2, t2), assums in
      (try
         bind
           (map_tuple_state eval_proof_arrow (h1, h2))
           (fun (c1, c2) ->
             let assums, envs, terms, goals =
-              temp_from_diff ((goal1, c1), (goal2, c2), assums)
+              temp_from_diff assums envs (c1, c2) goals
             in
             bind
               (bind (diff assums envs terms goals) abstract)
@@ -61,10 +55,10 @@ let rec diff_case abstract diff d sigma =
                 if non_empty cs then
                   ret cs sigma_h
                 else
-                  diff_case abstract diff d_t sigma))
+                  diff_case abstract diff assums envs (t1, t2) goals sigma))
           sigma
       with _ ->
-        diff_case abstract diff d_t sigma)
+        diff_case abstract diff assums envs (t1, t2) goals sigma)
   | _ ->
      ret give_up sigma
 
@@ -84,7 +78,10 @@ let rec diff_case abstract diff d sigma =
  * principle for the constructor version to get a more general patch.
  *)
 let diff_ind_case opts diff d =
-  diff_case (abstract_case opts d) diff d
+  let ((goal1, os), (goal2, ns), assums) = d in
+  let envs = map_tuple context_env (goal1, goal2) in
+  let goals = map_tuple context_term (goal1, goal2) in
+  diff_case (abstract_case opts d) diff assums envs (os, ns) goals
 
 (*
  * Search a case of a difference in proof categories.
