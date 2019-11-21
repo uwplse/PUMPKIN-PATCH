@@ -214,13 +214,11 @@ let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goal
   if not (nparams_o = nparams_n) then
     ret give_up sigma
   else
-    let sort c =
-      bind
-        (bind (split c) (map_state expand_constr))
-        (fun cs -> ret (base_cases_first cs))
+    let sort cs =
+      ret (base_cases_first cs)
     in
-    let sigma, (o, n, assums) = eval_induction_cat assums envs elims sigma in
-    let sigma, (os, ns) = map_tuple_state sort (o, n) sigma in
+    let sigma, (os, ns, assums) = eval_induction_cat assums envs elims sigma in
+    let sigma, (os, ns) = map_tuple_state sort (os, ns) sigma in
     let ds = List.map2 (fun o n -> o, n, assums) os ns in
     bind
       (diff_ind_cases opts diff envs_old terms_old goals_old ds)
