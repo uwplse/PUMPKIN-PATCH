@@ -326,11 +326,11 @@ let expand_terminal (c : proof_cat) =
 (* For an inductive proof, expand n inductive parameters and the principle P
   TODO temporary *)
 let eval_inductive_params (n : int) env f =
-  let rec expand n' c' =
-    if n' < 0 || (not (context_is_product (terminal c'))) then
-      ret c'
+  let rec expand n c =
+    if n < 0 then
+      ret c
     else
-      bind (expand_terminal c') (expand (n' - 1))
+      bind (expand_terminal c) (expand (n - 1))
   in bind (eval_proof env f) (expand n)
 
 (*
