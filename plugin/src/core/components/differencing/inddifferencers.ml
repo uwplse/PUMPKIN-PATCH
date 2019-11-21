@@ -52,8 +52,11 @@ let rec diff_case abstract diff d sigma =
         bind
           (map_tuple_state eval_proof_arrow (h1, h2))
           (fun (c1, c2) ->
+            let assums, envs, terms, goals =
+              temp_from_diff ((goal1, c1), (goal2, c2), assums)
+            in
             bind
-              (bind (diff ((goal1, c1), (goal2, c2), assums)) abstract)
+              (bind (diff assums envs terms goals) abstract)
               (fun cs sigma_h ->
                 if non_empty cs then
                   ret cs sigma_h
@@ -90,7 +93,7 @@ let diff_ind_case opts diff d =
  * This breaks it up into arrows and then searches those
  * in the order of the sort function.
  *)
-let diff_sort_ind_case opts sort diff d_old (o, n, assums) =
+let diff_sort_ind_case opts sort diff envs_old terms_old goals_old (o, n, assums) =
   let ms_o = morphisms o in
   let ms_n = morphisms n in
   let d_ms = ms_o, ms_n, assums in
@@ -100,14 +103,13 @@ let diff_sort_ind_case opts sort diff d_old (o, n, assums) =
          (fun (o, ms) -> ret (terminal o, ms))
          (fun _ -> update_case_assums d_ms)
          ((o, sort o ms_o), (n, sort n ms_n), assums))
-      (fun ds -> ret (reset_case_goals opts d_old ds)))
+      (fun ds -> ret (reset_case_goals opts envs_old terms_old goals_old ds)))
     (fun d_goals ->
       if is_hypothesis (get_change opts) then
         (* deal with the extra hypothesis *)
         let ((goal_o_o, _), (_, _), _) = d_goals in
-        let ((goal_o_n, _), (_, _), _) = d_old in
+        let env_o_n = fst envs_old in
         let env_o_o = context_env goal_o_o in
-        let env_o_n = context_env goal_o_n in
         let num_new_rels = new_rels2 env_o_o env_o_n in
         bind
           (diff_ind_case opts (diff opts) d_goals)
@@ -118,9 +120,9 @@ let diff_sort_ind_case opts sort diff d_old (o, n, assums) =
 (*
  * Base case: Prefer arrows later in the proof
  *)
-let diff_base_case opts diff d_old d =
+let diff_base_case opts diff envs_old terms_old goals_old d =
   let sort _ ms = List.rev ms in
-  diff_sort_ind_case (set_is_ind opts false) sort diff d_old d
+  diff_sort_ind_case (set_is_ind opts false) sort diff envs_old terms_old goals_old d
 
 (*
  * Inductive case: Prefer arrows closest to an IH,
@@ -133,7 +135,7 @@ let diff_base_case opts diff d_old d =
  * For optimization, we don't bother treating the inductive case
  * any differently, since the IH does not change.
  *)
-let diff_inductive_case opts diff d_old d sigma =
+let diff_inductive_case opts diff envs_old terms_old goals_old d sigma =
   let sort c ms =
     (* Porting stable_sort to state is just not happening *)
     List.stable_sort
@@ -142,19 +144,19 @@ let diff_inductive_case opts diff d_old d sigma =
   in
   let change = get_change opts in
   let opts = if is_identity change then opts else set_is_ind opts true in
-  diff_sort_ind_case opts sort diff d_old d sigma
+  diff_sort_ind_case opts sort diff envs_old terms_old goals_old d sigma
 
 (*
  * Depending on whether a proof has inductive hypotheses, difference
  * it treating it either like a base case (no inductive hypotheses)
  * or an inductive case (some inductive hypotheses).
  *)
-let diff_base_or_inductive_case opts diff d_old d =
+let diff_base_or_inductive_case opts diff envs_old terms_old goals_old d =
   let (o, _, _) = d in
   if has_ihs o then
-    diff_inductive_case opts diff d_old d
+    diff_inductive_case opts diff envs_old terms_old goals_old d
   else
-    diff_base_case opts diff d_old d
+    diff_base_case opts diff envs_old terms_old goals_old d
 
 (*
  * Diff a case, then adjust the patch so it type-checks
@@ -163,10 +165,10 @@ let diff_base_or_inductive_case opts diff d_old d =
  * If there is a bug here, then the offset we unshift by may not generalize
  * for all cases.
  *)
-let diff_and_unshift_case opts diff d_old d =
+let diff_and_unshift_case opts diff envs_old terms_old goals_old d =
   let (o, _, _) = d in
   bind
-    (diff_base_or_inductive_case opts diff d_old d)
+    (diff_base_or_inductive_case opts diff envs_old terms_old goals_old d)
     (map_state
        (fun trm ->
          if is_conclusion (get_change opts) then
@@ -181,31 +183,22 @@ let diff_and_unshift_case opts diff d_old d =
  * For now, we only return the first patch we find.
  * We may want to return more later.
  *)
-let rec diff_ind_cases opts diff d_old ds sigma =
+let rec diff_ind_cases opts diff envs_old terms_old goals_old ds sigma =
   match ds with
   | d :: tl ->
      bind
-       (diff_and_unshift_case opts diff d_old d)
+       (diff_and_unshift_case opts diff envs_old terms_old goals_old d)
        (fun patches sigma_h ->
          if non_empty patches then
            ret patches sigma_h
          else
-           diff_ind_cases opts diff d_old tl sigma)
+           diff_ind_cases opts diff envs_old terms_old goals_old tl sigma)
        sigma
   | [] ->
      ret [] sigma
 
 (* --- Top-level --- *)
 
-(* TODO temp for refactor *)
-let temp_to_diff assums envs terms goals sigma =
-  let sigma, o = Evaluation.eval_proof (fst envs) (fst terms) sigma in
-  let sigma, n = Evaluation.eval_proof (snd envs) (snd terms) sigma in
-  let goal_o = Proofcat.Context (Proofcat.Term (fst goals, fst envs), fid ()) in
-  let goal_n = Proofcat.Context (Proofcat.Term (snd goals, snd envs), fid ()) in
-  let d = ((goal_o, o), (goal_n, n), assums) in
-  sigma, d
-         
 (*
  * Search an inductive proof for a patch.
  * That is, break it into cases, and search those cases for patches.
@@ -218,11 +211,6 @@ let temp_to_diff assums envs terms goals sigma =
 let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goals sigma =
   let elim_o, elim_n = elims in
   let nparams_o, nparams_n = map_tuple List.length (elim_o.pms, elim_n.pms) in
-  let diff opts d =
-    let assums, envs, terms, goals = temp_from_diff d in
-    diff opts assums envs terms goals
-  in
-  let sigma, d_old = temp_to_diff assums envs_old terms_old goals_old sigma in
   if not (nparams_o = nparams_n) then
     ret give_up sigma
   else
@@ -237,7 +225,7 @@ let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goal
       (map_diffs sort ret (o, n, assums))
       (fun (os, ns, assums) ->
         let ds = List.map2 (fun o n -> o, n, assums) os ns in
-            bind
-              (diff_ind_cases opts diff d_old ds)
-              (map_state (fun d -> ret (unshift_by nparams_o d))))
+        bind
+          (diff_ind_cases opts diff envs_old terms_old goals_old ds)
+          (map_state (fun d -> ret (unshift_by nparams_o d))))
       sigma

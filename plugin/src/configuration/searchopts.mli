@@ -50,7 +50,7 @@ val swap_search_proofs : ((constr * constr) -> (constr * constr)) configurable
 
 (* Reset the goals of search for an inductive case *)
 val reset_case_goals :
-  (goal_proof_diff -> goal_case_diff -> goal_case_diff) configurable
+  ((env * env) -> (constr * constr) -> (types * types) -> goal_case_diff -> goal_case_diff) configurable
 
 (* Determine whether two terms induct over the same hypothesis *)
 val same_h : (env -> types -> types -> evar_map -> bool state) configurable
