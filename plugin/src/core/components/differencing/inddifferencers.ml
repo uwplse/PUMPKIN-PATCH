@@ -220,12 +220,9 @@ let diff_inductive diff envs_old terms_old goals_old opts assums envs elims goal
         (fun cs -> ret (base_cases_first cs))
     in
     let sigma, (o, n, assums) = eval_induction_cat assums envs elims sigma in
-    (* ^ TODO finish porting *)
+    let sigma, (os, ns) = map_tuple_state sort (o, n) sigma in
+    let ds = List.map2 (fun o n -> o, n, assums) os ns in
     bind
-      (map_diffs sort ret (o, n, assums))
-      (fun (os, ns, assums) ->
-        let ds = List.map2 (fun o n -> o, n, assums) os ns in
-        bind
-          (diff_ind_cases opts diff envs_old terms_old goals_old ds)
-          (map_state (fun d -> ret (unshift_by nparams_o d))))
+      (diff_ind_cases opts diff envs_old terms_old goals_old ds)
+      (map_state (fun d -> ret (unshift_by nparams_o d)))
       sigma
