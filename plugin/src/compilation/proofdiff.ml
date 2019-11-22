@@ -276,7 +276,3 @@ let induct_over_same_h eq assums envs terms =
   else
     ret false
 
-(* Get the number of bindings that are not common to both proofs in d *)
-(* TODO remove me before merging *)
-let num_new_bindings (f : 'a -> env) (o, n, assums) =
-  num_assumptions (complement_assumptions assums (f o))

@@ -4,9 +4,10 @@ open Constr
 open Evd
 open Candidates
 open Abstractionconfig
-open Proofdiff
 open Searchopts
 open Stateutils
+open Assumptions
+open Environ
 
 (*--- Abstraction ---*)
 
@@ -26,7 +27,7 @@ val abstract_with_strategies :
  * abstract, then return the original list.
  *)
 val abstract_case :
-  (goal_case_diff -> candidates -> evar_map -> candidates state) configurable
+  (equal_assumptions -> (env * env) -> (types * types) -> candidates -> evar_map -> candidates state) configurable
 
 (* 
  * Replace all occurrences of the first term in the second term with Rel 1,

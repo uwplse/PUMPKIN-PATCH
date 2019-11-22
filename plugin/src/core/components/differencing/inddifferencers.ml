@@ -39,9 +39,9 @@ open Indutils
  *)
 let rec diff_case abstract diff assums envs termss goals =
   match termss with
-  | ((term_o :: tl_o), (term_n :: tl_n)) -> (* TODO move to HOF? *)
+  | ((term_o :: tl_o), (term_n :: tl_n)) ->
      try_chain_diffs
-       [(fun assums envs terms goals sigma -> (* TODO move to HOF try_diff? *)
+       [(fun assums envs terms goals sigma ->
            try
              bind (diff assums envs terms goals) abstract sigma
            with _ ->
@@ -70,14 +70,8 @@ let rec diff_case abstract diff assums envs termss goals =
  * we don't lift, but we could eventually try to apply the induction
  * principle for the constructor version to get a more general patch.
  *)
-let diff_ind_case opts diff d sigma =
-  let ((goal1, os), (goal2, ns), assums) = d in
-  let envs = map_tuple context_env (goal1, goal2) in
-  let goals = map_tuple context_term (goal1, goal2) in
-  let sigma, (os, ns) = map_tuple_state (filter_state (fun (_, e, _) -> ret (not (ext_is_ih e)))) (os, ns) sigma in
-  let sigma, (os, ns) = map_tuple_state (map_state eval_proof_arrow) (os, ns) sigma in
-  let (os, ns) = map_tuple (List.map only_extension_as_term) (os, ns) in
-  diff_case (abstract_case opts d) diff assums envs (os, ns) goals sigma
+let diff_ind_case opts diff assums envs termss goals =
+  diff_case (abstract_case opts assums envs goals) diff assums envs termss goals
 
 (*
  * Search a case of a difference in proof categories.
@@ -86,7 +80,7 @@ let diff_ind_case opts diff d sigma =
  * This breaks it up into arrows and then searches those
  * in the order of the sort function.
  *)
-let diff_sort_ind_case opts sort diff envs_old terms_old goals_old (o, n, assums) =
+let diff_sort_ind_case opts sort diff assums envs_old terms_old goals_old (o, n) =
   let ms_o = morphisms o in
   let ms_n = morphisms n in
   let d_ms = ms_o, ms_n, assums in
@@ -97,25 +91,34 @@ let diff_sort_ind_case opts sort diff envs_old terms_old goals_old (o, n, assums
          (fun _ -> update_case_assums d_ms)
          ((o, sort o ms_o), (n, sort n ms_n), assums))
       (fun ds -> ret (reset_case_goals opts envs_old terms_old goals_old ds)))
-    (fun d_goals ->
+    (fun ((goal_o_o, o_o), (goal_n_o, n_o), assums) ->
+      let termss =
+        map_tuple
+          (fun ms ->
+            List.map
+              (fun (_, e, _) -> ext_term e)
+              (List.filter (fun (_, e, _) -> not (ext_is_ih e)) ms))
+          (o_o, n_o)
+      in
+      let envs = map_tuple context_env (goal_o_o, goal_n_o) in
+      let goals = map_tuple context_term (goal_o_o, goal_n_o) in
       if is_hypothesis (get_change opts) then
         (* deal with the extra hypothesis *)
-        let ((goal_o_o, _), (_, _), _) = d_goals in
         let env_o_n = fst envs_old in
-        let env_o_o = context_env goal_o_o in
+        let env_o_o = fst envs in
         let num_new_rels = new_rels2 env_o_o env_o_n in
         bind
-          (diff_ind_case opts (diff opts) d_goals)
+          (diff_ind_case opts (diff opts) assums envs termss goals)
           (fun ds -> ret (List.map (unshift_by (num_new_rels - 1)) ds))
       else
-        diff_ind_case opts (diff opts) d_goals)
+        diff_ind_case opts (diff opts) assums envs termss goals)
 
 (*
  * Base case: Prefer arrows later in the proof
  *)
-let diff_base_case opts diff envs_old terms_old goals_old d =
+let diff_base_case opts diff envs_old terms_old goals_old (o, n, assums) =
   let sort _ ms = List.rev ms in
-  diff_sort_ind_case (set_is_ind opts false) sort diff envs_old terms_old goals_old d
+  diff_sort_ind_case (set_is_ind opts false) sort diff assums envs_old terms_old goals_old (o, n)
 
 (*
  * Inductive case: Prefer arrows closest to an IH,
@@ -128,7 +131,7 @@ let diff_base_case opts diff envs_old terms_old goals_old d =
  * For optimization, we don't bother treating the inductive case
  * any differently, since the IH does not change.
  *)
-let diff_inductive_case opts diff envs_old terms_old goals_old d sigma =
+let diff_inductive_case opts diff envs_old terms_old goals_old (o, n, assums) sigma =
   let sort c ms =
     (* Porting stable_sort to state is just not happening *)
     List.stable_sort
@@ -137,7 +140,7 @@ let diff_inductive_case opts diff envs_old terms_old goals_old d sigma =
   in
   let change = get_change opts in
   let opts = if is_identity change then opts else set_is_ind opts true in
-  diff_sort_ind_case opts sort diff envs_old terms_old goals_old d sigma
+  diff_sort_ind_case opts sort diff assums envs_old terms_old goals_old (o, n) sigma
 
 (*
  * Depending on whether a proof has inductive hypotheses, difference

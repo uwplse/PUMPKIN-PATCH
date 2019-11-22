@@ -146,8 +146,3 @@ val induct_over_same_h :
   evar_map ->
   bool state
 
-(*
- * Given a function that extracts an environment from a proof,
- * get the number of bindings that are not common to both proofs.
- *)
-val num_new_bindings : ('a -> env) -> 'a proof_diff -> int

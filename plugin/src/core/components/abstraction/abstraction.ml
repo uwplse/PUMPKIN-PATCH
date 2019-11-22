@@ -23,6 +23,8 @@ open Convertibility
 open Stateutils
 open Envutils
 open Inference
+open Assumptions
+open Names
 
 (* Internal options for abstraction *)
 type abstraction_options =
@@ -218,24 +220,25 @@ let abstract_with_strategies (config : abstraction_config) =
  *
  * If the goal types are both specialized, then we abstract.
  *)
-let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) =
-  let goals = goal_types d in
+let try_abstract_inductive assums envs goals (cs : candidates) =
   let goals_are_apps = fold_tuple (fun t1 t2 -> isApp t1 && isApp t2) goals in
   if goals_are_apps && non_empty cs then
-    let (env, (goal_o, goal_n, assums), cs) = merge_lift_diff_envs d cs in
+    let (env, merged_os, merged_ns) =
+      merge_term_lists envs (fst goals :: cs, [snd goals]) assums
+    in
+    let goals = map_tuple List.hd (merged_os, merged_ns) in
+    let cs = List.tl merged_os in
     branch_state
       (fun env ->
         forall2_state
           (fun t1 t2 sigma -> convertible env sigma t1 t2)
-          (unfold_args goal_o)
-          (unfold_args goal_n))
+          (unfold_args (fst goals))
+          (unfold_args (snd goals)))
       (fun env ->
         bind
-          (configure_args env (goal_o, goal_n, assums) cs)
+          (configure_args env (fst goals, snd goals, assums) cs)
           (fun config ->
-            let (goal_o, goal_n, assums) = d in
-            let (goal_o, goal_n) = map_tuple dest_context_term (goal_o, goal_n) in
-            let num_new_rels = num_new_bindings snd (goal_o, goal_n, assums) in
+            let num_new_rels = num_assumptions (complement_assumptions assums (fst envs)) in
             bind
               (abstract_with_strategies config)
               (map_state
@@ -253,23 +256,23 @@ let try_abstract_inductive (d : lift_goal_diff) (cs : candidates) =
  * If there is nothing to abstract or if we cannot determine what to
  * abstract, then return the original list.
  *)
-let abstract_case (opts : options) ((goal_o, _), (goal_n, _), assums) cs sigma =
-  let env = context_env goal_o in
+let abstract_case (opts : options) assums envs goals cs sigma =
+  let env = fst envs in
   match get_change opts with
   | Kindofchange.Hypothesis (_, _) ->
-     let (g_o, g_n) = map_tuple context_term (goal_o, goal_n) in
-     filter_by_type (mkProd (Names.Name.Anonymous, g_n, shift g_o)) env sigma cs
+     let goal_type = mkProd (Name.Anonymous, snd goals, shift (fst goals)) in
+     filter_by_type goal_type env sigma cs
   | Kindofchange.InductiveType (_, _) ->
      sigma, cs
   | Kindofchange.FixpointCase ((_, _), cut) ->
      branch_state
        (are_cut env cut)
        ret
-       (try_abstract_inductive (goal_o, goal_n, assums))
+       (try_abstract_inductive assums envs goals)
        cs
        sigma
   | _ ->
-     try_abstract_inductive (goal_o, goal_n, assums) cs sigma
+     try_abstract_inductive assums envs goals cs sigma
                             
 (* 
  * Replace all occurrences of the first term in the second term with Rel 1,
