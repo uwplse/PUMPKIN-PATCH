@@ -39,9 +39,9 @@ open Indutils
  *)
 let rec diff_case abstract diff assums envs termss goals =
   match termss with
-  | ((term_o :: tl_o), (term_n :: tl_n)) ->
+  | ((term_o :: tl_o), (term_n :: tl_n)) -> (* TODO move to HOF? *)
      try_chain_diffs
-       [(fun assums envs terms goals sigma ->
+       [(fun assums envs terms goals sigma -> (* TODO move to HOF try_diff? *)
            try
              bind (diff assums envs terms goals) abstract sigma
            with _ ->
