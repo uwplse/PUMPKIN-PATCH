@@ -242,7 +242,7 @@ let try_abstract_inductive assums envs goals (cs : candidates) =
             bind
               (abstract_with_strategies config)
               (map_state
-                 (fun t ->
+                 (fun t -> (* TODO why unshift? *)
                    ret (unshift_local (num_new_rels - 1) num_new_rels t)))))
       (fun _ -> ret give_up)
       env

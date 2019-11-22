@@ -46,6 +46,7 @@ let context_terms = map_tuple context_term
  *    of the other proof.
  *
  * TODO update comment with other field explanations
+ * TODO clean again before merge
  *)
 type options =
   {
@@ -54,7 +55,7 @@ type options =
     same_h : env -> constr -> constr -> evar_map -> bool state;
     update_goals : (env * env) -> (constr * constr) -> (types * types) -> (env * env) -> (constr * constr) -> evar_map -> ((env * env) * (constr * constr) * (types * types)) state;
     swap_proofs : (constr * constr) -> (constr * constr);
-    reset_goals : (env * env) -> (constr * constr) -> (types * types) -> goal_case_diff -> goal_case_diff;
+    reset_goals : (env * env) -> (types * types) -> (env * env) -> (types * types) -> ((env * env) * (types * types));
     is_app : (constr * constr) -> bool;
   }
 
@@ -101,13 +102,11 @@ let update_goal_terms envs terms goals =
      ret (map_tuple shift (g_o, g_n))
 
 (* Search for a difference in the changed constructor *)
-let set_inductive_goals typ_o typ_n ((goal_o, proof_o), (goal_n, proof_n), assums) =
-  let env = context_env goal_o in
+let set_inductive_goals envs (typ_o, typ_n) =
+  let env = fst envs in
   let d_typs = typ_o, typ_n, no_assumptions in
   let (o, n, _) = ind_type_diff env d_typs in
-  let goal_o' = Context (Term (o, env), fid ()) in
-  let goal_n' = Context (Term (n, env), fid ()) in
-  (goal_o', proof_o), (goal_n', proof_n), assums
+  (env, env), (o, n)
 
 (*
  * Update the goals for a change in types
@@ -205,23 +204,18 @@ let configure_swap_proofs change (trm_o, trm_n) =
  *
  * TODO naming etc
  *)
-let configure_reset_goals change envs_old terms_old goals_old (d : goal_case_diff) : goal_case_diff =
+let configure_reset_goals change envs_old goals_old envs goals =
   match change with
   | InductiveType (typ_o, typ_n) ->
-     set_inductive_goals typ_o typ_n d
+     set_inductive_goals envs (typ_o, typ_n)
   | Hypothesis (typ_o, typ_n) ->
-     let ((old_cases_goal, cases_o), (new_cases_goal, cases_n), assums) = d in
-     let env_o = context_env old_cases_goal in
-     let env_n = context_env new_cases_goal in
-     let num_new_rels_o = nb_rel env_o - nb_rel (fst envs_old) in
-     let num_new_rels_n = nb_rel env_n - nb_rel (snd envs_old) in
-     let o = shift_by num_new_rels_o (fst goals_old) in
-     let n = shift_by num_new_rels_n (snd goals_old) in
-     let goal_o = Context (Term (o, env_o), fid ()) in
-     let goal_n = Context (Term (n, env_n), fid ()) in
-     (goal_o, cases_o), (goal_n, cases_n), assums
+     let num_new_rels_o = new_rels2 (fst envs) (fst envs_old) in
+     let num_new_rels_n = new_rels2 (snd envs) (snd envs_old) in
+     let goal_o = shift_by num_new_rels_o (fst goals_old) in
+     let goal_n = shift_by num_new_rels_n (snd goals_old) in
+     envs, (goal_o, goal_n)
   | _ ->
-     d
+     envs, goals
 
 (*
  * Build configuration options for the search based on the goal diff

@@ -83,44 +83,38 @@ let diff_ind_case opts diff assums envs termss goals =
  *
  * TODO be a normal person and use lambdas here
  *)
-let break_diff_ind_case opts diff assums envs_old terms_old goals_old (o, n) =
-  let ms_o = morphisms o in
-  let ms_n = morphisms n in
+let break_diff_ind_case opts diff assums envs_old terms_old goals_old envs (ms_o, ms_n) goals sigma =
   let d_ms = ms_o, ms_n, assums in
-  bind
-    (bind
-      (map_diffs
-         (fun (o, ms) -> ret (terminal o, ms))
-         (fun _ -> update_case_assums d_ms)
-         ((o, List.rev ms_o), (n, List.rev ms_n), assums))
-      (fun ds -> ret (reset_case_goals opts envs_old terms_old goals_old ds)))
-    (fun ((goal_o_o, o_o), (goal_n_o, n_o), assums) ->
-      let termss =
-        map_tuple
-          (fun ms ->
-            List.map
-              (fun (_, e, _) -> ext_term e)
-              (List.filter (fun (_, e, _) -> not (ext_is_ih e)) ms))
-          (o_o, n_o)
-      in
-      let envs = map_tuple context_env (goal_o_o, goal_n_o) in
-      let goals = map_tuple context_term (goal_o_o, goal_n_o) in
-      if is_hypothesis (get_change opts) then
-        (* deal with the extra hypothesis *)
-        let env_o_n = fst envs_old in
-        let env_o_o = fst envs in
-        let num_new_rels = new_rels2 env_o_o env_o_n in
-        bind
-          (diff_ind_case opts (diff opts) assums envs termss goals)
-          (fun ds -> ret (List.map (unshift_by (num_new_rels - 1)) ds))
-      else
-        diff_ind_case opts (diff opts) assums envs termss goals)
+  let sigma, assums = update_case_assums d_ms sigma in
+  let ms_o, ms_n = map_tuple List.rev (ms_o, ms_n) in
+  let envs, goals = reset_case_goals opts envs_old goals_old envs goals in
+  let termss =
+    map_tuple
+      (fun ms ->
+        List.map
+          (fun (_, e, _) -> ext_term e)
+          (List.filter (fun (_, e, _) -> not (ext_is_ih e)) ms))
+      (ms_o, ms_n)
+  in
+  if is_hypothesis (get_change opts) then
+    (* deal with the extra hypothesis *)
+    let num_new_rels = new_rels2 (fst envs) (fst envs_old) in (* TODO why unshift? *)
+    bind
+      (diff_ind_case opts (diff opts) assums envs termss goals)
+      (fun cs -> ret (List.map (unshift_by (num_new_rels - 1)) cs))
+      sigma
+  else
+    diff_ind_case opts (diff opts) assums envs termss goals sigma
 
 (*
  * Base case
  *)
 let diff_base_case opts diff envs_old terms_old goals_old (o, n, assums) =
-  break_diff_ind_case (set_is_ind opts false) diff assums envs_old terms_old goals_old (o, n)
+  let ms = map_tuple morphisms (o, n) in
+  let (o, n) = map_tuple terminal (o, n) in
+  let envs = map_tuple context_env (o, n) in
+  let goals = map_tuple context_term (o, n) in
+  break_diff_ind_case (set_is_ind opts false) diff assums envs_old terms_old goals_old envs ms goals
 
 (*
  * Inductive case
@@ -128,7 +122,11 @@ let diff_base_case opts diff envs_old terms_old goals_old (o, n, assums) =
 let diff_inductive_case opts diff envs_old terms_old goals_old (o, n, assums) =
   let change = get_change opts in
   let opts = if is_identity change then opts else set_is_ind opts true in
-  break_diff_ind_case opts diff assums envs_old terms_old goals_old (o, n)
+  let ms = map_tuple morphisms (o, n) in
+  let (o, n) = map_tuple terminal (o, n) in
+  let envs = map_tuple context_env (o, n) in
+  let goals = map_tuple context_term (o, n) in
+  break_diff_ind_case opts diff assums envs_old terms_old goals_old envs ms goals
 
 (*
  * Depending on whether a proof has inductive hypotheses, difference

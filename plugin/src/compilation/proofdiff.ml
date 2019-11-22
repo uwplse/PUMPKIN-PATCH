@@ -227,6 +227,7 @@ let same_shape (env : env) (o, n, assums) : bool =
  * For now, assume only one constructor changes
  *
  * TODO move to differencing component
+ * TODO port from cats
  *)
 let ind_type_diff (env : env) (o, n, assums) : types proof_diff =
   assert (same_shape env (o, n, assums));
