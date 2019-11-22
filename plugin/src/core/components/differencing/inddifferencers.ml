@@ -21,14 +21,10 @@ open Stateutils
 open Envutils
 open Indutils
 
-let temp_from_diff assums envs (o, n) goals =
-  let terms = map_tuple only_extension_as_term (o, n) in
-  (assums, envs, terms, goals)
-
 (* --- Cases --- *)
 
 (*
- * Given an ordered pair of lists of arrows to explore in a case of an
+ * Given an ordered pair of lists of subterms to explore in a case of an
  * inductive proof, difference each one (using diff).
  * As soon as we find candidates that can be properly abstracted
  * (using abstract), return those. Otherwise, recurse.
@@ -37,30 +33,27 @@ let temp_from_diff assums envs (o, n) goals =
  * difference between each pair, but without changing the goal type.
  * In the future we may want to be smarter about this.
  * To improve this, we need benchmarks for which the head is not the patch,
- * but another arrow is.
+ * but another subterm is.
+ *
+ * TODO just use lambdas like a normal person
  *)
-let rec diff_case abstract diff assums envs (os, ns) goals sigma =
-  match os, ns with
-  | ((h1 :: t1), (h2 :: t2)) ->
-     (try
-        bind
-          (map_tuple_state eval_proof_arrow (h1, h2))
-          (fun (c1, c2) ->
-            let assums, envs, terms, goals =
-              temp_from_diff assums envs (c1, c2) goals
-            in
-            bind
-              (bind (diff assums envs terms goals) abstract)
-              (fun cs sigma_h ->
-                if non_empty cs then
-                  ret cs sigma_h
-                else
-                  diff_case abstract diff assums envs (t1, t2) goals sigma))
-          sigma
-      with _ ->
-        diff_case abstract diff assums envs (t1, t2) goals sigma)
+let rec diff_case abstract diff assums envs termss goals =
+  match termss with
+  | ((term_o :: tl_o), (term_n :: tl_n)) ->
+     try_chain_diffs
+       [(fun assums envs terms goals sigma ->
+           try
+             bind (diff assums envs terms goals) abstract sigma
+           with _ ->
+             ret [] sigma);
+        (fun assums envs _ ->
+          diff_case abstract diff assums envs (tl_o, tl_n))]
+       assums
+       envs
+       (term_o, term_n)
+       goals
   | _ ->
-     ret give_up sigma
+     ret give_up
 
 (*
  * Given an ordered pair of lists of arrows to explore in the base case,
@@ -77,11 +70,14 @@ let rec diff_case abstract diff assums envs (os, ns) goals sigma =
  * we don't lift, but we could eventually try to apply the induction
  * principle for the constructor version to get a more general patch.
  *)
-let diff_ind_case opts diff d =
+let diff_ind_case opts diff d sigma =
   let ((goal1, os), (goal2, ns), assums) = d in
   let envs = map_tuple context_env (goal1, goal2) in
   let goals = map_tuple context_term (goal1, goal2) in
-  diff_case (abstract_case opts d) diff assums envs (os, ns) goals
+  let sigma, (os, ns) = map_tuple_state (filter_state (fun (_, e, _) -> ret (not (ext_is_ih e)))) (os, ns) sigma in
+  let sigma, (os, ns) = map_tuple_state (map_state eval_proof_arrow) (os, ns) sigma in
+  let (os, ns) = map_tuple (List.map only_extension_as_term) (os, ns) in
+  diff_case (abstract_case opts d) diff assums envs (os, ns) goals sigma
 
 (*
  * Search a case of a difference in proof categories.
