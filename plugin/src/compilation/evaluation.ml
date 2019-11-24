@@ -289,37 +289,16 @@ let expand_inductive_conclusions (ms : arrow list) =
  * 1. Morphisms that end in a product type that is not a hypothesis
  * 2. Morphisms that do not
  *)
-let partition_expandable (c : proof_cat) =
+let partition_expandable ms =
   partition_state
     (map_dest 
        (fun o ->
-	 and_state 
+	 and_state
 	   (fun o -> ret (context_is_product o)) 
-	   (is_not_hypothesis c)
+	   (fun o -> not_state (fun o -> contains_object o (hypotheses ms)) o)
 	   o
 	   o))
-    (morphisms c)
-
-(*
- * TODO temp
- *)
-let rec has_path ms (s : context_object) (d : context_object) =
-  branch_state
-    (objects_equal d)
-    (fun _ -> ret true)
-    (fun s ->
-      bind
-        (arrows_with_source s ms)
-        (fun adj ->
-          and_state
-            (fun adj -> ret (non_empty adj))
-            (fun adj ->
-              bind
-                (map_state (map_dest (fun s' -> has_path ms s' d)) adj)
-                (exists_state (fun s -> ret (id s))))
-            adj
-            adj))
-    s
+    ms
 
 (*
  * TODO move to lib if we still need this after refactor to remove cats
@@ -336,40 +315,34 @@ let find_off (a : 'a list) (p : 'a -> evar_map -> bool state) sigma : int state 
          (fun _ -> find_rec tl p (n + 1))
          h
   in find_rec a p 0 sigma
-             
-(* TODO temp *)
-let shortest_path_length ms (c : proof_cat) (o : context_object) sigma : int state =
-  let i = initial c in
-  let sigma, has_path_bool = has_path ms i o sigma in
-  assert has_path_bool;
+
+(*
+ * Find ordered paths from src to dst in c via explicit arrows
+ * TODO temp
+ *)
+let rec path_length_between ms src dst =
   branch_state
-    (objects_equal o)
+    (objects_equal dst)
     (fun _ -> ret 0)
-    (fun s sigma ->
-      let sigma, paths = paths_from c s sigma in
-      let pdsts = List.map conclusions paths in
-      let sigma, pdsts_with_o = filter_state (contains_object o) pdsts sigma in
-      let sigma, lengths_to_o =
-        map_state
-          (fun path ->
-            bind
-              (find_off path (objects_equal o))
-              (fun n -> ret (n + 1)))
-          pdsts_with_o
-          sigma
-      in sigma, List.hd (List.sort Pervasives.compare lengths_to_o))
-    i
-    sigma
+    (fun src sigma ->
+      let sigma, ms_from_s = arrows_with_source src ms sigma in
+      if List.length ms_from_s = 0 then
+        sigma, 0
+      else
+        let m = List.hd ms_from_s in
+        let sigma, path_length = map_dest (fun src -> path_length_between ms src dst) m sigma in
+        sigma, 1 + path_length)
+    src
 
 (* Check if an o is the type of an applied inductive hypothesis in c *)
-let applies_ih (env : env) (p : types) ms (c : proof_cat) (o : context_object) =
+let applies_ih (env : env) (p : types) ms i (o : context_object) =
   if context_is_app o then
     let (f, _) = context_as_app o in
     bind
-      (shortest_path_length ms c o)
+      (path_length_between ms i o)
       (fun n ->
 	and_state 
-	  (fun o -> contains_object o (map_arrows hypotheses c)) 
+	  (fun o -> contains_object o (hypotheses ms)) 
 	  (fun f sigma -> has_type env sigma p f)
 	  o
 	  (unshift_by n f))
@@ -381,29 +354,22 @@ let applies_ih (env : env) (p : types) ms (c : proof_cat) (o : context_object) =
  * That is, expand its conclusion fully if it is dependent
  * Then mark the edges that are inductive hypotheses
  *)
-let expand_constr (c : proof_cat) sigma =
-  let sigma, c_os = objects c sigma in
-  let sigma, (ms_to_expand, old_ms) = partition_expandable c sigma in
-  let sigma, old_os = all_objects_except_those_in (conclusions ms_to_expand) c_os sigma in
+let expand_constr ms sigma =
+  let (src, e, dst) = List.hd ms in
+  let sigma, (ms_to_expand, old_ms) = partition_expandable ms sigma in
   let sigma, expanded = expand_inductive_conclusions ms_to_expand sigma in
-  let sigma, new_os = flat_map_state (map_objects (all_objects_except_those_in c_os)) expanded sigma in
   let new_ms = flat_map morphisms expanded in
-  let os = List.append old_os new_os in
   let ms = List.append old_ms new_ms in
-  let sigma, c = make_category os ms (initial_opt c) None sigma in
   let sigma, ms =
-    bind
-      (context_at_index c 1)
-      (fun context ->
-        let env_with_p = context_env context in
-        let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
-        let env = pop_rel_context 1 env_with_p in
-        map_state
-          (branch_state
-             (map_dest (applies_ih env p ms c))
-             (map_ext_arrow (fun _ -> ret (fresh_ih ())))
-             ret)
-          ms)
+    let env_with_p = context_env dst in
+    let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
+    let env = pop_rel_context 1 env_with_p in
+    map_state
+      (branch_state
+         (map_dest (applies_ih env p ms src))
+         (map_ext_arrow (fun _ -> ret (fresh_ih ())))
+         ret)
+      ms
       sigma
   in
   let sigma, trs = all_objects_except_those_in (hypotheses ms) (conclusions ms) sigma in
@@ -453,7 +419,7 @@ let eval_induction_data assums envs elims sigma =
           ret fc sigma
       in
       let sigma, c = remove_first_n (npms + 1) c sigma in
-      bind (split c) (map_state expand_constr) sigma
+      bind (split c) (map_state (fun c -> expand_constr (morphisms c))) sigma
     in
     let assums = assume_local_n_equal (npms + 1) assums in
     let sigma, os = eval_induction_1 assums env_o f_o (fst elims) sigma in
