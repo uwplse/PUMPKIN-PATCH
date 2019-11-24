@@ -123,76 +123,6 @@ let rec remove_first_n (n : int) (c : proof_cat) =
   else
     bind (remove_initial c) (remove_first_n (n - 1))
 
-(*
- * Introduce n common elements of c1 and c2 if possible
- * Remove those elements from the premise of c1 and c2
- * Add them to assums
- *)
-let intro_common_n n (c1, c2, assums) sigma =
-  if (List.length (morphisms c1) <= n) || (List.length (morphisms c2) <= n) then
-    sigma, None
-  else
-    let sigma, c1' = remove_first_n n c1 sigma in
-    let sigma, c2' = remove_first_n n c2 sigma in
-    sigma, Some (c1', c2', assume_local_n_equal n assums)
-
-(*
- * Introduce a common element of c1 and c2 if possible
- * Remove that element from the premise of c1 and c2
- * Add it to assums
- *)
-let intro_common = intro_common_n 1
-
-(*
- * Introduce n elements of c1 and c2 if possible
- * Remove those elements from the premise of c1 and c2
- * Shift the assumptions
- *)
-let intro_n n (c1, c2, assums) sigma =
-  if (List.length (morphisms c1) <= n) || (List.length (morphisms c2) <= n) then
-    sigma, None
-  else
-    let sigma, c1' = remove_first_n n c1 sigma in
-    let sigma, c2' = remove_first_n n c2 sigma in
-    sigma, Some (c1', c2', shift_assumptions_by n assums)
-
-(*
- * Introduce an element of c1 and c2 if possible
- * Remove it from the premise of c1 and c2
- * Shift the assumptions
- *)
-let intro = intro_n 1
-         
-(*
- * Introduce nparams parameters to an inductive diff d
-  *
- * This assumes both proofs have the same number of parameters,
- * otherwise it will fail.
- *
- * TODO for now combining into one process; later consolidate by slowly
- * removing, until proof cats are gone
- *)
-let intro_params nparams (o, n, assums) =
-  bind
-    (bind
-       (params o nparams)
-       (fun pms_o ->
-	 bind
-	   (params n nparams)
-	   (fun pms_n ->
-	     fold_right2_state
-	       (fun (_, e1, _) (_, e2, _) d_opt ->
-		 let d = Option.get d_opt in
-		 branch_state
-		   (fun (_, _, assums) -> extensions_equal_assums assums e1 e2)
-		   intro_common
-		   intro
-		   d)
-	       pms_o
-	       pms_n
-               (Some (o, n, assums)))))
-    (fun o -> intro_common (Option.get o))
-
 (* --- End TODO --- *)
 
 (* Expand a product type exactly once *)
@@ -276,8 +206,7 @@ let expand_product_fully (o : context_object) =
  * Error if the type context doesn't hold any terms
  * TODO temporary
  *)
-let expand_term (default : env -> types -> evar_map -> proof_cat state) (o : context_object) =
-  let (trm, env) = dest_context_term o in
+let expand_term (default : env -> types -> evar_map -> proof_cat state) env trm =
   match kind trm with
   | Prod (n, t, b) ->
      expand_product env (n, t, b)
@@ -319,7 +248,7 @@ let expand_terminal (c : proof_cat) =
              AnonymousBinding
 	 in
 	 bind 
-	   (expand_term (eval_theorem_bind binding) t) 
+	   (expand_term (eval_theorem_bind binding) env trm) 
 	   (substitute_terminal c))
   | _ ->
      ret c
@@ -333,7 +262,6 @@ let eval_inductive_params (n : int) env f =
     else
       bind (expand_terminal c) (expand (n - 1))
   in bind (eval_proof env f) (expand n)
-
 
 (*
  * Utility function for expanding inductive proofs
@@ -371,18 +299,89 @@ let partition_expandable (c : proof_cat) =
 	   o
 	   o))
     (morphisms c)
-    
+
 (*
- * Expand all conclusions of an inductive proof fully
- * (Fully expand all product types in conclusions)
- *
- * If there's a bug here, it might be because we need to
- * substitute in an environment with the inductive bindings pushed
- * (see git history prior to July 2nd, 2017). This is
- * especially relevant when we add support for mutually
- * inductive types.
+ * TODO temp
  *)
-let expand_inductive_conclusions_fully (c : proof_cat) sigma =
+let rec has_path ms (s : context_object) (d : context_object) =
+  branch_state
+    (objects_equal d)
+    (fun _ -> ret true)
+    (fun s ->
+      bind
+        (arrows_with_source s ms)
+        (fun adj ->
+          and_state
+            (fun adj -> ret (non_empty adj))
+            (fun adj ->
+              bind
+                (map_state (map_dest (fun s' -> has_path ms s' d)) adj)
+                (exists_state (fun s -> ret (id s))))
+            adj
+            adj))
+    s
+
+(*
+ * TODO move to lib if we still need this after refactor to remove cats
+ * TODO temp
+ *)
+let find_off (a : 'a list) (p : 'a -> evar_map -> bool state) sigma : int state =
+  let rec find_rec a p n =
+    match a with
+    | [] -> failwith "not found"
+    | h :: tl ->
+       branch_state
+         p
+         (fun _ -> ret n)
+         (fun _ -> find_rec tl p (n + 1))
+         h
+  in find_rec a p 0 sigma
+             
+(* TODO temp *)
+let shortest_path_length ms (c : proof_cat) (o : context_object) sigma : int state =
+  let i = initial c in
+  let sigma, has_path_bool = has_path ms i o sigma in
+  assert has_path_bool;
+  branch_state
+    (objects_equal o)
+    (fun _ -> ret 0)
+    (fun s sigma ->
+      let sigma, paths = paths_from c s sigma in
+      let pdsts = List.map conclusions paths in
+      let sigma, pdsts_with_o = filter_state (contains_object o) pdsts sigma in
+      let sigma, lengths_to_o =
+        map_state
+          (fun path ->
+            bind
+              (find_off path (objects_equal o))
+              (fun n -> ret (n + 1)))
+          pdsts_with_o
+          sigma
+      in sigma, List.hd (List.sort Pervasives.compare lengths_to_o))
+    i
+    sigma
+
+(* Check if an o is the type of an applied inductive hypothesis in c *)
+let applies_ih (env : env) (p : types) ms (c : proof_cat) (o : context_object) =
+  if context_is_app o then
+    let (f, _) = context_as_app o in
+    bind
+      (shortest_path_length ms c o)
+      (fun n ->
+	and_state 
+	  (fun o -> contains_object o (map_arrows hypotheses c)) 
+	  (fun f sigma -> has_type env sigma p f)
+	  o
+	  (unshift_by n f))
+  else
+    ret false
+          
+(*
+ * Expand an inductive constructor
+ * That is, expand its conclusion fully if it is dependent
+ * Then mark the edges that are inductive hypotheses
+ *)
+let expand_constr (c : proof_cat) sigma =
   let sigma, c_os = objects c sigma in
   let sigma, (ms_to_expand, old_ms) = partition_expandable c sigma in
   let sigma, old_os = all_objects_except_those_in (conclusions ms_to_expand) c_os sigma in
@@ -391,68 +390,33 @@ let expand_inductive_conclusions_fully (c : proof_cat) sigma =
   let new_ms = flat_map morphisms expanded in
   let os = List.append old_os new_os in
   let ms = List.append old_ms new_ms in
-  make_category os ms (initial_opt c) None sigma
-
-(* Check if an o is the type of an applied inductive hypothesis in c *)
-let applies_ih (env : env) (p : types) (c : proof_cat) (o : context_object) =
-  if context_is_app o then
-    let (f, _) = context_as_app o in
+  let sigma, c = make_category os ms (initial_opt c) None sigma in
+  let sigma, ms =
     bind
-      (shortest_path_length c o)
-      (fun n ->
-	and_state 
-	  (is_hypothesis c) 
-	  (fun f sigma -> has_type env sigma p f)
-	  o
-	  (unshift_by n f))
-  else
-    ret false
-
-(*
- * Bind the inductive hypotheses in an expanded constructor with parameters
- *
- * Assumes it's an expanded constructor, but doesn't check for structure
- * This also may fail if the IH is applied to something when we expand
- * So we should test for that case
- *)
-let bind_ihs (c : proof_cat) =
-  bind
-    (context_at_index c 1)
-    (fun context ->
-      let env_with_p = context_env context in
-      let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
-      let env = pop_rel_context 1 env_with_p in
-      apply_functor
-	(fun o -> ret o)
-	(branch_state
-	   (map_dest (applies_ih env p c))
-	   (map_ext_arrow (fun _ -> ret (fresh_ih ())))
-	   ret)
-	c)
-          
-(*
- * Expand an inductive constructor
- * That is, expand its conclusion fully if it is dependent
- * Then mark the edges that are inductive hypotheses
- *)
-let expand_constr (c : proof_cat) =
-  bind
-    (expand_inductive_conclusions_fully c)
-    (fun c ->
-      bind
-	(bind_ihs c)
-	(fun c_exp ->
-	  let ms = morphisms c_exp in
-	  let assums = hypotheses ms in
-	  let concls = conclusions ms in
-	  bind
-	    (all_objects_except_those_in assums concls)
-	    (fun trs ->
-	      let tr = List.hd trs in
-	      bind
-		(objects c_exp)
-		(fun os -> make_category os ms (initial_opt c_exp) (Some tr)))))
-
+      (context_at_index c 1)
+      (fun context ->
+        let env_with_p = context_env context in
+        let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
+        let env = pop_rel_context 1 env_with_p in
+        map_state
+          (branch_state
+             (map_dest (applies_ih env p ms c))
+             (map_ext_arrow (fun _ -> ret (fresh_ih ())))
+             ret)
+          ms)
+      sigma
+  in
+  let sigma, trs = all_objects_except_those_in (hypotheses ms) (conclusions ms) sigma in
+  let tr = List.hd trs in
+  let env = context_env tr in
+  let goal = context_term tr in
+  let ms_filtered = List.filter (fun (_, e, _) -> not (ext_is_ih e)) ms in
+  let c_dsts = conclusions (all_but_last ms_filtered) in
+  let c_envs = List.map context_env c_dsts in
+  let c_goals = List.map context_term c_dsts in
+  let c_terms = List.map (fun (_, e, _) -> ext_term e) ms_filtered in
+  let num_ihs = List.length ms - List.length ms_filtered in
+  sigma, (env, goal, c_envs, c_terms, c_goals, num_ihs)
 
 (*
  * Evaluate an inductive proof
@@ -463,47 +427,50 @@ let expand_constr (c : proof_cat) =
  * delete it at some point once we figure out what it is doing in terms of
  * environments and terms
  *)
-let eval_induction_cat assums envs elims sigma =
+let eval_induction_data assums envs elims sigma =
   let f_o, f_n = (map_tuple (fun e -> e.elim) elims) in
   let env_o, env_n = envs in
   try
     let npms = List.length ((fst elims).pms) in
-    let sigma, fc_o = eval_inductive_params npms env_o f_o sigma in
-    let sigma, fc_n = eval_inductive_params npms env_n f_n sigma in
-    let eval_induction_1 assums fc elim =
+    let eval_induction_1 assums env f elim sigma =
+      let sigma, fc = eval_inductive_params npms env f sigma in
       let t = terminal fc in
-      if context_is_product t then
-        let ncs = List.length (elim.cs) in
-        let motive = elim.p in
-        let params = elim.pms in
-        bind
-          (induction_constrs ncs (context_env t) (context_as_product t))
-          (fun cs ->
-	    bind
-	      (bind 
-	         (bind_constrs_to_args fc cs ncs elim)
-	         (combine_constrs fc))
-	      (bind_property_and_params (Some motive) params npms))
-      else
-        ret fc
-    in
-    let sigma, (o, n, assums) =
-      bind
-        (eval_induction_1 assums fc_o (fst elims))
-        (fun c_o ->
+      let sigma, c =
+        if context_is_product t then
+          let ncs = List.length (elim.cs) in
+          let motive = elim.p in
+          let params = elim.pms in
           bind
-            (eval_induction_1 assums fc_n (snd elims))
-            (fun c_n ->
-              bind
-                (intro_params npms (c_o, c_n, assums))
-                (fun o -> ret (Option.get o))))
-        sigma
+            (induction_constrs ncs (context_env t) (context_as_product t))
+            (fun cs ->
+	      bind
+	        (bind 
+	           (bind_constrs_to_args fc cs ncs elim)
+	           (combine_constrs fc))
+	        (bind_property_and_params (Some motive) params npms))
+            sigma
+        else
+          ret fc sigma
+      in
+      let sigma, c = remove_first_n (npms + 1) c sigma in
+      bind (split c) (map_state expand_constr) sigma
     in
-    bind
-      (map_tuple_state
-         (fun c -> bind (split c) (map_state expand_constr))
-         (o, n))
-      (fun (os, ns) -> ret (os, ns, assums))
-      sigma
+    let assums = assume_local_n_equal (npms + 1) assums in
+    let sigma, os = eval_induction_1 assums env_o f_o (fst elims) sigma in
+    let sigma, ns = eval_induction_1 assums env_n f_n (snd elims) sigma in
+    let cases_data =
+      List.map2
+        (fun o n ->
+          let (env_o, goal_o, c_envs_o, c_terms_o, c_goals_o, num_ihs) = o in
+          let (env_n, goal_n, c_envs_n, c_terms_n, c_goals_n, _) = n in
+          let envs = env_o, env_n in
+          let goals = goal_o, goal_n in
+          let c_envs = c_envs_o, c_envs_n in
+          let c_terms = c_terms_o, c_terms_n in
+          let c_goals = c_goals_o, c_goals_n in
+          (envs, goals, c_envs, c_terms, c_goals, num_ihs))
+        os
+        ns
+    in sigma, (assums, cases_data)
   with _ ->
     failwith "Not an inductive proof"

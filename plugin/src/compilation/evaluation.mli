@@ -45,6 +45,9 @@ val eval_proof_arrow : arrow -> evar_map -> proof_cat state
  * 4. Other arguments that may be leftover after induction
  *
  * Bind the arguments to the application of the induction principle
+ *
+ * TODO clean up types returned massively once we figure out what this is
+ * really doing
  *)
-val eval_induction_cat :
-  equal_assumptions -> env * env -> elim_app * elim_app -> evar_map -> (proof_cat list * proof_cat list * equal_assumptions) state
+val eval_induction_data :
+  equal_assumptions -> env * env -> elim_app * elim_app -> evar_map -> (equal_assumptions * (((env * env) * (types * types) * (env list * env list) * (constr list * constr list) * (types list * types list) * int) list)) state

@@ -1,21 +1,13 @@
 (* --- Differencing of Inductive Proofs --- *)
 
 open Utilities
-open Constr
-open Proofcat
-open Proofcatterms
 open Proofdiff
 open Candidates
 open Evaluation
-open Catzooming
-open Zooming
 open Debruijn
 open Kindofchange
 open Searchopts
 open Abstraction
-open Expansion
-open Environ
-open Evd
 open Higherdifferencers
 open Stateutils
 open Envutils
@@ -133,6 +125,7 @@ let diff_base_or_inductive_case num_ihs =
  * TODO wrap/cleanup args (when using lambdas, will be nicer hopefully)
  *)
 let diff_and_unshift_case num_ihs opts diff assums envs_old goals_old envs goals c_envs c_terms c_goals =
+  let c_terms = map_tuple List.rev c_terms in (* <--- TODO sorting for now *)
   bind
     (diff_base_or_inductive_case num_ihs opts diff assums envs_old goals_old envs goals c_envs c_terms c_goals)
     (map_state
@@ -182,27 +175,7 @@ let diff_inductive diff envs_old goals_old opts assums envs elims goals sigma =
   if not (nparams_o = nparams_n) then
     ret give_up sigma
   else
-    let sigma, (os, ns, assums) = eval_induction_cat assums envs elims sigma in
-    let cases_data =
-      List.map
-        (fun (o, n) ->
-          let (o_t, n_t) = map_tuple terminal (o, n) in
-          let envs = map_tuple context_env (o_t, n_t) in
-          let goals = map_tuple context_term (o_t, n_t) in
-          let ms = map_tuple morphisms (o, n) in
-          let (ms_o, ms_n) =
-            map_tuple (List.filter (fun (_, e, _) -> not (ext_is_ih e))) ms
-          in
-          let c_dsts = map_tuple conclusions (map_tuple all_but_last (ms_o, ms_n)) in
-          let c_envs = map_tuple (List.map context_env) c_dsts in
-          let c_goals = map_tuple (List.map context_term) c_dsts in
-          let c_terms =
-            map_tuple (fun ms -> List.rev (List.map (fun (_, e, _) -> ext_term e) ms)) (ms_o, ms_n)
-          in
-          let num_ihs = List.length (fst ms) - List.length ms_o in
-          (envs, goals, c_envs, c_terms, c_goals, num_ihs))
-        (List.combine os ns)
-    in
+    let sigma, (assums, cases_data) = eval_induction_data assums envs elims sigma in
     bind
       (diff_ind_cases opts diff assums envs_old goals_old cases_data)
       (map_state (fun d -> ret (unshift_by nparams_o d)))
