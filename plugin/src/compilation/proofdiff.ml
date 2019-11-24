@@ -169,22 +169,18 @@ let reduce_trim_ihs terms =
  * Shift by the number of morphisms in the case,
  * assuming they are equal when they are convertible
  *)
-let update_case_assums (ms_o, ms_n, assums) =
-  fold_left_state
-    (fun assums (dst_o, dst_n) ->
-      let d = dst_o, dst_n, assums in
-      let (env, d_goal, _) = merge_lift_diff_envs d [] in
+let update_case_assums assums c_envs c_goals =
+  fold_left2_state
+    (fun assums envs goals ->
+      let env, goal_o, goal_n = merge_terms envs goals assums in
       branch_state
-	(fun (o, n, _) sigma -> convertible env sigma o n)
+	(fun (o, n) sigma -> convertible env sigma o n)
 	(fun _ -> ret (assume_local_equal assums))
 	(fun _ -> ret (shift_assumptions assums))
-	d_goal)
+	(goal_o, goal_n))
     assums
-    (List.fold_right2
-       (fun dst_o dst_n combined -> (dst_o, dst_n) :: combined)
-       (conclusions (all_but_last ms_o))
-       (conclusions (all_but_last ms_n))
-       [])
+    (fold_tuple List.combine c_envs)
+    (fold_tuple List.combine c_goals)
 
 (* --- Questions about differences between proofs --- *)
 

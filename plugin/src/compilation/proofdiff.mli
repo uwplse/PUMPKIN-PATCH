@@ -108,7 +108,12 @@ val reduce_trim_ihs : (constr * constr) -> (constr * constr)
  * Update the assumptions in the difference between a case of an inductive proof
  * Assume terms are equal when they are convertible, and offset accordingly
  *)
-val update_case_assums : (arrow list) proof_diff -> evar_map -> equal_assumptions state
+val update_case_assums :
+  equal_assumptions ->
+  (env list * env list) ->
+  (types list * types list) ->
+  evar_map ->
+  equal_assumptions state
 
 (* --- Questions about a difference between proofs --- *)
 

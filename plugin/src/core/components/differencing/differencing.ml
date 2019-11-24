@@ -92,7 +92,7 @@ let rec diff opts assums envs terms goals sigma =
        (fun assums envs terms _ ->
          induct_over_same_h (same_h opts) assums envs terms)
        (try_chain_diffs
-          [diff_app_ind (diff_inductive diff envs terms goals) diff opts; (* 2a *)
+          [diff_app_ind (diff_inductive diff envs goals) diff opts; (* 2a *)
            find_difference opts] (* 2b *))
        (fun assums envs terms goals ->
          if applies_ih opts terms then

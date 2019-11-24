@@ -27,6 +27,5 @@ open Candidates
 val diff_inductive :
   proof_differencer configurable ->
   (env * env) ->
-  (constr * constr) ->
   (types * types) ->
   ind_proof_differencer configurable
