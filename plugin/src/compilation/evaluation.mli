@@ -11,11 +11,6 @@ open Indutils
 open Assumptions
 
 (*
- * TODO temporary
- *)
-val expand_product_fully : context_object -> evar_map -> proof_cat state
-
-(*
  * Expand the terminal object of a proof category exactly once
  * Return the original category if it cannot be exapnded
  * TODO temporary, remove eventually

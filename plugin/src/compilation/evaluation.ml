@@ -181,7 +181,7 @@ let expand_app (env : env) ((f, args) : types * types array) =
 	(bind (eval_proof env arg) (fun c -> substitute_categories c f'))
 	(bind_apply_function (LazyBinding (f, env)) 1))
 
-    (* Expand a product type as far as its conclusion goes *)
+(* Expand a product type as far as its conclusion goes *)
 let expand_product_fully (o : context_object) =
   let rec expand_fully env (n, t, b) =
     match kind b with
@@ -264,41 +264,42 @@ let eval_inductive_params (n : int) env f =
   in bind (eval_proof env f) (expand n)
 
 (*
+ * TODO
+ *)
+let bind_apply_function (e : extension) (n : int) ms =
+  let args = List.rev (List.map (fun i -> Index i) (from_one_to n)) in
+  let binding = List.fold_left (fun b r -> AppBinding (b, r)) e args in
+  let (_, _, t) = last ms in
+  map_state
+    (branch_state
+       (maps_to t)
+       (fun (src, _, dst) -> ret (src, binding, dst))
+       ret)
+    ms
+          
+(*
  * Utility function for expanding inductive proofs
  * Expand conclusions of different cases of an inductive proof that are dependent
  *)
-let expand_inductive_conclusions (ms : arrow list) =
-  map_state
+let expand_inductive_conclusions (ms : arrow list) sigma =
+  flat_map_state
     (fun (s, e, d) ->
       bind
 	(expand_product_fully d)
 	(fun dc ->
+          let ms = morphisms dc in
+          let (_, _, t) = last ms in
+          let i = initial dc in
 	  let map_i_to_src = 
-	    branch_state (objects_equal (initial dc)) (fun _ -> ret s) ret
+	    branch_state (objects_equal i) (fun _ -> ret s) ret
 	  in
-	  let arity = (List.length (morphisms dc)) - 1 in
-	  let env = substitute_ext_env (context_env (terminal dc)) e in
-	  bind
-	    (apply_functor map_i_to_src (map_source_arrow map_i_to_src) dc)
+	  let arity = List.length ms - 1 in
+	  let env = substitute_ext_env (context_env t) e in
+          bind
+	    (map_state (map_source_arrow map_i_to_src) ms)
 	    (bind_apply_function (shift_ext_by arity env) arity)))
     ms
-
-(*
- * Utility function for expanding inductive proofs
- * Partition the morphisms of a category into two parts:
- * 1. Morphisms that end in a product type that is not a hypothesis
- * 2. Morphisms that do not
- *)
-let partition_expandable ms =
-  partition_state
-    (map_dest 
-       (fun o ->
-	 and_state
-	   (fun o -> ret (context_is_product o)) 
-	   (fun o -> not_state (fun o -> contains_object o (hypotheses ms)) o)
-	   o
-	   o))
-    ms
+    sigma
 
 (*
  * TODO move to lib if we still need this after refactor to remove cats
@@ -317,35 +318,38 @@ let find_off (a : 'a list) (p : 'a -> evar_map -> bool state) sigma : int state 
   in find_rec a p 0 sigma
 
 (*
+ * TODO temp
+ *)
+let arrows_with_source env src ms =
+  List.filter (fun ((src', env'), _, _) -> equal src src' && nb_rel env = nb_rel env') ms
+              
+(*
  * Find ordered paths from src to dst in c via explicit arrows
  * TODO temp
  *)
-let rec path_length_between ms src dst =
-  branch_state
-    (objects_equal dst)
-    (fun _ -> ret 0)
-    (fun src sigma ->
-      let sigma, ms_from_s = arrows_with_source src ms sigma in
-      if List.length ms_from_s = 0 then
-        sigma, 0
-      else
-        let m = List.hd ms_from_s in
-        let sigma, path_length = map_dest (fun src -> path_length_between ms src dst) m sigma in
-        sigma, 1 + path_length)
-    src
+let rec path_length_between ms env src dst =
+  if equal src dst then
+    0
+  else
+    let ms_from_s = arrows_with_source env src ms in
+    if List.length ms_from_s = 0 then
+      0
+    else
+      let (_, _, (src, env)) = List.hd ms_from_s in
+      let path_length = path_length_between ms env src dst in
+      1 + path_length
 
 (* Check if an o is the type of an applied inductive hypothesis in c *)
-let applies_ih (env : env) (p : types) ms i (o : context_object) =
-  if context_is_app o then
-    let (f, _) = context_as_app o in
-    bind
-      (path_length_between ms i o)
-      (fun n ->
-	and_state 
-	  (fun o -> contains_object o (hypotheses ms)) 
-	  (fun f sigma -> has_type env sigma p f)
-	  o
-	  (unshift_by n f))
+let applies_ih (env : env) (p : types) ms i t =
+  if isApp t then
+    let (f, _) = destApp t in
+    let n = path_length_between ms env i t in
+    let hs = List.map (fun ((src, _), _, _) -> src) ms in
+    and_state 
+      (fun t -> exists_state (fun h -> ret (equal h t)) hs)
+      (fun f sigma -> has_type env sigma p f)
+      t
+      (unshift_by n f)
   else
     ret false
           
@@ -355,33 +359,36 @@ let applies_ih (env : env) (p : types) ms i (o : context_object) =
  * Then mark the edges that are inductive hypotheses
  *)
 let expand_constr ms sigma =
-  let (src, e, dst) = List.hd ms in
-  let sigma, (ms_to_expand, old_ms) = partition_expandable ms sigma in
-  let sigma, expanded = expand_inductive_conclusions ms_to_expand sigma in
-  let new_ms = flat_map morphisms expanded in
-  let ms = List.append old_ms new_ms in
-  let sigma, ms =
-    let env_with_p = context_env dst in
-    let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
-    let env = pop_rel_context 1 env_with_p in
-    map_state
-      (branch_state
-         (map_dest (applies_ih env p ms src))
-         (map_ext_arrow (fun _ -> ret (fresh_ih ())))
-         ret)
+  let (src, _, dst) = List.hd ms in
+  let sigma, (ms_to_expand, old_ms) =
+    partition_state
+      (map_dest 
+         (fun o ->
+	   and_state
+	     (fun o -> ret (context_is_product o)) 
+	     (not_state (fun o -> contains_object o (hypotheses ms)))
+	     o
+	     o))
       ms
       sigma
   in
-  let sigma, trs = all_objects_except_those_in (hypotheses ms) (conclusions ms) sigma in
-  let tr = List.hd trs in
-  let env = context_env tr in
-  let goal = context_term tr in
-  let ms_filtered = List.filter (fun (_, e, _) -> not (ext_is_ih e)) ms in
-  let c_dsts = conclusions (all_but_last ms_filtered) in
-  let c_envs = List.map context_env c_dsts in
-  let c_goals = List.map context_term c_dsts in
-  let c_terms = List.map (fun (_, e, _) -> ext_term e) ms_filtered in
-  let num_ihs = List.length ms - List.length ms_filtered in
+  let sigma, new_ms = expand_inductive_conclusions ms_to_expand sigma in
+  let ms = List.map (fun (src, e, dst) -> dest_context_term src, ext_term e, dest_context_term dst) (List.append old_ms new_ms) in
+  let sigma, (ms_ihs, ms_filtered) =
+    let env_with_p = context_env dst in
+    let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
+    let env = pop_rel_context 1 env_with_p in
+    partition_state
+      (fun (_, _, dst) -> applies_ih env p ms (context_term src) (fst dst))
+      ms
+      sigma
+  in
+  let (_, _, (goal, env)) = last ms in
+  let c_dsts = List.map (fun (_, _, dst) -> dst) (all_but_last ms_filtered) in
+  let c_envs = List.map snd c_dsts in
+  let c_goals = List.map fst c_dsts in
+  let c_terms = List.map (fun (_, e, _) -> e) ms_filtered in
+  let num_ihs = List.length ms_ihs in
   sigma, (env, goal, c_envs, c_terms, c_goals, num_ihs)
 
 (*
