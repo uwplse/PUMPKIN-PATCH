@@ -103,6 +103,9 @@ let combine_constrs (default : proof_cat) (cs : proof_cat list) =
 
 (* --- TODO temp --- *)
 
+let dest_arrow (src, e, dst) =
+  dest_context_term src, ext_term e, dest_context_term dst
+
 (* Remove the initial object of c *)
 let remove_initial (c : proof_cat) =
   let i = initial c in
@@ -180,25 +183,6 @@ let expand_app (env : env) ((f, args) : types * types array) =
       bind
 	(bind (eval_proof env arg) (fun c -> substitute_categories c f'))
 	(bind_apply_function (LazyBinding (f, env)) 1))
-
-(* Expand a product type as far as its conclusion goes *)
-let expand_product_fully (o : context_object) =
-  let rec expand_fully env (n, t, b) =
-    match kind b with
-    | Prod (n', t', b') ->
-       bind
-	 (eval_theorem env t)
-	 (fun t'' ->
-	   let env' = push_local (n, t) env in
-	   bind
-	     (bind (expand_fully env' (n', t', b')) (substitute_categories t''))
-	     (fun c ->
-	       let init_o = initial c in
-	       let term_o = terminal t'' in
-	       bind_cat c (init_o, LazyBinding (mkRel 1, env'), term_o)))
-    | _ ->
-       expand_product env (n, t, b)
-  in expand_fully (context_env o) (destProd (fst (dest_context_term o)))
     
 (*
  * Expand a term exactly once
@@ -282,22 +266,54 @@ let bind_apply_function (e : extension) (n : int) ms =
  * Expand conclusions of different cases of an inductive proof that are dependent
  *)
 let expand_inductive_conclusions (ms : arrow list) sigma =
+  let substitute_categories o (dc : proof_cat) sigma =
+    let sigma, os = objects dc sigma in
+    let fids = List.map (fun (Context (_, id)) -> (id, fid ())) os in
+    let os = List.map (fun (Context (c, id)) -> Context (c, List.assoc id fids)) os in
+    let ms = List.map (fun (Context (s, sid), e, Context (d, did)) -> (Context (s, List.assoc sid fids), e, Context (d, List.assoc did fids))) (morphisms dc) in
+    let (_, _, t) = last ms in
+    let os = List.append [initial_context; o] os in
+    let ms = List.append [(initial_context, AnonymousBinding, o)] ms in
+    let sigma, c = make_category os ms (Some initial_context) (Some t) sigma in
+    let i = Context (Gamma, List.assoc 0 fids) in
+    bind
+      (apply_functor
+         ret
+         (map_source_arrow
+            (branch_state (objects_equal i) (fun _ -> ret o) ret))
+         c)
+      (remove_object i)
+      sigma
+  in
+  let rec expand_fully env (n, t, b) =
+    match kind b with
+    | Prod (n', t', b') ->
+       let o = Context (Term (t, env), fid ()) in
+       let env' = push_local (n, t) env in
+       bind
+	 (bind (expand_fully env' (n', t', b')) (substitute_categories o))
+	 (fun c ->
+	   let init_o = initial c in
+	   bind_cat c (init_o, LazyBinding (mkRel 1, env'), o))
+    | _ ->
+       expand_product env (n, t, b)
+  in
   flat_map_state
     (fun (s, e, d) ->
       bind
-	(expand_product_fully d)
+	(expand_fully (context_env d) (destProd (context_term d)))
 	(fun dc ->
           let ms = morphisms dc in
           let (_, _, t) = last ms in
-          let i = initial dc in
+          let i = initial_context in
 	  let map_i_to_src = 
 	    branch_state (objects_equal i) (fun _ -> ret s) ret
 	  in
 	  let arity = List.length ms - 1 in
-	  let env = substitute_ext_env (context_env t) e in
+	  let e = substitute_ext_env (context_env t) e in
           bind
 	    (map_state (map_source_arrow map_i_to_src) ms)
-	    (bind_apply_function (shift_ext_by arity env) arity)))
+	    (bind_apply_function (shift_ext_by arity e) arity)))
     ms
     sigma
 
@@ -372,8 +388,10 @@ let expand_constr ms sigma =
       ms
       sigma
   in
+  let old_ms = List.map dest_arrow old_ms in
   let sigma, new_ms = expand_inductive_conclusions ms_to_expand sigma in
-  let ms = List.map (fun (src, e, dst) -> dest_context_term src, ext_term e, dest_context_term dst) (List.append old_ms new_ms) in
+  let new_ms = List.map dest_arrow new_ms in
+  let ms = List.append old_ms new_ms in
   let sigma, (ms_ihs, ms_filtered) =
     let env_with_p = context_env dst in
     let (_, _, p) = CRD.to_tuple @@ lookup_rel 1 env_with_p in
