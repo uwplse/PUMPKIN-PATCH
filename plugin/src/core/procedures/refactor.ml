@@ -99,18 +99,18 @@ let do_replace_convertible n convs def =
            in sigma, sub)
          (mind_body, ind_body')
      in
-     Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n")
+     Feedback.msg_info (str "Defined " ++ str (Id.to_string n) ++ str "\n")
   | _ ->
      let sigma, (sub, pf) = replace_convertible prove env convs def sigma in
      pf_ref := pf;
      ignore (define_term n sigma sub false);
-     Feedback.msg_notice (str "Defined " ++ str (Id.to_string n) ++ str "\n"));
+     Feedback.msg_info (str "Defined " ++ str (Id.to_string n) ++ str "\n"));
   if prove then
     if Option.has_some (!pf_ref) then
       let pf_n = with_suffix n "correct" in
       let pf_trm, pf_typ = Option.get (!pf_ref) in
       let _ = define_term ~typ:pf_typ pf_n sigma pf_trm true in
-      Feedback.msg_notice
+      Feedback.msg_info
         (str "Defined " ++ str (Id.to_string pf_n) ++ str ("\n"))
     else
       Feedback.msg_warning
