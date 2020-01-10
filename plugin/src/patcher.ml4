@@ -28,6 +28,10 @@ open Defutils
 open Envutils
 open Stateutils
 open Inference
+open Tactics
+   
+open Pp
+open Ltac_plugin
 
 module Globmap = Globnames.Refmap
 
@@ -103,17 +107,17 @@ let invert_patch n env patch sigma =
     failwith "Could not find a well-typed inverted term"
 
 (* Common patch command functionality *)
-let patch env n try_invert a search sigma =
+    
+let patch env n try_invert a search sigma define =
   let reduce = try_reduce reduce_remove_identities in
   let sigma, patch_to_red = search env a sigma in
   let sigma, patch = reduce env sigma patch_to_red in
   let prefix = Id.to_string n in
-  ignore (define_term n sigma patch false);
   (if !opt_printpatches then
     print_patch env sigma prefix patch
   else
     Printf.printf "Defined %s\n" prefix);
-  if try_invert then
+  (if try_invert then
     try
       let inv_n_string = String.concat "_" [prefix; "inv"] in
       let inv_n = Id.of_string inv_n_string in
@@ -121,8 +125,22 @@ let patch env n try_invert a search sigma =
     with _ ->
       ()
   else
-    ()
+    ());
+  define sigma patch
 
+(* can't move "define" as the first argument to allow partial 
+   application because it messes with the type of "search" *)
+let patch_tactic env n try_invert a search sigma =
+  patch env n try_invert a search sigma 
+    (fun sigma patch ->
+      letin_pat_tac false None (Names.Name n)
+        (sigma, etrmEConstr.of_constr patch) Locusops.nowhere) 
+  
+let patch_command env n try_invert a search sigma =
+  patch env n try_invert a search sigma 
+    (fun sigma patch -> ignore (define_term n sigma patch false))
+
+  
 (* --- Commands --- *)
 
 (*
@@ -130,15 +148,27 @@ let patch env n try_invert a search sigma =
  * Patch Proof, Patch Definition, and Patch Constructor all call this
  * The latter two just pass extra guidance for now
  *)
-let patch_proof n d_old d_new cut =
+
+let patch_proof n d_old d_new cut intern patch =
   let (sigma, env) = Pfedit.get_current_context () in
-  let sigma, (old_term, new_term) = intern_defs env d_old d_new sigma in
+  let sigma, (old_term, new_term) = intern env d_old d_new sigma in
   let sigma, (d, opts) = configure env old_term new_term cut sigma in
   let change = get_change opts in
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   let search _ _ = search_for_patch old_term opts d in
   patch env n try_invert () search sigma
-
+    
+let patch_proof_tactic n d_old d_new =
+  patch_proof n d_old d_new None
+    (fun env d_old d_new sigma ->
+      (sigma, 
+       (unwrap_definition env (EConstr.to_constr sigma d_old),
+        unwrap_definition env (EConstr.to_constr sigma d_new))))
+    patch_tactic
+  
+let patch_proof_command n d_old d_new cut =
+  patch_proof n d_old d_new cut intern_defs patch_command
+    
 (*
  * Command functionality for optimizing proofs.
  *
@@ -155,7 +185,7 @@ let optimize_proof n d =
   let trm = unwrap_definition env def in
   let sigma, (d, opts) = configure_optimize env trm sigma in
   let search _ _ = search_for_patch trm opts d in
-  patch env n false () search sigma
+  patch_command env n false () search sigma
 
 (*
  * The Patch Theorem command functionality
@@ -172,7 +202,7 @@ let patch_theorem n d_old d_new t =
     let sigma, theorem = intern env sigma t in
     let t_trm = lookup_definition env theorem in
     update_theorem env old_term new_term t_trm sigma
-  in patch env n false t search sigma
+  in patch_command env n false t search sigma
 
 (* Invert a term *)
 let invert n trm : unit =
@@ -235,14 +265,23 @@ let factor n trm : unit =
       fs
   with _ -> failwith "Could not find lemmas"
 
+              
+(* --- Tactic syntax --- *)
+
+TACTIC EXTEND patch_tactic
+| [ "patch" constr(d_old) constr(d_new) "as" ident(n) ] ->
+   [ patch_proof_tactic n d_old d_new ]
+END
+
+
 (* --- Vernac syntax --- *)
 
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF
 | [ "Patch" "Proof" constr(d_old) constr(d_new) "as" ident(n)] ->
-  [ patch_proof n d_old d_new None ]
+  [ patch_proof_command n d_old d_new None ]
 | [ "Patch" "Proof" constr(d_old) constr(d_new) "cut" "by" constr(cut) "as" ident(n)] ->
-  [ patch_proof n d_old d_new (Some cut) ]
+  [ patch_proof_command n d_old d_new (Some cut) ]
 | [ "Patch" "Theorem" constr(d_old) constr(d_new) constr(t) "as" ident(n)] ->
   [ patch_theorem n d_old d_new t ]
 END
