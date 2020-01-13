@@ -113,6 +113,7 @@ let patch env n try_invert a search sigma define =
   let sigma, patch_to_red = search env a sigma in
   let sigma, patch = reduce env sigma patch_to_red in
   let prefix = Id.to_string n in
+  let definition = define sigma patch in
   (if !opt_printpatches then
     print_patch env sigma prefix patch
   else
@@ -126,16 +127,17 @@ let patch env n try_invert a search sigma define =
       ()
   else
     ());
-  define sigma patch
+  definition
 
-(* can't move "define" as the first argument to allow partial 
-   application because it messes with the type of "search" *)
+
+(* Defines a patch as a new hypothesis. *)
 let patch_tactic env n try_invert a search sigma =
   patch env n try_invert a search sigma 
     (fun sigma patch ->
       letin_pat_tac false None (Names.Name n)
-        (sigma, etrmEConstr.of_constr patch) Locusops.nowhere) 
-  
+        (sigma, EConstr.of_constr patch) Locusops.nowhere) 
+
+(* Defines a patch globally. *)
 let patch_command env n try_invert a search sigma =
   patch env n try_invert a search sigma 
     (fun sigma patch -> ignore (define_term n sigma patch false))
@@ -157,7 +159,8 @@ let patch_proof n d_old d_new cut intern patch =
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   let search _ _ = search_for_patch old_term opts d in
   patch env n try_invert () search sigma
-    
+
+(* Tactic which computes and names a patch as a new hypothesis. *)
 let patch_proof_tactic n d_old d_new =
   patch_proof n d_old d_new None
     (fun env d_old d_new sigma ->
@@ -165,7 +168,8 @@ let patch_proof_tactic n d_old d_new =
        (unwrap_definition env (EConstr.to_constr sigma d_old),
         unwrap_definition env (EConstr.to_constr sigma d_new))))
     patch_tactic
-  
+
+(* Command which computes and a patch as a global name. *)
 let patch_proof_command n d_old d_new cut =
   patch_proof n d_old d_new cut intern_defs patch_command
     
