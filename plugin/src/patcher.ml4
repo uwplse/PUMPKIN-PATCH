@@ -152,14 +152,14 @@ let patch_def_global =
  * The latter two just pass extra guidance for now
  *)
 
-let patch_proof n d_old d_new cut intern define =
+let patch_proof n d_old d_new cut intern =
   let (sigma, env) = Pfedit.get_current_context () in
   let sigma, (old_term, new_term) = intern env d_old d_new sigma in
   let sigma, (d, opts) = configure env old_term new_term cut sigma in
   let change = get_change opts in
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   let search _ _ = search_for_patch old_term opts d in
-  patch env n try_invert () search sigma define
+  patch env n try_invert () search sigma
 
 (* Tactic which computes and names a patch as a new hypothesis. *)
 let patch_proof_tactic n d_old d_new =
