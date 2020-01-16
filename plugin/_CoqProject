@@ -7,6 +7,7 @@
 -I src/coq-plugin-lib/src/coq/logicutils/typesandequality
 -I src/coq-plugin-lib/src/coq/logicutils/hofs
 -I src/coq-plugin-lib/src/coq/logicutils/inductive
+-I src/coq-plugin-lib/src/coq/logicutils/transformation
 -I src/coq-plugin-lib/src/coq/devutils
 -I src/coq-plugin-lib/src/coq/representationutils
 -I src/representation
@@ -34,6 +35,8 @@ src/coq-plugin-lib/src/coq/termutils/funutils.ml
 
 src/coq-plugin-lib/src/coq/representationutils/defutils.mli
 src/coq-plugin-lib/src/coq/representationutils/defutils.ml
+src/coq-plugin-lib/src/coq/representationutils/nameutils.mli
+src/coq-plugin-lib/src/coq/representationutils/nameutils.ml
 
 src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.mli
 src/coq-plugin-lib/src/coq/logicutils/typesandequality/inference.ml
@@ -75,6 +78,9 @@ src/coq-plugin-lib/src/coq/logicutils/hofs/filters.ml
 
 src/coq-plugin-lib/src/coq/logicutils/inductive/indutils.mli
 src/coq-plugin-lib/src/coq/logicutils/inductive/indutils.ml
+
+src/coq-plugin-lib/src/coq/logicutils/transformation/transform.mli
+src/coq-plugin-lib/src/coq/logicutils/transformation/transform.ml
 
 src/coq-plugin-lib/src/coq/devutils/printing.mli
 src/coq-plugin-lib/src/coq/devutils/printing.ml
@@ -146,6 +152,8 @@ src/core/procedures/search.mli
 src/core/procedures/search.ml
 src/core/procedures/theorem.mli
 src/core/procedures/theorem.ml
+src/core/procedures/refactor.mli
+src/core/procedures/refactor.ml
 
 src/patcher.ml4
 src/patch.mlpack
