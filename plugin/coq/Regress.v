@@ -39,10 +39,18 @@ Proof.
   reflexivity.
 Qed.
 
+Theorem testPatchTactic1 : forall n m p : nat,
+       n <= m ->
+       m <= p -> n <= p -> n <= p + 1.
+Proof.
+  patch old1 new1 as p.
+  apply p.
+Qed.
+
 (* 2 *)
 
 Patch Proof old2 new2 as patch2.
-
+Check patch2.
 Definition expectedPatch2 :=
   fun (n m p : nat) (_ : n <= m) (_ : m <= p) =>
     (fun (H1 : nat) (H2 : (fun p0 : nat => n <= p0) H1) =>
@@ -52,6 +60,13 @@ Theorem testPatch2 :
   patch2 = expectedPatch2.
 Proof.
   reflexivity.
+Qed.
+
+Theorem testPatchTactic2 : forall n m p : nat,
+       n <= m -> m <= p -> n <= p -> n <= S p.
+Proof.
+  patch old2 new2 as p.
+  apply p.
 Qed.
 
 (* 3 *)
@@ -69,9 +84,18 @@ Proof.
   reflexivity.
 Qed.
 
+Theorem testPatchTactic3 : forall n m p : nat,
+       n <= m ->
+       m <= p -> n <= p -> n < S p.
+Proof.
+  patch old3 new3 as p.
+  apply p.
+Qed.
+
 (* 4 *)
 
 Patch Proof old4 new4 as patch4.
+Check patch4.
 
 Definition expectedPatch4 :=
   fun (n m p : nat) (_ : n <= m) (_ : m <= p) =>
@@ -82,6 +106,15 @@ Theorem testPatch4 :
   patch4 = expectedPatch4.
 Proof.
   reflexivity.
+Qed.
+
+Theorem testPatchTactic4 : forall n m p : nat,
+       n <= m ->
+       m <= p ->
+       n < S p -> n < p + 1.
+Proof.
+  patch old4 new4 as p.
+  apply p.
 Qed.
 
 (* 5 *)
@@ -96,6 +129,18 @@ Theorem testPatch5 :
   patch5 = expectedPatch5.
 Proof.
   reflexivity.
+Qed.
+
+Theorem testPatchTactic5 : forall (n m : nat)
+         (l1 l2 : list nat),
+       ListSum l1 n ->
+       ListSum (l1 ++ l2) (n + m) ->
+       ListSum (nil ++ l2) (0 + m) ->
+       ListSum (rev (rev l2)) m.
+
+Proof.
+  patch old5 new5 as p.
+  apply p.
 Qed.
 
 (* 6 *)
@@ -119,6 +164,17 @@ Proof.
   reflexivity.
 Qed.
 
+Theorem testPatchTactic6 : forall l1 l2 : list nat,
+       length (l1 ++ l2) =
+       length l1 + length l2 ->
+       length (rev (l1 ++ l2)) =
+       length (rev l1) +
+       length (rev l2).
+Proof.
+  patch old6 new6 as p.
+  apply p.
+Qed.
+
 (* 7 *)
 
 Patch Proof old7 new7 as patch7.
@@ -140,6 +196,17 @@ Proof.
   reflexivity.
 Qed.
 
+Theorem testPatchTactic7 : forall (A B : Type)
+         (f : A -> B) (l : list A)
+         (x : A),
+       (In x l -> In (f x) (map f l)) ->
+       Basics.impl (In x l)
+         (In (f x) (rev (map f l))).
+Proof.
+  patch old7 new7 as p.
+  apply p.
+Qed.
+
 (* 8 *)
 
 Patch Proof old8 new8 as patch8.
@@ -151,6 +218,15 @@ Theorem testPatch8 :
   patch8 = expectedPatch8.
 Proof.
   reflexivity.
+Qed.
+
+Theorem testPatchTactic8 : forall n m n0 : nat,
+       m = n ->
+       n <= Init.Nat.max n0 m ->
+       n <= Init.Nat.max n0 m + 1.
+Proof.
+  patch old8 new8 as p.
+  apply p.
 Qed.
 
 (* 9 *)
