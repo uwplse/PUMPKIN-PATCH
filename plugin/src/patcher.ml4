@@ -132,17 +132,24 @@ let patch env n try_invert a search sigma (define, last_def) =
 
 (* Defines a patch as a new hypothesis. *)
 let patch_def_hypothesis =  
-    ((fun n sigma patch last_def ->
-      Proofview.tclBIND last_def
-        (fun _ -> letin_pat_tac false None (Names.Name n)
-                    (sigma, EConstr.of_constr patch) Locusops.nowhere)),
-     Tacticals.New.tclIDTAC)
-
+  ((fun n sigma patch last_def ->
+    Proofview.tclBIND last_def (fun _ ->
+        letin_pat_tac false None (Names.Name n)
+          (sigma, EConstr.of_constr patch) Locusops.nowhere)),
+   Tacticals.New.tclIDTAC)
+  
+(* Suggest something to do with the generated patch. *)
+let patch_suggest =
+  ((fun _ _ patch last_def ->
+    let s = Printer.pr_constr_env (Global.env ()) Evd.empty patch in
+    Feedback.msg_notice (str "apply " ++ s); last_def),
+   Tacticals.New.tclIDTAC)
+  
 (* Defines a patch globally. *)
 let patch_def_global =
   ((fun n sigma patch _ ->
-      ignore (define_term n sigma patch false)), ())
-
+    ignore (define_term n sigma patch false)), ())
+  
   
 (* --- Commands --- *)
 
@@ -161,14 +168,19 @@ let patch_proof n d_old d_new cut intern =
   let search _ _ = search_for_patch old_term opts d in
   patch env n try_invert () search sigma
 
+(* Convert constr's from patch tactics to appropriate term type. *)
+let intern_tactic env d_old d_new sigma =
+  (sigma, (unwrap_definition env (EConstr.to_constr sigma d_old),
+           unwrap_definition env (EConstr.to_constr sigma d_new)))
+  
 (* Tactic which computes and names a patch as a new hypothesis. *)
 let patch_proof_tactic n d_old d_new =
-  let intern = (fun env d_old d_new sigma ->
-      (sigma,
-       (unwrap_definition env (EConstr.to_constr sigma d_old),
-        unwrap_definition env (EConstr.to_constr sigma d_new)))) in
-  patch_proof n d_old d_new None intern patch_def_hypothesis
+  patch_proof n d_old d_new None intern_tactic patch_def_hypothesis
 
+(* Tactic which computes a patch and suggests what to do with it. *)
+let suggest_patch_tactic d_old d_new =
+  patch_proof (Id.of_string "_") d_old d_new None intern_tactic patch_suggest
+  
 (* Command which computes a patch as a global name. *)
 let patch_proof_command n d_old d_new cut =
   patch_proof n d_old d_new cut intern_defs patch_def_global
@@ -277,6 +289,10 @@ TACTIC EXTEND patch_tactic
    [ patch_proof_tactic n d_old d_new ]
 END
 
+TACTIC EXTEND suggest_tactic
+| [ "suggest" "patch" constr(d_old) constr(d_new) ] ->
+   [ suggest_patch_tactic d_old d_new ]
+END
 
 (* --- Vernac syntax --- *)
 
