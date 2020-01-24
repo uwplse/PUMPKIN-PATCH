@@ -248,6 +248,41 @@ If you would like to contribute directly to the plugin, feel free to cut a pull 
 
 ## Bonus Functionality
 
+### Refactoring
+
+Right now, there is support for one simple refactoring using the
+`Replace Convertible` command. Just write:
+
+```
+Replace Convertible t in ugly as pretty.
+```
+
+This will replace all subterms of `ugly` that are convertible to `t` with `t` itself,
+and define it as a new term `pretty`. 
+
+You can also do this over an entire module `Ugly` to get a new module `Pretty`:
+
+```
+Replace Convertible Module t in Ugly as Pretty.
+```
+
+If you'd like, you can also pass in multiple terms to replace (left to right):
+
+```
+Replace Convertible t1 t2 t3 in ugly as pretty.
+Replace Convertible Module t1 t2 t3 in Ugly as Pretty.
+```
+
+Work is in progress for a better interface for this, and for commands that 
+do this over multiple files. Please cut an issue if you have any ideas
+for the ideal interface!
+
+See [Replace.v](/plugin/coq/Replace.v) for examples.
+
+One note on this: Even stating what it means for a renaming operation in Coq to be correct requires extremely
+deep type theory due to the way that equality works, for example over inductive types.
+This is both cool and sad for users. There is WIP on supporting this.
+
 ### Proof Optimization
 
 Proof patching can be used to optimize proofs as well. Optimization removes extra induction

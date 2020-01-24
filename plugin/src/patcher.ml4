@@ -29,9 +29,10 @@ open Envutils
 open Stateutils
 open Inference
 open Tactics
-   
 open Pp
 open Ltac_plugin
+open Nameutils
+open Refactor
 
 module Globmap = Globnames.Refmap
 
@@ -60,7 +61,7 @@ let _ = Goptions.declare_bool_option {
   Goptions.optread = (fun () -> !opt_printpatches);
   Goptions.optwrite = (fun b -> opt_printpatches := b);
 }
-
+                                     
 (* --- Auxiliary functionality for top-level functions --- *)
 
 (* Intern terms corresponding to two definitions *)
@@ -334,4 +335,12 @@ END
 VERNAC COMMAND EXTEND FactorCandidate CLASSIFIED AS SIDEFF
 | [ "Factor" constr(trm) "using" "prefix" ident(n) ] ->
   [ factor n trm ]
+END
+
+(* Replace subterms with a convertible term *)
+VERNAC COMMAND EXTEND ReplaceConvertible CLASSIFIED AS SIDEFF
+| [ "Replace" "Convertible" constr_list(conv_trms) "in" constr(def) "as" ident(n) ] ->
+  [ do_replace_convertible n conv_trms def ]
+| [ "Replace" "Convertible" "Module" constr_list(conv_trms) "in" reference(mod_ref) "as" ident(n) ] ->
+  [ do_replace_convertible_module n conv_trms mod_ref ]
 END
