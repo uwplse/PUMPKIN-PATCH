@@ -92,18 +92,25 @@ let configure_optimize env trm =
       let d = add_goals (difference c c no_assumptions) in
       ret (d, configure_search d Identity None))
 
+(* Print message declaring that a patch, if any, was defined. *)
+let debug_print_patch env sigma n patch =
+  match n with
+  | Some n ->
+     if !opt_printpatches then
+       print_patch env sigma n patch
+     else
+       Printf.printf "Defined %s\n" n
+  | None -> ()
+          
 (* Common inversion functionality *)
 let invert_patch n env patch sigma (define, last_def) =
   let sigma, inverted = invert_terms invert_factor env [patch] sigma in
   try
     let patch_inv = List.hd inverted in
     let sigma, _ = infer_type env sigma patch_inv in
-    let definition = define n sigma patch_inv last_def in
-    let n_string = Id.to_string n in
-    (if !opt_printpatches then
-      print_patch env sigma n_string patch_inv
-    else
-      Printf.printf "Defined %s\n" n_string);
+    let definition = define n env sigma patch_inv last_def in
+    let n_string = Option.map Id.to_string n in
+    debug_print_patch env sigma n_string patch_inv;
     definition
   with _ ->
     failwith "Could not find a well-typed inverted term"
@@ -114,16 +121,13 @@ let patch env n try_invert a search sigma (define, last_def) =
   let reduce = try_reduce reduce_remove_identities in
   let sigma, patch_to_red = search env a sigma in
   let sigma, patch = reduce env sigma patch_to_red in
-  let prefix = Id.to_string n in
-  let next_def = define n sigma patch last_def in
-  (if !opt_printpatches then
-    print_patch env sigma prefix patch
-  else
-    Printf.printf "Defined %s\n" prefix);
+  let prefix = Option.map Id.to_string n in
+  let next_def = define n env sigma patch last_def in
+  debug_print_patch env sigma prefix patch;
   if try_invert then
     try
-      let inv_n_string = String.concat "_" [prefix; "inv"] in
-      let inv_n = Id.of_string inv_n_string in
+      let inv_n_string = Option.map (fun x -> x ^ "_inv") prefix in
+      let inv_n = Option.map Id.of_string inv_n_string in
       invert_patch inv_n env patch sigma (define, next_def)
     with _ ->
       next_def
@@ -133,23 +137,23 @@ let patch env n try_invert a search sigma (define, last_def) =
 
 (* Defines a patch as a new hypothesis. *)
 let patch_def_hypothesis =  
-  ((fun n sigma patch last_def ->
+  ((fun n _ sigma patch last_def ->
     Proofview.tclBIND last_def (fun _ ->
-        letin_pat_tac false None (Names.Name n)
+        letin_pat_tac false None (Names.Name (Option.get n))
           (sigma, EConstr.of_constr patch) Locusops.nowhere)),
    Tacticals.New.tclIDTAC)
   
 (* Suggest something to do with the generated patch. *)
 let patch_suggest =
-  ((fun _ _ patch last_def ->
-    let s = Printer.pr_constr_env (Global.env ()) Evd.empty patch in
-    Feedback.msg_notice (str "apply " ++ s); last_def),
+  ((fun _ env sigma patch last_def ->
+    let s = Printer.pr_constr_env env sigma patch in
+    Feedback.msg_info (str "apply " ++ s); last_def),
    Tacticals.New.tclIDTAC)
   
 (* Defines a patch globally. *)
 let patch_def_global =
-  ((fun n sigma patch _ ->
-    ignore (define_term n sigma patch false)), ())
+  ((fun n _ sigma patch _ ->
+    ignore (define_term (Option.get n) sigma patch false)), ())
   
   
 (* --- Commands --- *)
@@ -176,15 +180,15 @@ let intern_tactic env d_old d_new sigma =
   
 (* Tactic which computes and names a patch as a new hypothesis. *)
 let patch_proof_tactic n d_old d_new =
-  patch_proof n d_old d_new None intern_tactic patch_def_hypothesis
+  patch_proof (Some n) d_old d_new None intern_tactic patch_def_hypothesis
 
 (* Tactic which computes a patch and suggests what to do with it. *)
 let suggest_patch_tactic d_old d_new =
-  patch_proof (Id.of_string "_") d_old d_new None intern_tactic patch_suggest
+  patch_proof None d_old d_new None intern_tactic patch_suggest
   
 (* Command which computes a patch as a global name. *)
 let patch_proof_command n d_old d_new cut =
-  patch_proof n d_old d_new cut intern_defs patch_def_global
+  patch_proof (Some n) d_old d_new cut intern_defs patch_def_global
     
 (*
  * Command functionality for optimizing proofs.
@@ -202,7 +206,7 @@ let optimize_proof n d =
   let trm = unwrap_definition env def in
   let sigma, (d, opts) = configure_optimize env trm sigma in
   let search _ _ = search_for_patch trm opts d in
-  patch env n false () search sigma patch_def_global
+  patch env (Some n) false () search sigma patch_def_global
 
 (*
  * The Patch Theorem command functionality
@@ -219,14 +223,14 @@ let patch_theorem n d_old d_new t =
     let sigma, theorem = intern env sigma t in
     let t_trm = lookup_definition env theorem in
     update_theorem env old_term new_term t_trm sigma
-  in patch env n false t search sigma patch_def_global
+  in patch env (Some n) false t search sigma patch_def_global
 
 (* Invert a term *)
 let invert n trm : unit =
   let (sigma, env) = Pfedit.get_current_context () in
   let sigma, def = intern env sigma trm in
   let body = lookup_definition env def in
-  invert_patch n env body sigma patch_def_global
+  invert_patch (Some n) env body sigma patch_def_global
 
 (* Specialize a term *)
 let specialize n trm : unit =
