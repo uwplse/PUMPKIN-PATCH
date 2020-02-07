@@ -3,6 +3,7 @@ open Names
 open Constr
 open Environ
 open Envutils
+open Tactics
 open Pp
 
 (* Abstraction of Coq tactics supported by this decompiler. *)
@@ -25,7 +26,8 @@ let rec tac_from_term env trm : tact list =
   match kind trm with
   | Lambda (n, t, b) ->
      let name = match n with
-       | Anonymous -> Id.of_string "H" (* TODO: Hn for each new name *)
+       | Anonymous ->
+          fresh_id_in_env Id.Set.empty (Id.of_string "H") env
        | Name n -> n in
      let env = push_local (Name name, t) env in
      (Intro name) :: tac_from_term env b
