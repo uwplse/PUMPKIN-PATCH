@@ -33,7 +33,8 @@ open Pp
 open Ltac_plugin
 open Nameutils
 open Refactor
-
+open Decompiler
+   
 module Globmap = Globnames.Refmap
 
 (*
@@ -138,16 +139,20 @@ let patch env n try_invert a search sigma (define, last_def) =
 (* Defines a patch as a new hypothesis. *)
 let patch_def_hypothesis =  
   ((fun n _ sigma patch last_def ->
-    Proofview.tclBIND last_def (fun _ ->
-        letin_pat_tac false None (Names.Name (Option.get n))
-          (sigma, EConstr.of_constr patch) Locusops.nowhere)),
+    Proofview.tclTHEN last_def
+      (letin_pat_tac false None (Names.Name (Option.get n))
+         (sigma, EConstr.of_constr patch) Locusops.nowhere)),
    Tacticals.New.tclIDTAC)
   
 (* Suggest something to do with the generated patch. *)
 let patch_suggest =
   ((fun _ env sigma patch last_def ->
-    let s = Printer.pr_constr_env env sigma patch in
-    Feedback.msg_info (str "apply " ++ s); last_def),
+    let typ = (Typeops.infer env patch).uj_type in
+    let type_s = Printer.pr_constr_env env sigma typ in
+    let asrt = str "assert " ++ type_s ++ str ".\n" in
+    let tacs = tac_from_term env patch in
+    Feedback.msg_info (asrt ++ tac_to_string sigma tacs);
+    last_def),
    Tacticals.New.tclIDTAC)
   
 (* Defines a patch globally. *)

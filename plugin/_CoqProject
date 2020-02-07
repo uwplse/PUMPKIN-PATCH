@@ -155,6 +155,9 @@ src/core/procedures/theorem.ml
 src/core/procedures/refactor.mli
 src/core/procedures/refactor.ml
 
+src/compilation/decompiler.ml
+src/compilation/decompiler.mli
+
 src/patcher.ml4
 src/patch.mlpack
 
