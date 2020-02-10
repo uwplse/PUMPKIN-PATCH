@@ -25,3 +25,4 @@ coqc coq/IntegersNew.v
 coqc coq/Optimization.v
 coqc coq/Theorem.v
 coqc coq/Replace.v
+coqc coq/record_performance.v
