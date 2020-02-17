@@ -7,15 +7,15 @@ open Tactics
 open Pp
 open Contextutils
 
-(* Abstraction of Coq tactics supported by this decompiler. *)
+(* Abstraction of Coq tactics supported by this decompiler.
+   Serves as an intermediate representation that can be either
+   transformed into a string or a sequence of actual tactics. *)
 type tact =
   | Intro of Id.t
   | Intros of Id.t list
   | Apply of env * types
         
-(* Return the string representation of a single tactic.
-   TODO: Indentation/bulleting
-         Don    't expose this in .mli *)
+(* Return the string representation of a single tactic. *)
 let show_tact sigma tac : Pp.t =
   (match tac with
    | Intro n -> str ("intro " ^ Id.to_string n)
@@ -28,14 +28,7 @@ let show_tact sigma tac : Pp.t =
   ++ str ".\n" (* maybe ";" in future *)
 
 (* Converts "intro n. intro m. ..." into "intros n m ..." *)
-let rec collapse_intros (tacs : tact list) : tact list =
-  (*match tacs with
-  | [] -> tacs  
-  | (Intro n) :: (Intro m) :: xs ->
-     collapse_intros (Intros [n; m] :: xs)
-  | (Intros ns) :: (Intro n) :: xs ->
-     collapse_intros (Intros (List.append ns [n]) :: xs)
-  | x :: xs -> x :: collapse_intros xs *)
+let collapse_intros (tacs : tact list) : tact list =
   List.fold_right (fun tac acc ->
       match tac with
       | Intro n ->
@@ -51,11 +44,13 @@ let get_pushed_names env =
     List.map (fun x ->
         match x with
         | CRD.LocalAssum (n, _) -> n
-        | CRD.LocalDef (n, _, _) -> n
-      ) (lookup_all_rels env) in
+        | CRD.LocalDef (n, _, _) -> n)
+      (lookup_all_rels env) in
   Id.Set.of_list
     (List.map (fun x ->
-         match x with (* shouldn't be anonymous *)
+         match x with
+         | Anonymous ->
+            failwith "Unexpected Anonymous in get_pushed_names."
          | Name n -> n) names)
     
 (* Decompile a term into its equivalent tactic list. *)
@@ -78,12 +73,7 @@ let tac_from_term env trm : tact list =
   
   
 (* Convert a tactic list into its string representation. *)
-let rec tac_to_string sigma (tacs : tact list) : Pp.t =
-  (*match tacs with
-  | tac :: tacs' ->
-     let tac_s = show_tact sigma tac in
-     tac_s ++ str "\n" ++ tac_to_string sigma tacs'
-  | [] -> str ""*)
+let tac_to_string sigma (tacs : tact list) : Pp.t =
   seq (List.map (show_tact sigma) tacs)
-
-        
+    
+    
