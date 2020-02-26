@@ -70,11 +70,11 @@ let tac_from_term env trm : tact list =
     match kind trm with
     (* "fun x => ..." -> "intro x." *)
     | Lambda (n, t, b) ->
+       let in_env = get_pushed_names env in
        let name = match n with
-         | Anonymous ->
-            let in_env = get_pushed_names env in
-            fresh_id_in_env in_env (Id.of_string "H") env
+         | Anonymous -> Id.of_string "H"
          | Name n -> n in
+       let name = fresh_id_in_env in_env name env in
        let env = push_local (Name name, t) env in
        Intro name :: first_pass env b
     (* Match on well-known functions used in the proof. *)
