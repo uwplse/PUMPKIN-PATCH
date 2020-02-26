@@ -61,19 +61,12 @@ let get_pushed_names env =
             failwith "Unexpected Anonymous in get_pushed_names."
          | Name n -> n) names)
 
-(* Functions used with the rewrite tactic. *)
-let is_rewrite_r trm : bool =
-  let eq_term = equal trm in
-  eq_term eq_ind_r || eq_term eq_rec_r (* || eq_term eq_rect_r *)
-  
-(* Rewrite functions using "<-". *)
-let is_rewrite_l trm : bool =
-  let eq_term = equal trm in
-  eq_term eq_ind || eq_term eq_rec (* || eq_term eq_rect*)
-
 (* Decompile a term into its equivalent tactic list. *)
 let tac_from_term env trm : tact list =
   let rec first_pass env trm =
+    (* Apply single beta reduction to terms that *might*
+       be in eta expanded form. *)
+    let trm = Reduction.whd_betaiota env trm in
     match kind trm with
     (* "fun x => ..." -> "intro x." *)
     | Lambda (n, t, b) ->
@@ -86,21 +79,13 @@ let tac_from_term env trm : tact list =
        Intro name :: first_pass env b
     (* Match on well-known functions used in the proof. *)
     | App (f, args) ->
-       (* Applying to something that *might* be in eta-expanded 
-          form, try to reduce. *)
-       if isLambda f then
-         let app_one = mkApp (f, [|Array.get args 0|]) in
-         let beta = Reduction.whd_betaiota env app_one in
-         let app = mkApp (beta, Array.sub args 1 (Array.length args - 1)) in
-         first_pass env app
-       else
+       if Array.length args == 6 && is_rewrite f then
          let left = is_rewrite_l f in
-         if left || is_rewrite_r f then
-           let prf_eq = Array.get args 5 in
-           let elem = Array.get args 3 in
-           Rewrite (env, prf_eq, left) :: first_pass env elem
-         else
-           [Apply (env, trm)]
+         let prf_eq = Array.get args 5 in
+         let elem = Array.get args 3 in
+         Rewrite (env, prf_eq, left) :: first_pass env elem
+       else
+         [Apply (env, trm)]
     (* Remainder of body, simply apply it. *)
     | _ -> [Apply (env, trm)] in
   (* Perform second pass to revise greedy tactic list. *)
