@@ -79,6 +79,9 @@ src/coq-plugin-lib/src/coq/logicutils/hofs/filters.ml
 src/coq-plugin-lib/src/coq/logicutils/inductive/indutils.mli
 src/coq-plugin-lib/src/coq/logicutils/inductive/indutils.ml
 
+src/coq-plugin-lib/src/coq/logicutils/contexts/modutils.mli
+src/coq-plugin-lib/src/coq/logicutils/contexts/modutils.ml
+
 src/coq-plugin-lib/src/coq/logicutils/transformation/transform.mli
 src/coq-plugin-lib/src/coq/logicutils/transformation/transform.ml
 

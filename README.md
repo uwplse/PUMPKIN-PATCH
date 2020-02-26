@@ -133,6 +133,17 @@ We can use `patch` to port this proof to use `new1` instead:
 apply patch. apply new1.
 ```
 
+### Tactic Interface
+
+Within a proof, you can run the tactic:
+
+```
+patch old new as h.
+```
+
+to add a new hypothesis `h` to your proof state. This has the same functionality as the command version for
+now, but will eventually suggest new tactics directly. 
+
 ### Applying Patches
 
 One thing that you'll notice is that in the example above, we applied this patch by hand.
@@ -367,7 +378,7 @@ This plugin suite includes two useful tools for plugin developers:
 
 # Contributors
 
-This plugin is maintained by Talia Ringer with help from Nate Yazdani.
+This plugin is maintained by Talia Ringer with help from Nate Yazdani and RanDair Porter.
 John Leo and Dan Grossman have made conceptual contributions.
 
 The following community members have also contributed to the code:
