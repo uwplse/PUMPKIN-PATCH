@@ -178,6 +178,15 @@ let patch_proof n d_old d_new cut intern =
   let search _ _ = search_for_patch old_term opts d in
   patch env n try_invert () search sigma
 
+(* Tactic to test decompilation of a single term into tactics. *)
+let decompile_tactic trm =
+  let (sigma, env) = Pfedit.get_current_context () in
+  let trm = EConstr.to_constr sigma trm in
+  let tacs = tac_from_term env trm in
+  Feedback.msg_info (tac_to_string sigma tacs);
+  Tacticals.New.tclIDTAC
+    
+  
 (* Convert constr's from patch tactics to appropriate term type. *)
 let intern_tactic env d_old d_new sigma =
   (sigma, (unwrap_definition env (EConstr.to_constr sigma d_old),
@@ -302,6 +311,11 @@ END
 TACTIC EXTEND suggest_tactic
 | [ "suggest" "patch" constr(d_old) constr(d_new) ] ->
    [ suggest_patch_tactic d_old d_new ]
+END
+
+TACTIC EXTEND decompile
+| [ "decompile" constr(trm) ] ->
+   [ decompile_tactic trm ]
 END
 
 (* --- Vernac syntax --- *)
