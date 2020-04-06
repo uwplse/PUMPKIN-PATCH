@@ -185,7 +185,14 @@ let decompile_tactic trm =
   let tacs = tac_from_term env trm in
   Feedback.msg_info (tac_to_string sigma tacs);
   Tacticals.New.tclIDTAC
-    
+
+(* Decompiles a single term into a tactic list printed to console. *)
+let decompile_command trm =
+  let (sigma, env) = Pfedit.get_current_context () in
+  let sigma, trm = intern env sigma trm in
+  let trm = unwrap_definition env trm in
+  let tacs = tac_from_term env trm in
+  Feedback.msg_debug (tac_to_string sigma tacs) 
   
 (* Convert constr's from patch tactics to appropriate term type. *)
 let intern_tactic env d_old d_new sigma =
@@ -202,8 +209,8 @@ let suggest_patch_tactic d_old d_new =
   
 (* Command which computes a patch as a global name. *)
 let patch_proof_command n d_old d_new cut =
-  patch_proof (Some n) d_old d_new cut intern_defs patch_def_global
-    
+  patch_proof (Some n) d_old d_new cut intern_defs patch_def_global 
+  
 (*
  * Command functionality for optimizing proofs.
  *
@@ -319,6 +326,12 @@ TACTIC EXTEND decompile
 END
 
 (* --- Vernac syntax --- *)
+
+(* Decompile Command *)
+VERNAC COMMAND EXTEND Decompile CLASSIFIED AS SIDEFF
+| [ "Decompile" constr(trm) ] ->
+   [ decompile_command trm ]
+END
 
 (* Patch command *)
 VERNAC COMMAND EXTEND PatchProof CLASSIFIED AS SIDEFF

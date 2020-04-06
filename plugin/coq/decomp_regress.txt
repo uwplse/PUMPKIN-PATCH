@@ -1,0 +1,73 @@
+Debug: apply 3.
+
+Debug: intro x.
+apply x.
+
+Debug: intros x y.
+apply x.
+
+Debug: intros H y.
+apply y.
+
+Debug: intros x H.
+apply x.
+
+Debug: intros H H0 x.
+apply x.
+
+Debug: apply @eq_refl.
+
+Debug: reflexivity.
+
+Debug: reflexivity.
+
+Debug: apply (eq_rect (A:=nat)).
+
+Debug: rewrite eq_refl.
+apply tt.
+
+Debug: rewrite <- eq_refl.
+apply I.
+
+Debug: intros x H.
+rewrite H.
+rewrite <- H.
+reflexivity.
+
+Debug: intros a b H H0.
+rewrite H0 in H.
+apply H.
+
+Debug:
+intros a b H H0.
+rewrite H0 in H.
+rewrite <- H0 in H.
+rewrite H0 in H.
+apply H.
+
+Debug:
+intros a b H H0.
+apply (let q : (fun b0 : nat => a = b0) a :=
+                          eq_ind b (fun b0 : nat => a = b0)
+                            ((fun x : a = b => x) H) a H0 in
+                        eq_refl).
+
+Debug:
+intros a b H H0.
+apply (let q : (fun b0 : nat => a = b0) a :=
+                          eq_ind b (fun b0 : nat => a = b0) H a H0 in
+                        let q' : a = b := H in eq_refl).
+
+Debug: intros a b H.
+left.
+apply H.
+
+Debug: intros a b H.
+right.
+apply H.
+
+Debug: intros a b H H0.
+split.
+apply H.
+apply H0.
+
