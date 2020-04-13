@@ -47,16 +47,15 @@ apply H.
 
 Debug:
 intros a b H H0.
-apply (let q : (fun b0 : nat => a = b0) a :=
-                          eq_ind b (fun b0 : nat => a = b0)
-                            ((fun x : a = b => x) H) a H0 in
-                        eq_refl).
+apply (eq_ind b (fun b0 : nat => a = b0)
+                          ((fun x : a = b => x) H) a) in H0.
+reflexivity.
 
 Debug:
 intros a b H H0.
-apply (let q : (fun b0 : nat => a = b0) a :=
-                          eq_ind b (fun b0 : nat => a = b0) H a H0 in
-                        let q' : a = b := H in eq_refl).
+apply (eq_ind b (fun b0 : nat => a = b0) H a) in H0.
+pose H as q'.
+reflexivity.
 
 Debug: intros a b H.
 left.
@@ -70,4 +69,10 @@ Debug: intros a b H H0.
 split.
 apply H.
 apply H0.
+
+Debug: split.
+left.
+reflexivity.
+right.
+reflexivity.
 

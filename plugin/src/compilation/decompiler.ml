@@ -31,6 +31,8 @@ type tact =
   | Rewrite of env * types * bool
   (* Proof that y = x if true, etc. *)
   | RewriteIn of env * types * types * bool
+  | ApplyIn of env * types * types
+  | Pose of env * Id.t * types
   | Reflexivity
   | Left
   | Right
@@ -55,6 +57,12 @@ let show_tact sigma tac : Pp.t =
       let prf_s, hyp_s = prnt env prf, prnt env hyp in
       let arrow = if left then "" else "<- " in
       str ("rewrite " ^ arrow) ++ prf_s ++ str " in " ++ hyp_s
+   | ApplyIn (env, prf, hyp) ->
+      let prf_s, hyp_s = prnt env prf, prnt env hyp in
+      str "apply " ++ prf_s ++ str " in " ++ hyp_s
+   | Pose (env, n, hyp) ->
+      let n = str (Id.to_string n) in
+      str "pose " ++ prnt env hyp ++ str " as " ++ n
    | Reflexivity -> str "reflexivity"
    | Left -> str "left"
    | Right -> str "right"
@@ -155,8 +163,8 @@ let rec first_pass env trm =
   | App (f, args) ->
      choose (rewrite <|> left <|> right <|> split) (f, args)
   (* Hypothesis transformations or generation tactics. *)
-  | LetIn (n, valu, _, body) ->   
-     choose (rewrite_in <|> apply_in <|> pose) (valu, body)
+  | LetIn (n, valu, typ, body) ->   
+     choose (rewrite_in <|> apply_in <|> pose) (n, valu, typ, body)
   (* Remainder of body, simply apply it. *)
   | _ -> [Apply (env, trm)]
 
@@ -178,7 +186,7 @@ and split (f, args) env : tact list option =
   let rhs = first_pass env (Array.get args 3) in
   Some (Split :: (lhs @ rhs))
   
-and rewrite_in (valu, body) env : tact list option =
+and rewrite_in (_, valu, _, body) env : tact list option =
   let valu = Reduction.whd_betaiota env valu in
   try_app valu          >>= fun (f, args) ->
   try_rewrite f args    >>= fun (left, prf, hyp) ->
@@ -188,9 +196,24 @@ and rewrite_in (valu, body) env : tact list option =
   let env' = push_local (n, t) env in
   Some (RewriteIn (env, prf, hyp, left) :: first_pass env' body)
 
-and apply_in (valu, body) env : tact list option = None
+and apply_in (_, valu, _, body) env : tact list option =
+  let valu = Reduction.whd_betaiota env valu in
+  try_app valu >>= fun (f, args) ->
+  let len = Array.length args in
+  let hyp = args.(len - 1) in
+  try_rel hyp >>= fun idx ->
+  noccur (idx + 1) body >>= fun _ ->
+  let n, t = rel_name_type (lookup_rel idx env) in
+  let env' = push_local (n, t) env in
+  let prf = mkApp (f, Array.sub args 0 (len - 1)) in
+  Some (ApplyIn (env, prf, hyp) :: first_pass env' body)
   
-and pose (valu, body) env : tact list option = None
+and pose (n, valu, t, body) env : tact list option =
+  match n with
+  | Anonymous -> failwith "Unexpected anonymous in pose."
+  | Name n' ->
+     let env' = push_let_in (n, valu, t) env in
+     Some (Pose (env, n', valu) :: first_pass env' body)
        
 (* Decompile a term into its equivalent tactic list. *)
 let tac_from_term env trm : tact list =
