@@ -57,4 +57,6 @@ Decompile (fun (a b : Prop) (H : b) => or_intror H).
 
 (* Split *)
 Decompile (fun (a b : Prop) (H : a) (H0 : b) => conj H H0).
+Decompile (conj (or_introl eq_refl) (or_intror eq_refl)).
+
 
