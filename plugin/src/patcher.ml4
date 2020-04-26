@@ -150,7 +150,7 @@ let patch_suggest =
     let typ = (Typeops.infer env patch).uj_type in
     let type_s = Printer.pr_constr_env env sigma typ in
     let asrt = str "assert " ++ type_s ++ str ".\n" in
-    let tacs = tac_from_term env patch in
+    let tacs = tac_from_term env sigma patch in
     Feedback.msg_info (asrt ++ tac_to_string sigma tacs);
     last_def),
    Tacticals.New.tclIDTAC)
@@ -182,7 +182,7 @@ let patch_proof n d_old d_new cut intern =
 let decompile_tactic trm =
   let (sigma, env) = Pfedit.get_current_context () in
   let trm = EConstr.to_constr sigma trm in
-  let tacs = tac_from_term env trm in
+  let tacs = tac_from_term env sigma trm in
   Feedback.msg_info (tac_to_string sigma tacs);
   Tacticals.New.tclIDTAC
 
@@ -191,7 +191,7 @@ let decompile_command trm =
   let (sigma, env) = Pfedit.get_current_context () in
   let sigma, trm = intern env sigma trm in
   let trm = unwrap_definition env trm in
-  let tacs = tac_from_term env trm in
+  let tacs = tac_from_term env sigma trm in
   Feedback.msg_debug (tac_to_string sigma tacs) 
   
 (* Convert constr's from patch tactics to appropriate term type. *)

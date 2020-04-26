@@ -70,9 +70,18 @@ split.
 apply H.
 apply H0.
 
+<<<<<<< Updated upstream
 Debug: split.
 left.
 reflexivity.
 right.
 reflexivity.
 
+||||||| merged common ancestors
+=======
+Debug: split.
+left.
+reflexivity.
+right.
+reflexivity.
+>>>>>>> Stashed changes
