@@ -9,7 +9,21 @@ open Contextutils
 open Equtils
 open Apputils
 open Proputils
+open Indutils
 open Vars
+
+type fun_args =
+  {
+    (* The function term. *)
+    f : types;
+    (* The number of arguments it accepts. *)
+    count : int;
+  }
+
+let or_introl_args : fun_args = { f = or_introl ; count = 3 }
+let or_intror_args : fun_args = { f = or_intror ; count = 3 }
+let conj_args : fun_args = { f = conj ; count = 4 } 
+  
 
 (* Monadic bind on option types. *)
 let (>>=) = Option.bind
@@ -20,7 +34,8 @@ let (<|>) f g x y =
   match f x y, g x y with
   | Some z, _ -> Some z
   | None, z -> z
-          
+
+             
 (* Abstraction of Coq tactics supported by this decompiler.
    Serves as an intermediate representation that can be either
    transformed into a string or a sequence of actual tactics. *)
@@ -128,20 +143,29 @@ let get_pushed_names env : Id.Set.t =
                 (lookup_all_rels env) in
   Id.Set.of_list (List.map expect_name names)
 
+(* If the given name is anonymous, generate a fresh one. *)
+let fresh_name env n =
+  let in_env = get_pushed_names env in
+  let name = match n with
+    | Anonymous -> Id.of_string "H"
+    | Name n -> n in
+  fresh_id_in_env in_env name env
+           
 (* Zoom all the way into a lambda term collecting names. *)
-let rec zoom_lambda_names env trm : env * types * Name.t list =
+let rec zoom_lambda_names env trm : env * types * Id.t list =
   match kind trm with
   | Lambda (n, t, b) ->
+     let name = fresh_name env n in
      let env, trm, names =
-       zoom_lambda_names (push_local (n, t) env) b in
-     (env, trm, n :: names)
+       zoom_lambda_names (push_local (Name name, t) env) b in
+     (env, trm, name :: names)
   | _ ->
      (env, trm, [])   
   
 (* Checks if we are applying function g, which
    is expected to have len arguments. *)
-let try_fun f args g len : (constr array) option =
-  if Array.length args == len && equal f g then
+let try_fun f args (expect : fun_args) : (constr array) option =
+  if Array.length args == expect.count && equal f expect.f then
     Some args
   else
     None
@@ -172,7 +196,9 @@ let try_rel (trm : constr) : int option =
 (* Monadic guard for option. *)
 let guard (b : bool) : unit option =
   if b then Some () else None
-       
+
+(* Performs the bulk of decompilation on a proof term. 
+   Returns a list of tactics. *)
 let rec first_pass env sigma trm =
   (* Apply single beta reduction to terms that *might*
        be in eta expanded form. *)
@@ -181,11 +207,7 @@ let rec first_pass env sigma trm =
   match kind trm with
   (* "fun x => ..." -> "intro x." *)
   | Lambda (n, t, b) ->
-     let in_env = get_pushed_names env in
-     let name = match n with
-       | Anonymous -> Id.of_string "H"
-       | Name n -> n in
-     let name = fresh_id_in_env in_env name env in
+     let name = fresh_name env n in
      let env = push_local (Name name, t) env in
      Intro name :: first_pass env sigma b
   (* Match on well-known functions used in the proof. *)
@@ -197,12 +219,15 @@ let rec first_pass env sigma trm =
   (* Remainder of body, simply apply it. *)
   | _ -> [Apply (env, trm)]
 
+(* Application of a equality eliminator. *)
 and rewrite (f, args) (env, sigma) : tact list option =
   try_rewrite f args >>= fun (left, prf, hyp) ->
   Some (Rewrite (env, prf, left) :: first_pass env sigma hyp)
-  
+
+(* Applying an eliminator for induction on a hypothesis in context. *)
 and induction (f, args) (env, sigma) : tact list option =
   guard (is_elim env f) >>= fun _ ->
+  guard (not (is_rewrite f)) >>= fun _ ->
   let app = mkApp (f, args) in
   let sigma, ind = deconstruct_eliminator env sigma app in
   let ind_args = ind.final_args in
@@ -211,26 +236,29 @@ and induction (f, args) (env, sigma) : tact list option =
   let ind_var = List.hd ind_args in
   try_rel ind_var >>= fun _ ->
   let zooms = List.map (zoom_lambda_names env) ind.cs in
-  let names = List.map (fun (_, _, names) ->
-                  List.map expect_name names) zooms in
+  let names = List.map (fun (_, _, names) -> names) zooms in
   let cases = List.map (fun (env, trm, _) ->
                   simpl (first_pass env sigma trm)) zooms in
   Some (Induction (env, ind_var, names) :: List.flatten cases)
-  
+
+(* Choose left proof to construct or. *)
 and left (f, args) (env, sigma) : tact list option =
-  try_fun f args or_introl 3 >>= fun args ->
+  try_fun f args or_introl_args >>= fun args ->
   Some (Left :: first_pass env sigma (Array.get args 2))
 
+(* Choose right proof to construct or. *)
 and right (f, args) (env, sigma) : tact list option =
-  try_fun f args or_intror 3 >>= fun args ->
+  try_fun f args or_intror_args >>= fun args ->
   Some (Right :: first_pass env sigma (Array.get args 2))
 
+(* Branch two goals as arguments to conj. *)
 and split (f, args) (env, sigma) : tact list option =
-  try_fun f args conj 4 >>= fun args ->
+  try_fun f args conj_args >>= fun args ->
   let lhs = first_pass env sigma (Array.get args 2) in
   let rhs = first_pass env sigma (Array.get args 3) in
   Some (Split :: (lhs @ rhs))
-  
+
+(* Value must be a rewrite on a hypothesis in context. *)
 and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
   let valu = Reduction.whd_betaiota env valu in
   try_app valu          >>= fun (f, args) ->
@@ -241,6 +269,7 @@ and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
   let env' = push_local (n, t) env in
   Some (RewriteIn (env, prf, hyp, left) :: first_pass env' sigma body)
 
+(* Value must be an application with last argument in context. *)
 and apply_in (_, valu, _, body) (env, sigma) : tact list option =
   let valu = Reduction.whd_betaiota env valu in
   try_app valu >>= fun (f, args) ->
@@ -252,70 +281,8 @@ and apply_in (_, valu, _, body) (env, sigma) : tact list option =
   let env' = push_local (n, t) env in
   let prf = mkApp (f, Array.sub args 0 (len - 1)) in
   Some (ApplyIn (env, prf, hyp) :: first_pass env' sigma body)
-  
-and induction (f, args) (env, sigma) : tact list option =
-  guard (is_elim env f) >>= fun _ ->
-  let app = mkApp (f, args) in
-  let sigma, ind = deconstruct_eliminator env sigma app in
-  let ind_args = ind.final_args in
-  (* Supports only 1 argument at the moment. *)
-  guard (List.length ind_args == 1) >>= fun _ ->
-  let ind_var = List.hd ind_args in
-  try_rel ind_var >>= fun _ ->
-  let zooms = List.map (zoom_lambda_names env) ind.cs in
-  let names = List.map (fun (_, _, names) ->
-                  List.map expect_name names) zooms in
-  let cases = List.map (fun (env, trm, _) ->
-                  simpl (first_pass env sigma trm)) zooms in
-  Some (Induction (env, ind_var, names) :: List.flatten cases)
-  
-and left (f, args) (env, sigma) : tact list option =
-  try_fun f args or_introl 3 >>= fun args ->
-  Some (Left :: first_pass env sigma (Array.get args 2))
 
-and right (f, args) (env, sigma) : tact list option =
-  try_fun f args or_intror 3 >>= fun args ->
-  Some (Right :: first_pass env sigma (Array.get args 2))
-
-and split (f, args) (env, sigma) : tact list option =
-  try_fun f args conj 4 >>= fun args ->
-  let lhs = first_pass env sigma (Array.get args 2) in
-  let rhs = first_pass env sigma (Array.get args 3) in
-  Some (Split :: (lhs @ rhs))
-  
-and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
-  let valu = Reduction.whd_betaiota env valu in
-  try_app valu          >>= fun (f, args) ->
-  try_rewrite f args    >>= fun (left, prf, hyp) ->
-  try_rel hyp           >>= fun idx ->
-  guard (noccurn (idx + 1) body) >>= fun _ ->
-  let n, t = rel_name_type (lookup_rel idx env) in
-  let env' = push_local (n, t) env in
-  Some (RewriteIn (env, prf, hyp, left) :: first_pass env' sigma body)
-
-and apply_in (_, valu, _, body) (env, sigma) : tact list option =
-  let valu = Reduction.whd_betaiota env valu in
-  try_app valu >>= fun (f, args) ->
-  let len = Array.length args in
-  let hyp = args.(len - 1) in
-  try_rel hyp >>= fun idx ->
-  guard (noccurn (idx + 1) body) >>= fun _ ->
-  let n, t = rel_name_type (lookup_rel idx env) in
-  let env' = push_local (n, t) env in
-  let prf = mkApp (f, Array.sub args 0 (len - 1)) in
-  Some (ApplyIn (env, prf, hyp) :: first_pass env' sigma body)
->>>>>>> Stashed changes
-  
-<<<<<<< Updated upstream
-and pose (n, valu, t, body) env : tact list option =
-  match n with
-  | Anonymous -> failwith "Unexpected anonymous in pose."
-  | Name n' ->
-     let env' = push_let_in (n, valu, t) env in
-     Some (Pose (env, n', valu) :: first_pass env' body)
-       
-||||||| merged common ancestors
-=======
+(* Last resort decompile let-in as a pose.  *)
 and pose (n, valu, t, body) (env, sigma) : tact list option =
   match n with
   | Anonymous -> failwith "Unexpected anonymous in pose."
@@ -323,7 +290,6 @@ and pose (n, valu, t, body) (env, sigma) : tact list option =
      let env' = push_let_in (n, valu, t) env in
      Some (Pose (env, valu, n') :: first_pass env' sigma body)
        
->>>>>>> Stashed changes
 (* Decompile a term into its equivalent tactic list. *)
 let tac_from_term env sigma trm : tact list =
   (* Perform second pass to revise greedy tactic list. *)
