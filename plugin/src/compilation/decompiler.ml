@@ -10,6 +10,8 @@ open Equtils
 open Apputils
 open Proputils
 open Indutils
+open Funutils
+open Inference
 open Vars
 
 type fun_args =
@@ -22,8 +24,8 @@ type fun_args =
 
 let or_introl_args : fun_args = { f = or_introl ; count = 3 }
 let or_intror_args : fun_args = { f = or_intror ; count = 3 }
-let conj_args : fun_args = { f = conj ; count = 4 } 
-  
+let conj_args : fun_args = { f = conj ; count = 4 }
+let eq_refl_args : fun_args = { f = eq_refl ; count = 2 }
 
 (* Monadic bind on option types. *)
 let (>>=) = Option.bind
@@ -49,80 +51,13 @@ type tact =
   | RewriteIn of env * types * types * bool
   | ApplyIn of env * types * types
   | Pose of env * types * Id.t
-  | Induction of env * types * Id.t list list
+  | Induction of env * types * Id.t list list * tact list list
   | Reflexivity
   | Simpl
   | Left
   | Right
-  | Split
-
-(* Return the string representation of a single tactic. *)
-let show_tact sigma tac : Pp.t =
-  let prnt = fun e -> Printer.pr_constr_env e sigma in
-  (match tac with
-   | Intro n -> str ("intro " ^ Id.to_string n)
-   | Intros ns ->
-      let names = String.concat " " (List.map Id.to_string ns) in
-      str ("intros " ^ names)
-   | Apply (env, trm) ->
-      let body_s = prnt env trm in
-      str "apply " ++ body_s
-   | Rewrite (env, trm, left) ->
-      let s = prnt env trm in
-      let arrow = if left then "<- " else "" in
-      str ("rewrite " ^ arrow) ++ s
-   | RewriteIn (env, prf, hyp, left) ->
-      let prf_s, hyp_s = prnt env prf, prnt env hyp in
-      let arrow = if left then "" else "<- " in
-      str ("rewrite " ^ arrow) ++ prf_s ++ str " in " ++ hyp_s
-   | ApplyIn (env, prf, hyp) ->
-      let prf_s, hyp_s = prnt env prf, prnt env hyp in
-      str "apply " ++ prf_s ++ str " in " ++ hyp_s
-   | Pose (env, hyp, n) ->
-      let n = str (Id.to_string n) in
-      str "pose " ++ prnt env hyp ++ str " as " ++ n
-   | Induction (env, trm, names) ->
-      let to_s ns = String.concat " " (List.map Id.to_string ns) in
-      let bindings = str (String.concat "|" (List.map to_s names)) in
-      str "induction " ++ prnt env trm ++
-        str " as [" ++ bindings ++ str "]" 
-   | Reflexivity -> str "reflexivity"
-   | Simpl -> str "simpl"
-   | Left -> str "left"
-   | Right -> str "right"
-   | Split -> str "split")
-  ++ str ".\n"
-
-(* Converts "intro n. intro m. ..." into "intros n m ..." *)
-let collapse_intros (tacs : tact list) : tact list =
-  List.fold_right (fun tac acc ->
-      match tac with
-      | Intro n ->
-         (match acc with
-          | Intro m :: xs -> Intros [n; m] :: xs
-          | Intros ns :: xs -> Intros (n :: ns) :: xs
-          | _ -> Intro n :: acc)
-      | t -> t :: acc) tacs []
-
-(* Converts "apply eq_refl." into "reflexivity." *)
-let reflexivity : tact list -> tact list =
-  List.map (fun tac ->
-      match tac with
-      | Apply (env, term) ->
-         (match kind term with
-          | App (f, args) ->
-             if Array.length args == 2 && equal f eq_refl
-             then Reflexivity else tac
-          | _ -> tac)
-      | _ -> tac)
-
-(* Inserts "simpl." before every rewrite. *)
-let rec simpl tacs : tact list =
-  match tacs with
-  | [] -> []
-  | Rewrite (e, t, l) :: tacs' ->
-     Simpl :: Rewrite (e, t, l) :: simpl tacs'
-  | tac :: tacs' -> tac :: simpl tacs'
+  | Split of tact list * tact list
+  | Revert of Id.t list
   
 (* Return a name-type pair from the given rel_declaration. *)
 let rel_name_type rel : Name.t * types =
@@ -150,17 +85,32 @@ let fresh_name env n =
     | Anonymous -> Id.of_string "H"
     | Name n -> n in
   fresh_id_in_env in_env name env
-           
-(* Zoom all the way into a lambda term collecting names. *)
-let rec zoom_lambda_names env trm : env * types * Id.t list =
-  match kind trm with
-  | Lambda (n, t, b) ->
-     let name = fresh_name env n in
-     let env, trm, names =
-       zoom_lambda_names (push_local (Name name, t) env) b in
-     (env, trm, name :: names)
-  | _ ->
-     (env, trm, [])   
+  
+(* Zoom into a lambda term collecting names, stopping short
+   of the last specified number of arguments. *)
+let zoom_lambda_names env except trm : env * types * Id.t list =
+  let rec aux env limit trm =
+    match limit with
+    | 0 -> (env, trm, [])
+    | limit ->
+     match kind trm with
+     | Lambda (n, t, b) ->
+        let name = fresh_name env n in
+        let env' = push_local (Name name, t) env in
+        let env, trm, names =
+          aux env' (limit - 1) b in
+        (env, trm, name :: names)
+     | _ ->
+        (env, trm, []) in
+  aux env (arity trm - except) trm
+
+(* Take the first n elements from the list. *)
+let rec take n xs =
+  match n with
+  | 0 -> []
+  | n -> match xs with
+         | [] -> failwith "Take exceeded size of list."
+         | x::xs' -> x :: take (n - 1) xs'
   
 (* Checks if we are applying function g, which
    is expected to have len arguments. *)
@@ -175,9 +125,7 @@ let try_fun f args (expect : fun_args) : (constr array) option =
 let try_rewrite f args : (bool * constr * constr) option =
   if Array.length args == 6 && is_rewrite f then
     let left = is_rewrite_l f in
-    let prf = Array.get args 5 in
-    let hyp = Array.get args 3 in
-    Some (left, prf, hyp)
+    Some (left, args.(5), args.(3))
   else
     None
 
@@ -197,6 +145,44 @@ let try_rel (trm : constr) : int option =
 let guard (b : bool) : unit option =
   if b then Some () else None
 
+(* Converts "intro n. intro m. ..." into "intros n m ..." *)
+let rec collapse_intros (tacs : tact list) : tact list =
+  List.fold_right (fun tac acc ->
+      match tac with
+      | Intro n ->
+         (match acc with
+          | Intro m :: xs -> Intros [n; m] :: xs
+          | Intros ns :: xs -> Intros (n :: ns) :: xs
+          | _ -> Intro n :: acc)
+      | Induction (x, y, z, goals) ->
+         [ Induction (x, y, z, List.map collapse_intros goals) ]
+      | Split (goal1, goal2) ->
+         [ Split (collapse_intros goal1, collapse_intros goal2) ]
+      | t -> t :: acc) tacs []
+  
+(* Converts "apply eq_refl." into "reflexivity." *)
+let rec reflexivity (tacs : tact list) : tact list =
+  List.map (fun tac ->
+      match tac with
+      | Apply (env, term) ->
+         Option.default tac
+           (try_app term >>= fun (f, args) ->
+            try_fun f args eq_refl_args >>= fun _ ->
+            Some Reflexivity)
+      | Induction (x, y, z, goals) ->
+         Induction (x, y, z, List.map reflexivity goals)
+      | Split (goal1, goal2) ->
+         Split (reflexivity goal1, reflexivity goal2)
+      | _ -> tac) tacs
+
+(* Inserts "simpl." before every rewrite. *)
+let rec simpl tacs : tact list =
+  match tacs with
+  | [] -> []
+  | Rewrite (e, t, l) :: tacs' ->
+     Simpl :: Rewrite (e, t, l) :: simpl tacs'
+  | tac :: tacs' -> tac :: simpl tacs'
+  
 (* Performs the bulk of decompilation on a proof term. 
    Returns a list of tactics. *)
 let rec first_pass env sigma trm =
@@ -231,32 +217,41 @@ and induction (f, args) (env, sigma) : tact list option =
   let app = mkApp (f, args) in
   let sigma, ind = deconstruct_eliminator env sigma app in
   let ind_args = ind.final_args in
-  (* Supports only 1 argument at the moment. *)
-  guard (List.length ind_args == 1) >>= fun _ ->
-  let ind_var = List.hd ind_args in
+  inductive_of_elim env (destConst f) >>= fun from_i ->
+  let from_m = lookup_mind from_i env in
+  let ari = arity (type_of_inductive env 0 from_m) in
+  let ind_pos = ari - List.length ind.pms in
+  let ind_var = List.nth ind.final_args ind_pos in
   try_rel ind_var >>= fun _ ->
-  let zooms = List.map (zoom_lambda_names env) ind.cs in
+  let forget = List.length ind.final_args - ind_pos - 1 in
+  (* Compute bindings and goals for each case. *)
+  let zooms = List.map (zoom_lambda_names env forget) ind.cs in
   let names = List.map (fun (_, _, names) -> names) zooms in
   let cases = List.map (fun (env, trm, _) ->
                   simpl (first_pass env sigma trm)) zooms in
-  Some (Induction (env, ind_var, names) :: List.flatten cases)
+  (* Take final args after inducted value, and revert them if they're named. *)
+  let rev_idx = List.filter_map try_rel (take forget (List.rev ind.final_args)) in
+  let idx_to_name i = expect_name (fst (rel_name_type (lookup_rel i env))) in
+  let reverts = List.map idx_to_name rev_idx in
+  let ind = [ Induction (env, ind_var, names, cases) ] in
+  Some (if reverts == [] then ind else Revert reverts :: ind)
 
 (* Choose left proof to construct or. *)
 and left (f, args) (env, sigma) : tact list option =
   try_fun f args or_introl_args >>= fun args ->
-  Some (Left :: first_pass env sigma (Array.get args 2))
+  Some (Left :: first_pass env sigma args.(2))
 
 (* Choose right proof to construct or. *)
 and right (f, args) (env, sigma) : tact list option =
   try_fun f args or_intror_args >>= fun args ->
-  Some (Right :: first_pass env sigma (Array.get args 2))
+  Some (Right :: first_pass env sigma args.(2))
 
 (* Branch two goals as arguments to conj. *)
 and split (f, args) (env, sigma) : tact list option =
   try_fun f args conj_args >>= fun args ->
-  let lhs = first_pass env sigma (Array.get args 2) in
-  let rhs = first_pass env sigma (Array.get args 3) in
-  Some (Split :: (lhs @ rhs))
+  let lhs = first_pass env sigma args.(2) in
+  let rhs = first_pass env sigma args.(3) in
+  Some [ Split (lhs, rhs) ]
 
 (* Value must be a rewrite on a hypothesis in context. *)
 and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
@@ -284,19 +279,84 @@ and apply_in (_, valu, _, body) (env, sigma) : tact list option =
 
 (* Last resort decompile let-in as a pose.  *)
 and pose (n, valu, t, body) (env, sigma) : tact list option =
-  match n with
-  | Anonymous -> failwith "Unexpected anonymous in pose."
-  | Name n' ->
-     let env' = push_let_in (n, valu, t) env in
-     Some (Pose (env, valu, n') :: first_pass env' sigma body)
+  let n' = expect_name n in
+  let env' = push_let_in (n, valu, t) env in
+  Some (Pose (env, valu, n') :: first_pass env' sigma body)
        
 (* Decompile a term into its equivalent tactic list. *)
 let tac_from_term env sigma trm : tact list =
   (* Perform second pass to revise greedy tactic list. *)
   reflexivity (collapse_intros (first_pass env sigma trm))
+
+(* Generate indentation space before bullet. *)
+let indent level =
+  let spacing level = (level - 2) / 3 + 2 in
+  let rec aux i = if i <= 1 then 0
+                  else spacing i + aux (i - 1)
+  in str (String.make (aux level) ' ')
+
+(* Make bullets in order of: -, +, *, --, ++, **, ---, etc. *)
+let bullet level =
+  let num = (level + 2) / 3 in
+  let blt = match level mod 3 with
+    | 0 -> '*'
+    | 1 -> '-'
+    | 2 -> '+' in
+  str (String.make num blt) ++ str " "
   
-(* Convert a tactic list into its string representation. *)
-let tac_to_string sigma (tacs : tact list) : Pp.t =
-  seq (List.map (show_tact sigma) tacs)
+(* Indented string representation of a tactic list. *)
+let rec show_tact_list level sigma (tacs : tact list) : Pp.t =
+  let f i = show_tact (i == 0 && level > 0) level sigma in
+  seq (List.mapi f tacs)
     
+(* Return the string representation of a single tactic. *)
+and show_tact (bulletted : bool) level sigma tac : Pp.t =
+  let prnt = fun e -> Printer.pr_constr_env e sigma in
+  let fin = str ".\n" in
+  let full_indent = if bulletted
+                    then indent level ++ bullet level
+                    else indent (level + 1) in
+  full_indent ++
+    (match tac with
+     | Intro n -> str ("intro " ^ Id.to_string n) ++ fin
+     | Intros ns ->
+        let names = String.concat " " (List.map Id.to_string ns) in
+        str ("intros " ^ names) ++ fin
+     | Apply (env, trm) ->
+        let body_s = prnt env trm in
+        str "apply " ++ body_s ++ fin
+     | Rewrite (env, trm, left) ->
+        let s = prnt env trm in
+        let arrow = if left then "<- " else "" in
+        str ("rewrite " ^ arrow) ++ s ++ fin
+     | RewriteIn (env, prf, hyp, left) ->
+        let prf_s, hyp_s = prnt env prf, prnt env hyp in
+        let arrow = if left then "" else "<- " in
+        str ("rewrite " ^ arrow) ++ prf_s ++ str " in " ++ hyp_s ++ fin
+     | ApplyIn (env, prf, hyp) ->
+        let prf_s, hyp_s = prnt env prf, prnt env hyp in
+        str "apply " ++ prf_s ++ str " in " ++ hyp_s ++ fin
+     | Pose (env, hyp, n) ->
+        let n = str (Id.to_string n) in
+        str "pose " ++ prnt env hyp ++ str " as " ++ n ++ fin
+     | Induction (env, trm, names, goals) ->
+        let to_s ns = String.concat " " (List.map Id.to_string ns) in
+        let bindings = str (String.concat "|" (List.map to_s names)) in
+        str "induction " ++ prnt env trm ++
+          str " as [" ++ bindings ++ str "].\n" ++
+          seq (List.map (show_tact_list (level + 1) sigma) goals)
+     | Reflexivity -> str "reflexivity" ++ fin 
+     | Simpl -> str "simpl" ++ fin
+     | Left -> str "left" ++ fin
+     | Right -> str "right" ++ fin
+     | Split (goal1, goal2) ->
+        str "split.\n" ++
+          show_tact_list (level + 1) sigma goal1 ++
+          show_tact_list (level + 1) sigma goal2
+     | Revert ns ->
+        let names = String.concat " " (List.rev_map Id.to_string ns) in
+        str ("revert " ^ names) ++ fin)
     
+(* Represent tactics as a string. *)
+let tac_to_string = show_tact_list 0 
+  
