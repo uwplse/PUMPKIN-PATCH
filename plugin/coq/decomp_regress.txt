@@ -67,12 +67,39 @@ apply H.
 
 Debug: intros a b H H0.
 split.
-apply H.
-apply H0.
+- apply H.
+- apply H0.
 
 Debug: split.
-left.
-reflexivity.
-right.
-reflexivity.
+- left.
+  reflexivity.
+- right.
+  reflexivity.
 
+Debug:
+intro x.
+induction x as [|x0 IHx].
+- reflexivity.
+- simpl.
+  rewrite IHx.
+  reflexivity.
+
+Debug:
+intros X xs ys zs.
+revert ys zs.
+induction xs as [|a xs0 IHxs].
+- intros ys0 zs0.
+  reflexivity.
+- intros ys0 zs0.
+  simpl.
+  rewrite 
+(IHxs ys0 zs0).
+  reflexivity.
+
+Debug:
+intros P Q H.
+induction H as [H0|H0].
+- left.
+  apply H0.
+- right.
+  apply H0.
