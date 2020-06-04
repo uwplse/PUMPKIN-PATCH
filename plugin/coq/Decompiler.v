@@ -1,5 +1,7 @@
 Add LoadPath "coq".
 Require Import Patcher.Patch.
+Require Import List.
+Import ListNotations.
 
 (* Basic apply *)
 Decompile 3.
@@ -58,5 +60,34 @@ Decompile (fun (a b : Prop) (H : b) => or_intror H).
 (* Split *)
 Decompile (fun (a b : Prop) (H : a) (H0 : b) => conj H H0).
 Decompile (conj (or_introl eq_refl) (or_intror eq_refl)).
+
+(* Induction *)
+(* forall x : nat, x + 0 = x *)
+Decompile (fun x : nat =>
+nat_ind (fun x0 : nat => x0 + 0 = x0) eq_refl
+  (fun (x0 : nat) (IHx : x0 + 0 = x0) =>
+   eq_ind_r (fun n : nat => S n = S x0) eq_refl IHx) x).
+
+(* forall (X : Type) (xs ys zs : list X),
+       xs ++ ys ++ zs = (xs ++ ys) ++ zs *)
+Decompile (fun (X : Type) (xs ys zs : list X) =>
+list_ind
+  (fun xs0 : list X =>
+   forall ys0 zs0 : list X,
+   xs0 ++ ys0 ++ zs0 = (xs0 ++ ys0) ++ zs0)
+  (fun ys0 zs0 : list X => eq_refl)
+  (fun (a : X) (xs0 : list X)
+     (IHxs : forall ys0 zs0 : list X,
+             xs0 ++ ys0 ++ zs0 = (xs0 ++ ys0) ++ zs0)
+     (ys0 zs0 : list X) =>
+   eq_ind_r
+     (fun l : list X => a :: l = a :: (xs0 ++ ys0) ++ zs0)
+     eq_refl (IHxs ys0 zs0)) xs ys zs).
+
+(* forall P Q : Prop, P \/ Q -> P \/ Q *)
+Decompile (fun (P Q : Prop) (H : P \/ Q) =>
+or_ind (fun H0 : P => or_introl H0)
+  (fun H0 : Q => or_intror H0) H).
+
 
 
