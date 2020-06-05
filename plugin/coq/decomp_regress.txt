@@ -103,3 +103,18 @@ induction H as [H0|H0].
   apply H0.
 - right.
   apply H0.
+
+Debug:
+intros A l.
+induction l as [|a l0 IHl].
+- reflexivity.
+- simpl.
+  rewrite 
+(rev_unit (rev l0) a).
+  simpl.
+  rewrite IHl.
+  reflexivity.
+
+Debug: intros P H.
+induction H as [].
+
