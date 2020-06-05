@@ -290,7 +290,7 @@ and induction (f, args) (env, sigma) : tact list option =
   let cases = List.map (fun (env, trm, _) ->
                   simpl (first_pass env sigma trm)) zooms in
   (* Take final args after inducted value, and revert them if they're named. *)
-  let rev_idx = List.filter_map try_rel (take forget (List.rev ind.final_args)) in
+  let rev_idx = filter_map try_rel (take forget (List.rev ind.final_args)) in
   let idx_to_name i = expect_name (fst (rel_name_type (lookup_rel i env))) in
   let reverts = List.map idx_to_name rev_idx in
   let ind = [ Induction (env, ind_var, names, cases) ] in
