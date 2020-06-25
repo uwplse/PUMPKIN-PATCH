@@ -14,103 +14,17 @@ open Funutils
 open Inference
 open Vars
 open Utilities
-
-
-(* or_introl : forall A B : Prop, A -> A \/ B *)
-type or_introl_args = {
-    a : types;
-    b : types;
-    ltrm : constr;
-  }
-
-(* or_intror : forall A B : Prop, B -> A \/ B *)
-type or_intror_args = {
-    a : types;
-    b : types;
-    rtrm : constr;
-  }
-
-(* conj : forall A B : Prop, A -> B -> A /\ B *)
-type conj_args = {
-    a : types;
-    b : types;
-    ltrm : constr;
-    rtrm : constr;
-  }
+open Zooming
+open Nameutils
+   
+(*
+ * Only in OCaml 4.08.0 onward, so we implement ourselves
+ *)
+let filter_map f l =
+  let f_somes = List.filter (fun o -> Option.has_some o) (List.map f l) in
+  List.map Option.get f_somes
                     
-let dest_or_introl trm : or_introl_args option =
-  match kind trm with
-  | App (f, args) ->
-     if equal f or_introl && Array.length args == 3 then
-       Some { a = args.(0) ; b = args.(1) ; ltrm = args.(2)  }
-     else
-       None
-  | _ -> None
-
-let dest_or_intror trm : or_intror_args option =
-  match kind trm with
-  | App (f, args) ->
-     if equal f or_intror && Array.length args == 3 then
-       Some { a = args.(0) ; b = args.(1) ; rtrm = args.(2)  }
-     else
-       None
-  | _ -> None
-       
-let dest_conj trm : conj_args option =
-  match kind trm with
-  | App (f, args) ->
-     if equal f conj && Array.length args == 4 then
-       Some { a = args.(0) ; b = args.(1) ; ltrm = args.(2) ; rtrm = args.(3) }
-     else
-       None
-  | _ -> None
-
-(* Information required to perform a rewrite. *)
-type rewrite_args = {
-    a : types;
-    (* x : A *)
-    x : constr;
-    (* motive P : A -> Type/Prop/Set *)
-    p : constr;
-    (* proof of P x *)
-    px : constr;
-    (* y : A *)
-    y : constr;
-    (* x = y if "<-", y = x otherwise *)
-    eq : constr;
-    (* additional arguments following equality *)
-    params : constr array;
-    (* direction of rewrite, <- *)
-    left : bool
-  }
-
-(* Proof of x = x where x : A. *)
-type eq_refl_args = {
-    a : types;
-    x : constr;
-  }
-             
-let dest_rewrite trm : rewrite_args option =
-  match kind trm with
-  | App (f, args) ->
-     if Array.length args >= 6 && is_rewrite f then
-       let left = is_rewrite_l f in
-       let params = Array.sub args 6 (Array.length args - 6) in
-       Some { a = args.(0) ; x = args.(1) ; p = args.(2) ;
-              px = args.(3) ; y = args.(4) ; eq = args.(5) ;
-              left = left ; params = params } 
-     else
-       None
-  | _ -> None
-  
-let dest_eq_refl trm : eq_refl_args option =
-  match kind trm with
-  | App (f, args) ->
-     if equal f eq_refl && Array.length args == 2 then
-       Some { a = args.(0) ; x = args.(1)  }
-     else
-       None
-  | _ -> None     
+    
 
 (* Monadic bind on option types. *)
 let (>>=) = Option.bind
@@ -144,50 +58,8 @@ type tact =
   | Split of tact list * tact list
   | Revert of Id.t list
   
-(* Return a name-type pair from the given rel_declaration. *)
-let rel_name_type rel : Name.t * types =
-  match rel with
-  | CRD.LocalAssum (n, t) -> (n, t)
-  | CRD.LocalDef (n, _, t) -> (n, t)
 
-(* Unwrap a Name.t expecting an Id.t. Fails if anonymous. *)
-let expect_name (n : Name.t) : Id.t =
-  match n with
-  | Anonymous ->
-     failwith "Unexpected Anonymous Name.t."
-  | Name n -> n
-            
-(* Finds all rel names pushed onto an environment. *)
-let get_pushed_names env : Id.Set.t =
-  let names = List.map (fun x -> fst (rel_name_type x))
-                (lookup_all_rels env) in
-  Id.Set.of_list (List.map expect_name names)
-
-(* If the given name is anonymous, generate a fresh one. *)
-let fresh_name env n =
-  let in_env = get_pushed_names env in
-  let name = match n with
-    | Anonymous -> Id.of_string "H"
-    | Name n -> n in
-  fresh_id_in_env in_env name env
   
-(* Zoom into a lambda term collecting names, stopping short
-   of the last specified number of arguments. *)
-let zoom_lambda_names env except trm : env * types * Id.t list =
-  let rec aux env limit trm =
-    match limit with
-    | 0 -> (env, trm, [])
-    | limit ->
-     match kind trm with
-     | Lambda (n, t, b) ->
-        let name = fresh_name env n in
-        let env' = push_local (Name name, t) env in
-        let env, trm, names =
-          aux env' (limit - 1) b in
-        (env, trm, name :: names)
-     | _ ->
-        (env, trm, []) in
-  aux env (arity trm - except) trm
 
 (* Option monad over function application. *)
 let try_app (trm : constr) : (constr * constr array) option =
@@ -227,7 +99,7 @@ let rec reflexivity (tacs : tact list) : tact list =
       | Apply (env, term) ->
          Option.default tac
            (try_app term >>= fun (f, args) ->
-            dest_eq_refl (mkApp (f, args)) >>= fun _ ->
+            dest_eq_refl_opt (mkApp (f, args)) >>= fun _ ->
             Some Reflexivity)
       | Induction (x, y, z, goals) ->
          Induction (x, y, z, List.map reflexivity goals)
@@ -281,21 +153,27 @@ and induction (f, args) (env, sigma) : tact list option =
   let from_m = lookup_mind from_i env in
   let ari = arity (type_of_inductive env 0 from_m) in
   let ind_pos = ari - List.length ind.pms in
-  let ind_var = List.nth ind.final_args ind_pos in
-  try_rel ind_var >>= fun _ ->
-  let forget = List.length ind.final_args - ind_pos - 1 in
-  (* Compute bindings and goals for each case. *)
-  let zooms = List.map (zoom_lambda_names env forget) ind.cs in
-  let names = List.map (fun (_, _, names) -> names) zooms in
-  let cases = List.map (fun (env, trm, _) ->
-                  simpl (first_pass env sigma trm)) zooms in
-  (* Take final args after inducted value, and revert them if they're named. *)
-  let rev_idx = filter_map try_rel (take forget (List.rev ind.final_args)) in
-  let idx_to_name i = expect_name (fst (rel_name_type (lookup_rel i env))) in
-  let reverts = List.map idx_to_name rev_idx in
-  let ind = [ Induction (env, ind_var, names, cases) ] in
-  Some (if reverts == [] then ind else Revert reverts :: ind)
-
+  if ind_pos >= List.length ind.final_args
+  then let _ = Printing.debug_term env app "Failed to decompile induction: " in None
+  else 
+    let ind_var = List.nth ind.final_args ind_pos in
+    let forget = List.length ind.final_args - ind_pos - 1 in
+    Printf.printf "List.length ind.final_args = %d\n" (List.length ind.final_args);
+    Printf.printf "ind_pos = %d\n" (ind_pos);
+    Printf.printf "forget  = %d\n" (forget);
+    Printf.printf "arity   = %d\n\n" (ari);
+    (* Compute bindings and goals for each case. *)
+    let zooms = List.map (zoom_lambda_names env forget) ind.cs in
+    let names = List.map (fun (_, _, names) -> names) zooms in
+    let cases = List.map (fun (env, trm, _) ->
+                    simpl (first_pass env sigma trm)) zooms in
+    (* Take final args after inducted value, and revert them if they're named. *)
+    let rev_idx = filter_map try_rel (take forget (List.rev ind.final_args)) in
+    let idx_to_name i = expect_name (fst (rel_name_type (lookup_rel i env))) in
+    let reverts = List.map idx_to_name rev_idx in
+    let ind = [ Induction (env, ind_var, names, cases) ] in
+    Some (if reverts == [] then ind else Revert reverts :: ind)
+    
 (* Choose left proof to construct or. *)
 and left (f, args) (env, sigma) : tact list option =
   dest_or_introl (mkApp (f, args)) >>= fun args ->
@@ -330,18 +208,28 @@ and apply_in (_, valu, _, body) (env, sigma) : tact list option =
   try_app valu >>= fun (f, args) ->
   let len = Array.length args in
   let hyp = args.(len - 1) in
-  try_rel hyp >>= fun idx ->
-  guard (noccurn (idx + 1) body) >>= fun _ ->
-  let n, t = rel_name_type (lookup_rel idx env) in
-  let env' = push_local (n, t) env in
+  try_rel hyp >>= fun idx ->                       (* let _ := ... H *)
+  guard (noccurn (idx + 1) body) >>= fun _ ->      (* H does not occur in body *)
+  let n, t = rel_name_type (lookup_rel idx env) in (* "H" *)
+  let env' = push_local (n, t) env in              (* change type of "H" *)
   let prf = mkApp (f, Array.sub args 0 (len - 1)) in
-  Some (ApplyIn (env, prf, hyp) :: first_pass env' sigma body)
+  let app_in = ApplyIn (env, prf, hyp) in
+  
+  if false (* arity f - len == 1          *)                  (* f : A -> B *)
+  then Some (app_in :: first_pass env' sigma body)
+  else (* For "apply f in a", Coq produces a goal for each argument of f. *)
+    try_app body >>= fun (f', args') ->              (* let _ := ... H1 in ... H2 *)
+    let args' = List.map (first_pass env' sigma) (Array.to_list args') in
+    Some (app_in :: List.concat ((first_pass env' sigma f') :: args'))
 
 (* Last resort decompile let-in as a pose.  *)
 and pose (n, valu, t, body) (env, sigma) : tact list option =
-  let n' = expect_name n in
+  let n' = fresh_name env (Name (expect_name n)) in
   let env' = push_let_in (n, valu, t) env in
-  Some (Pose (env, valu, n') :: first_pass env' sigma body)
+  let decomp_body = first_pass env' sigma body in
+  (* If the binding is NEVER used, just skip this. *)
+  if noccurn 1 body then Some decomp_body
+  else Some (Pose (env, valu, n') :: decomp_body)
        
 (* Decompile a term into its equivalent tactic list. *)
 let tac_from_term env sigma trm : tact list =
