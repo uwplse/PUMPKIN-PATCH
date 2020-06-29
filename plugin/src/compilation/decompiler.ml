@@ -23,7 +23,13 @@ open Nameutils
 let filter_map f l =
   let f_somes = List.filter (fun o -> Option.has_some o) (List.map f l) in
   List.map Option.get f_somes
-                    
+
+let rec arity' env p =
+  let p = Reduction.whd_betaiota env p in
+  match kind p with
+  | Prod (_, _, b) ->
+     1 + arity' env b
+  | _-> 0
     
 
 (* Monadic bind on option types. *)
@@ -57,7 +63,7 @@ type tact =
   | Right
   | Split of tact list * tact list
   | Revert of Id.t list
-  
+  | Symmetry
 
   
 
@@ -130,9 +136,9 @@ let rec first_pass env sigma trm =
      Intro name :: first_pass env sigma b
   (* Match on well-known functions used in the proof. *)
   | App (f, args) ->
-     choose (rewrite <|> induction <|> left <|> right <|> split) (f, args)
+     choose (rewrite <|> induction <|> left <|> right <|> split <|> symmetry) (f, args)
   (* Hypothesis transformations or generation tactics. *)
-  | LetIn (n, valu, typ, body) ->   
+  | LetIn (n, valu, typ, body) ->
      choose (rewrite_in <|> apply_in <|> pose) (n, valu, typ, body)
   (* Remainder of body, simply apply it. *)
   | _ -> [Apply (env, trm)]
@@ -151,23 +157,33 @@ and induction (f, args) (env, sigma) : tact list option =
   let ind_args = ind.final_args in
   inductive_of_elim env (destConst f) >>= fun from_i ->
   let from_m = lookup_mind from_i env in
+  Printing.debug_term env app "working with: ";
+  Printing.debug_term env (type_of_inductive env 0 from_m) "type_of_inductive = ";
   let ari = arity (type_of_inductive env 0 from_m) in
   let ind_pos = ari - List.length ind.pms in
   if ind_pos >= List.length ind.final_args
-  then let _ = Printing.debug_term env app "Failed to decompile induction: " in None
+  then
+    (Feedback.msg_error (str "Failed to decompile induction");
+     Printing.debug_term env app "term";
+     None)
   else 
     let ind_var = List.nth ind.final_args ind_pos in
-    let forget = List.length ind.final_args - ind_pos - 1 in
-    Printf.printf "List.length ind.final_args = %d\n" (List.length ind.final_args);
-    Printf.printf "ind_pos = %d\n" (ind_pos);
-    Printf.printf "forget  = %d\n" (forget);
-    Printf.printf "arity   = %d\n\n" (ari);
+    let forget  = List.length ind.final_args - ind_pos - 1 in
+    (* let zoom_but = arity ind.p - 1 in *)
+    
+    (* Printf.printf "List.length ind.final_args = %d\n" (List.length ind.final_args);
+    Printf.printf "ind_pos    = %d\n" (ind_pos);
+    Printf.printf "forget     = %d\n" (forget);
+    Printf.printf "length pms = %d\n" (List.length ind.pms);
+    Printf.printf "arity      = %d\n\n" (ari);
+    Printf.printf "zoom but   = %d\n\n" (arity ind.p - 1); *)
+       
     (* Compute bindings and goals for each case. *)
     let zooms = List.map (zoom_lambda_names env forget) ind.cs in
     let names = List.map (fun (_, _, names) -> names) zooms in
     let cases = List.map (fun (env, trm, _) ->
                     simpl (first_pass env sigma trm)) zooms in
-    (* Take final args after inducted value, and revert them if they're named. *)
+    (* Take final args after inducted value, and revert them. *)
     let rev_idx = filter_map try_rel (take forget (List.rev ind.final_args)) in
     let idx_to_name i = expect_name (fst (rel_name_type (lookup_rel i env))) in
     let reverts = List.map idx_to_name rev_idx in
@@ -191,6 +207,12 @@ and split (f, args) (env, sigma) : tact list option =
   let rhs = first_pass env sigma args.rtrm in
   Some [ Split (lhs, rhs) ]
 
+(* Transform x = y to y = x. *)
+and symmetry (f, args) (env, sigma) : tact list option =
+  guard (equal f eq_sym) >>= fun _ ->
+  let sym = dest_eq_sym (mkApp (f, args)) in
+  Some (Symmetry :: first_pass env sigma sym.eq_proof)
+  
 (* Value must be a rewrite on a hypothesis in context. *)
 and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
   let valu = Reduction.whd_betaiota env valu in
@@ -203,25 +225,30 @@ and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
   Some (RewriteIn (env, rewr.eq, rewr.px, rewr.left) :: first_pass env' sigma body)
 
 (* Value must be an application with last argument in context. *)
-and apply_in (_, valu, _, body) (env, sigma) : tact list option =
+and apply_in (n, valu, typ, body) (env, sigma) : tact list option =
   let valu = Reduction.whd_betaiota env valu in
   try_app valu >>= fun (f, args) ->
   let len = Array.length args in
   let hyp = args.(len - 1) in
-  try_rel hyp >>= fun idx ->                       (* let _ := ... H *)
+  try_rel hyp >>= fun idx ->                       (* let H' := F H *)
   guard (noccurn (idx + 1) body) >>= fun _ ->      (* H does not occur in body *)
+  guard (not (noccurn 1 body)) >>= fun _ ->        (* new binding DOES occur *)
   let n, t = rel_name_type (lookup_rel idx env) in (* "H" *)
   let env' = push_local (n, t) env in              (* change type of "H" *)
   let prf = mkApp (f, Array.sub args 0 (len - 1)) in
-  let app_in = ApplyIn (env, prf, hyp) in
-  
-  if false (* arity f - len == 1          *)                  (* f : A -> B *)
-  then Some (app_in :: first_pass env' sigma body)
-  else (* For "apply f in a", Coq produces a goal for each argument of f. *)
-    try_app body >>= fun (f', args') ->              (* let _ := ... H1 in ... H2 *)
-    let args' = List.map (first_pass env' sigma) (Array.to_list args') in
-    Some (app_in :: List.concat ((first_pass env' sigma f') :: args'))
-
+  (* let H2 := f H1 := H2 ... *)
+  let apply_binding app_in (env, sigma) =
+    try_app body   >>= fun (f, args) ->
+    try_rel f      >>= fun i ->
+    guard (i == 1) >>= fun _ ->
+    let args' = List.map (first_pass env sigma) (Array.to_list args) in
+    Some (ApplyIn (env, prf, hyp) :: List.concat ((first_pass env sigma f) :: args'))
+  in 
+  (* all other cases *)
+  let default app_in (env, sigma) = Some (ApplyIn (env, prf, hyp) :: first_pass env sigma body)
+  in
+  (apply_binding <|> default) () (env', sigma)
+    
 (* Last resort decompile let-in as a pose.  *)
 and pose (n, valu, t, body) (env, sigma) : tact list option =
   let n' = fresh_name env (Name (expect_name n)) in
@@ -289,9 +316,9 @@ and show_tact (bulletted : bool) level sigma tac : Pp.t =
         str "pose " ++ prnt env hyp ++ str " as " ++ n ++ fin
      | Induction (env, trm, names, goals) ->
         let to_s ns = String.concat " " (List.map Id.to_string ns) in
-        let bindings = str (String.concat "|" (List.map to_s names)) in
+        let bindings = str (String.concat "| " (List.map to_s names)) in
         str "induction " ++ prnt env trm ++
-          str " as [" ++ bindings ++ str "].\n" ++
+          str " as [ " ++ bindings ++ str "].\n" ++
           seq (List.map (show_tact_list (level + 1) sigma) goals)
      | Reflexivity -> str "reflexivity" ++ fin 
      | Simpl -> str "simpl" ++ fin
@@ -303,7 +330,8 @@ and show_tact (bulletted : bool) level sigma tac : Pp.t =
           show_tact_list (level + 1) sigma goal2
      | Revert ns ->
         let names = String.concat " " (List.rev_map Id.to_string ns) in
-        str ("revert " ^ names) ++ fin)
+        str ("revert " ^ names) ++ fin
+     | Symmetry -> str "symmetry" ++ fin)
     
 (* Represent tactics as a string. *)
 let tac_to_string = show_tact_list 0 
