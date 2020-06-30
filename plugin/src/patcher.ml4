@@ -193,6 +193,52 @@ let decompile_command trm =
   let trm = unwrap_definition env trm in
   let tacs = tac_from_term env sigma trm in
   Feedback.msg_debug (tac_to_string sigma tacs) 
+
+let no_path c =
+  let l = Constant.label c in
+  Constant.make2 (ModPath.MPfile (DirPath.empty)) l
+  
+(* Decompiles and prints every definition in a module. *)
+let decompile_module mod_ref =
+  let qualid = qualid_of_reference mod_ref in
+  let mod_name = Libnames.pr_reference mod_ref in
+  let mod_body = Global.lookup_module (Nametab.locate_module qualid) in
+  let (sigma, env) = Pfedit.get_current_context () in
+  (* let env = Modops.add_module mod_body env in *)
+  (*let env = Modutils.fold_module_structure_by_glob env
+              (fun e glob_ref ->
+                if Globnames.isConstRef glob_ref
+                then let c = Globnames.destConstRef glob_ref in
+                     let cb = Global.lookup_constant c in
+                     Environ.add_constant (no_path c) cb env
+                else e) mod_body in *)
+  let prnt x =
+    let gconstr = Globnames.printable_constr_of_global x in
+    (*let gconstr = if isConst gconstr
+                  then let (c, u) = destConst gconstr in
+                       Printf.printf "trying to find constant: %s\n"
+                         (Constant.to_string (no_path c));
+                       lookup_constant (no_path c) env;
+                       Printf.printf "Success!\n";
+                       mkConst (no_path c)
+                  else gconstr in *)
+    let trm = Defutils.expr_of_global x in
+    let sigma, trm = intern env sigma trm in
+    let trm' = unwrap_definition env trm in
+    (* Name of definition. *)
+    let name =  Printer.pr_constr_env env sigma gconstr in
+    (* Type of definition. *)
+    let typ = (Typeops.infer env gconstr).uj_type in
+    let typ_s =  Printer.pr_constr_env env sigma typ in
+    (* Proof of definition. *)
+    let tacs = tac_from_term env sigma trm' in
+    let output = str "Theorem " ++ name ++ str " : " ++
+                   typ_s ++ str ".\n" ++
+                   str "Proof.\n" ++ tac_to_string sigma tacs ++
+                   str "Defined.\n" in
+    Feedback.msg_info output in
+  Modutils.iter_module_structure_by_glob prnt mod_body
+
   
 (* Convert constr's from patch tactics to appropriate term type. *)
 let intern_tactic env d_old d_new sigma =
@@ -331,6 +377,8 @@ END
 VERNAC COMMAND EXTEND Decompile CLASSIFIED AS SIDEFF
 | [ "Decompile" constr(trm) ] ->
    [ decompile_command trm ]
+| [ "Decompile" "Module" reference(mod_ref) ] ->
+   [ decompile_module mod_ref ]
 END
 
 (* Patch command *)

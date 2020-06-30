@@ -89,5 +89,11 @@ Decompile (fun (P Q : Prop) (H : P \/ Q) =>
 or_ind (fun H0 : P => or_introl H0)
   (fun H0 : Q => or_intror H0) H).
 
+(* forall (A : Type) (l : list A), rev (rev l) = l *)
+Decompile List.rev_involutive.
+
+Theorem explosion : forall P : Prop, False -> P.
+Proof. intros P H. induction H as []. Qed.
+Decompile explosion.
 
 
