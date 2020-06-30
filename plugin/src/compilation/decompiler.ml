@@ -59,7 +59,7 @@ type tact =
   | Symmetry
   | Exists of env * types
   
-
+            
 (* Option monad over function application. *)
 let try_app (trm : constr) : (constr * constr array) option =
   match kind trm with
@@ -90,21 +90,6 @@ let rec collapse_intros (tacs : tact list) : tact list =
       | Split (goal1, goal2) ->
          [ Split (collapse_intros goal1, collapse_intros goal2) ]
       | t -> t :: acc) tacs []
-  
-(* Converts "apply eq_refl." into "reflexivity." *)
-let rec reflexivity (tacs : tact list) : tact list =
-  List.map (fun tac ->
-      match tac with
-      | Apply (env, term) ->
-         Option.default tac
-           (try_app term >>= fun (f, args) ->
-            dest_eq_refl_opt (mkApp (f, args)) >>= fun _ ->
-            Some Reflexivity)
-      | Induction (x, y, z, goals) ->
-         Induction (x, y, z, List.map reflexivity goals)
-      | Split (goal1, goal2) ->
-         Split (reflexivity goal1, reflexivity goal2)
-      | _ -> tac) tacs
 
 (* Inserts "simpl." before every rewrite. *)
 let rec simpl tacs : tact list =
@@ -130,13 +115,13 @@ let rec first_pass env sigma trm =
   (* Match on well-known functions used in the proof. *)
   | App (f, args) ->
      choose (rewrite <|> induction <|> left <|> right <|> split
-             <|> symmetry <|> exists) (f, args)
+             <|> reflexivity <|> symmetry <|> exists) (f, args)
   (* Hypothesis transformations or generation tactics. *)
   | LetIn (n, valu, typ, body) ->
      choose (rewrite_in <|> apply_in <|> pose) (n, valu, typ, body)
   (* Remainder of body, simply apply it. *)
-  | _ -> [Apply (env, trm)]
-
+  | _ -> [ Apply (env, trm) ]
+  
 (* Application of a equality eliminator. *)
 and rewrite (f, args) (env, sigma) : tact list option =
   dest_rewrite (mkApp (f, args)) >>= fun rewr -> 
@@ -151,8 +136,6 @@ and induction (f, args) (env, sigma) : tact list option =
   let ind_args = ind.final_args in
   inductive_of_elim env (destConst f) >>= fun from_i ->
   let from_m = lookup_mind from_i env in
-  Printing.debug_term env app "working with: ";
-  Printing.debug_term env (type_of_inductive env 0 from_m) "type_of_inductive = ";
   let ari = arity (type_of_inductive env 0 from_m) in
   let ind_pos = ari - List.length ind.pms in
   if ind_pos >= List.length ind.final_args
@@ -164,7 +147,9 @@ and induction (f, args) (env, sigma) : tact list option =
     let ind_var = List.nth ind.final_args ind_pos in
     let forget  = List.length ind.final_args - ind_pos - 1 in
     let zoom_but = arity ind.p - 1 in 
-    
+
+    Printing.debug_term env app "working with: ";
+    Printing.debug_term env (type_of_inductive env 0 from_m) "type_of_inductive = ";
     Printf.printf "List.length ind.final_args = %d\n" (List.length ind.final_args);
     Printf.printf "ind_pos    = %d\n" (ind_pos);
     Printf.printf "forget     = %d\n" (forget);
@@ -201,6 +186,11 @@ and split (f, args) (env, sigma) : tact list option =
   let rhs = first_pass env sigma args.rtrm in
   Some [ Split (lhs, rhs) ]
 
+(* Converts "apply eq_refl." into "reflexivity." *)
+and reflexivity (f, args) (_, _) : tact list option =
+  dest_eq_refl_opt (mkApp (f, args)) >>= fun _ ->
+  Some [ Reflexivity ]
+  
 (* Transform x = y to y = x. *)
 and symmetry (f, args) (env, sigma) : tact list option =
   guard (equal f eq_sym) >>= fun _ ->
@@ -261,7 +251,7 @@ and pose (n, valu, t, body) (env, sigma) : tact list option =
 (* Decompile a term into its equivalent tactic list. *)
 let tac_from_term env sigma trm : tact list =
   (* Perform second pass to revise greedy tactic list. *)
-  reflexivity (collapse_intros (first_pass env sigma trm))
+  collapse_intros (first_pass env sigma trm)
 
 (* Generate indentation space before bullet. *)
 let indent level =
