@@ -23,14 +23,7 @@ open Nameutils
 let filter_map f l =
   let f_somes = List.filter (fun o -> Option.has_some o) (List.map f l) in
   List.map Option.get f_somes
-
-let rec arity' env p =
-  let p = Reduction.whd_betaiota env p in
-  match kind p with
-  | Prod (_, _, b) ->
-     1 + arity' env b
-  | _-> 0
-    
+   
 
 (* Monadic bind on option types. *)
 let (>>=) = Option.bind
@@ -64,7 +57,7 @@ type tact =
   | Split of tact list * tact list
   | Revert of Id.t list
   | Symmetry
-
+  | Exists of env * types
   
 
 (* Option monad over function application. *)
@@ -136,7 +129,8 @@ let rec first_pass env sigma trm =
      Intro name :: first_pass env sigma b
   (* Match on well-known functions used in the proof. *)
   | App (f, args) ->
-     choose (rewrite <|> induction <|> left <|> right <|> split <|> symmetry) (f, args)
+     choose (rewrite <|> induction <|> left <|> right <|> split
+             <|> symmetry <|> exists) (f, args)
   (* Hypothesis transformations or generation tactics. *)
   | LetIn (n, valu, typ, body) ->
      choose (rewrite_in <|> apply_in <|> pose) (n, valu, typ, body)
@@ -169,17 +163,17 @@ and induction (f, args) (env, sigma) : tact list option =
   else 
     let ind_var = List.nth ind.final_args ind_pos in
     let forget  = List.length ind.final_args - ind_pos - 1 in
-    (* let zoom_but = arity ind.p - 1 in *)
+    let zoom_but = arity ind.p - 1 in 
     
-    (* Printf.printf "List.length ind.final_args = %d\n" (List.length ind.final_args);
+    Printf.printf "List.length ind.final_args = %d\n" (List.length ind.final_args);
     Printf.printf "ind_pos    = %d\n" (ind_pos);
     Printf.printf "forget     = %d\n" (forget);
     Printf.printf "length pms = %d\n" (List.length ind.pms);
     Printf.printf "arity      = %d\n\n" (ari);
-    Printf.printf "zoom but   = %d\n\n" (arity ind.p - 1); *)
+    Printf.printf "zoom but   = %d\n\n" (arity ind.p - 1);
        
     (* Compute bindings and goals for each case. *)
-    let zooms = List.map (zoom_lambda_names env forget) ind.cs in
+    let zooms = List.map (zoom_lambda_names env zoom_but) ind.cs in
     let names = List.map (fun (_, _, names) -> names) zooms in
     let cases = List.map (fun (env, trm, _) ->
                     simpl (first_pass env sigma trm)) zooms in
@@ -212,6 +206,12 @@ and symmetry (f, args) (env, sigma) : tact list option =
   guard (equal f eq_sym) >>= fun _ ->
   let sym = dest_eq_sym (mkApp (f, args)) in
   Some (Symmetry :: first_pass env sigma sym.eq_proof)
+
+(* Provide evidence for dependent pair.  *)
+and exists (f, args) (env, sigma) : tact list option =
+  guard (equal f Sigmautils.existT) >>= fun _ ->
+  let exT = Sigmautils.dest_existT (mkApp (f, args)) in
+  Some (Exists (env, exT.index) :: first_pass env sigma exT.unpacked)
   
 (* Value must be a rewrite on a hypothesis in context. *)
 and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
@@ -251,8 +251,8 @@ and apply_in (n, valu, typ, body) (env, sigma) : tact list option =
     
 (* Last resort decompile let-in as a pose.  *)
 and pose (n, valu, t, body) (env, sigma) : tact list option =
-  let n' = fresh_name env (Name (expect_name n)) in
-  let env' = push_let_in (n, valu, t) env in
+  let n' = fresh_name env n in
+  let env' = push_let_in (Name n', valu, t) env in
   let decomp_body = first_pass env' sigma body in
   (* If the binding is NEVER used, just skip this. *)
   if noccurn 1 body then Some decomp_body
@@ -298,8 +298,7 @@ and show_tact (bulletted : bool) level sigma tac : Pp.t =
         let names = String.concat " " (List.map Id.to_string ns) in
         str ("intros " ^ names) ++ fin
      | Apply (env, trm) ->
-        let body_s = prnt env trm in
-        str "apply " ++ body_s ++ fin
+        str "apply " ++ prnt env trm ++ fin
      | Rewrite (env, trm, left) ->
         let s = prnt env trm in
         let arrow = if left then "<- " else "" in
@@ -331,7 +330,9 @@ and show_tact (bulletted : bool) level sigma tac : Pp.t =
      | Revert ns ->
         let names = String.concat " " (List.rev_map Id.to_string ns) in
         str ("revert " ^ names) ++ fin
-     | Symmetry -> str "symmetry" ++ fin)
+     | Symmetry -> str "symmetry" ++ fin
+     | Exists (env, trm) ->
+        str "exists " ++ prnt env trm ++ fin)
     
 (* Represent tactics as a string. *)
 let tac_to_string = show_tact_list 0 
