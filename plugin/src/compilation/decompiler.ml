@@ -147,25 +147,15 @@ and induction (f, args) (env, sigma) : tact list option =
     let ind_var = List.nth ind.final_args ind_pos in
     let forget  = List.length ind.final_args - ind_pos - 1 in
     let zoom_but = arity ind.p - 1 in 
-
-    Printing.debug_term env app "working with: ";
-    Printing.debug_term env (type_of_inductive env 0 from_m) "type_of_inductive = ";
-    Printf.printf "List.length ind.final_args = %d\n" (List.length ind.final_args);
-    Printf.printf "ind_pos    = %d\n" (ind_pos);
-    Printf.printf "forget     = %d\n" (forget);
-    Printf.printf "length pms = %d\n" (List.length ind.pms);
-    Printf.printf "arity      = %d\n\n" (ari);
-    Printf.printf "zoom but   = %d\n\n" (arity ind.p - 1);
-       
-    (* Compute bindings and goals for each case. *)
-    let zooms = List.map (zoom_lambda_names env zoom_but) ind.cs in
-    let names = List.map (fun (_, _, names) -> names) zooms in
-    let cases = List.map (fun (env, trm, _) ->
-                    simpl (first_pass env sigma trm)) zooms in
     (* Take final args after inducted value, and revert them. *)
     let rev_idx = filter_map try_rel (take forget (List.rev ind.final_args)) in
     let idx_to_name i = expect_name (fst (rel_name_type (lookup_rel i env))) in
     let reverts = List.map idx_to_name rev_idx in
+    (* Compute bindings and goals for each case. *)
+    let zooms = List.map (zoom_lambda_names env zoom_but) ind.cs in
+    let names = List.map (fun (_, _, names) -> names) zooms in
+    let cases = List.map (fun (env, trm, _) ->
+                    simpl (Printing.debug_env env "ENV IN CASE"; first_pass env sigma trm)) zooms in
     let ind = [ Induction (env, ind_var, names, cases) ] in
     Some (if reverts == [] then ind else Revert reverts :: ind)
     
@@ -227,15 +217,15 @@ and apply_in (n, valu, typ, body) (env, sigma) : tact list option =
   let env' = push_local (n, t) env in              (* change type of "H" *)
   let prf = mkApp (f, Array.sub args 0 (len - 1)) in
   (* let H2 := f H1 := H2 ... *)
-  let apply_binding app_in (env, sigma) =
+  let apply_binding app_in (_, sigma) =
     try_app body   >>= fun (f, args) ->
     try_rel f      >>= fun i ->
     guard (i == 1) >>= fun _ ->
-    let args' = List.map (first_pass env sigma) (Array.to_list args) in
-    Some (ApplyIn (env, prf, hyp) :: List.concat ((first_pass env sigma f) :: args'))
+    let args' = List.map (first_pass env' sigma) (Array.to_list args) in
+    Some (ApplyIn (env, prf, hyp) :: List.concat ((first_pass env' sigma f) :: args'))
   in 
   (* all other cases *)
-  let default app_in (env, sigma) = Some (ApplyIn (env, prf, hyp) :: first_pass env sigma body)
+  let default app_in (_, sigma) = Some (ApplyIn (env, prf, hyp) :: first_pass env' sigma body)
   in
   (apply_binding <|> default) () (env', sigma)
     
