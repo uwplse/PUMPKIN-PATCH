@@ -23,14 +23,7 @@ open Nameutils
 let filter_map f l =
   let f_somes = List.filter (fun o -> Option.has_some o) (List.map f l) in
   List.map Option.get f_somes
-
-let rec arity' env p =
-  let p = Reduction.whd_betaiota env p in
-  match kind p with
-  | Prod (_, _, b) ->
-     1 + arity' env b
-  | _-> 0
-    
+   
 
 (* Monadic bind on option types. *)
 let (>>=) = Option.bind
@@ -64,9 +57,9 @@ type tact =
   | Split of tact list * tact list
   | Revert of Id.t list
   | Symmetry
-
+  | Exists of env * types
   
-
+            
 (* Option monad over function application. *)
 let try_app (trm : constr) : (constr * constr array) option =
   match kind trm with
@@ -97,21 +90,6 @@ let rec collapse_intros (tacs : tact list) : tact list =
       | Split (goal1, goal2) ->
          [ Split (collapse_intros goal1, collapse_intros goal2) ]
       | t -> t :: acc) tacs []
-  
-(* Converts "apply eq_refl." into "reflexivity." *)
-let rec reflexivity (tacs : tact list) : tact list =
-  List.map (fun tac ->
-      match tac with
-      | Apply (env, term) ->
-         Option.default tac
-           (try_app term >>= fun (f, args) ->
-            dest_eq_refl_opt (mkApp (f, args)) >>= fun _ ->
-            Some Reflexivity)
-      | Induction (x, y, z, goals) ->
-         Induction (x, y, z, List.map reflexivity goals)
-      | Split (goal1, goal2) ->
-         Split (reflexivity goal1, reflexivity goal2)
-      | _ -> tac) tacs
 
 (* Inserts "simpl." before every rewrite. *)
 let rec simpl tacs : tact list =
@@ -136,13 +114,14 @@ let rec first_pass env sigma trm =
      Intro name :: first_pass env sigma b
   (* Match on well-known functions used in the proof. *)
   | App (f, args) ->
-     choose (rewrite <|> induction <|> left <|> right <|> split <|> symmetry) (f, args)
+     choose (rewrite <|> induction <|> left <|> right <|> split
+             <|> reflexivity <|> symmetry <|> exists) (f, args)
   (* Hypothesis transformations or generation tactics. *)
   | LetIn (n, valu, typ, body) ->
      choose (rewrite_in <|> apply_in <|> pose) (n, valu, typ, body)
   (* Remainder of body, simply apply it. *)
-  | _ -> [Apply (env, trm)]
-
+  | _ -> [ Apply (env, trm) ]
+  
 (* Application of a equality eliminator. *)
 and rewrite (f, args) (env, sigma) : tact list option =
   dest_rewrite (mkApp (f, args)) >>= fun rewr -> 
@@ -157,8 +136,6 @@ and induction (f, args) (env, sigma) : tact list option =
   let ind_args = ind.final_args in
   inductive_of_elim env (destConst f) >>= fun from_i ->
   let from_m = lookup_mind from_i env in
-  Printing.debug_term env app "working with: ";
-  Printing.debug_term env (type_of_inductive env 0 from_m) "type_of_inductive = ";
   let ari = arity (type_of_inductive env 0 from_m) in
   let ind_pos = ari - List.length ind.pms in
   if ind_pos >= List.length ind.final_args
@@ -169,24 +146,16 @@ and induction (f, args) (env, sigma) : tact list option =
   else 
     let ind_var = List.nth ind.final_args ind_pos in
     let forget  = List.length ind.final_args - ind_pos - 1 in
-    (* let zoom_but = arity ind.p - 1 in *)
-    
-    (* Printf.printf "List.length ind.final_args = %d\n" (List.length ind.final_args);
-    Printf.printf "ind_pos    = %d\n" (ind_pos);
-    Printf.printf "forget     = %d\n" (forget);
-    Printf.printf "length pms = %d\n" (List.length ind.pms);
-    Printf.printf "arity      = %d\n\n" (ari);
-    Printf.printf "zoom but   = %d\n\n" (arity ind.p - 1); *)
-       
-    (* Compute bindings and goals for each case. *)
-    let zooms = List.map (zoom_lambda_names env forget) ind.cs in
-    let names = List.map (fun (_, _, names) -> names) zooms in
-    let cases = List.map (fun (env, trm, _) ->
-                    simpl (first_pass env sigma trm)) zooms in
+    let zoom_but = arity ind.p - 1 in 
     (* Take final args after inducted value, and revert them. *)
     let rev_idx = filter_map try_rel (take forget (List.rev ind.final_args)) in
     let idx_to_name i = expect_name (fst (rel_name_type (lookup_rel i env))) in
     let reverts = List.map idx_to_name rev_idx in
+    (* Compute bindings and goals for each case. *)
+    let zooms = List.map (zoom_lambda_names env zoom_but) ind.cs in
+    let names = List.map (fun (_, _, names) -> names) zooms in
+    let cases = List.map (fun (env, trm, _) ->
+                    simpl (Printing.debug_env env "ENV IN CASE"; first_pass env sigma trm)) zooms in
     let ind = [ Induction (env, ind_var, names, cases) ] in
     Some (if reverts == [] then ind else Revert reverts :: ind)
     
@@ -207,11 +176,22 @@ and split (f, args) (env, sigma) : tact list option =
   let rhs = first_pass env sigma args.rtrm in
   Some [ Split (lhs, rhs) ]
 
+(* Converts "apply eq_refl." into "reflexivity." *)
+and reflexivity (f, args) (_, _) : tact list option =
+  dest_eq_refl_opt (mkApp (f, args)) >>= fun _ ->
+  Some [ Reflexivity ]
+  
 (* Transform x = y to y = x. *)
 and symmetry (f, args) (env, sigma) : tact list option =
   guard (equal f eq_sym) >>= fun _ ->
   let sym = dest_eq_sym (mkApp (f, args)) in
   Some (Symmetry :: first_pass env sigma sym.eq_proof)
+
+(* Provide evidence for dependent pair.  *)
+and exists (f, args) (env, sigma) : tact list option =
+  guard (equal f Sigmautils.existT) >>= fun _ ->
+  let exT = Sigmautils.dest_existT (mkApp (f, args)) in
+  Some (Exists (env, exT.index) :: first_pass env sigma exT.unpacked)
   
 (* Value must be a rewrite on a hypothesis in context. *)
 and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
@@ -237,22 +217,22 @@ and apply_in (n, valu, typ, body) (env, sigma) : tact list option =
   let env' = push_local (n, t) env in              (* change type of "H" *)
   let prf = mkApp (f, Array.sub args 0 (len - 1)) in
   (* let H2 := f H1 := H2 ... *)
-  let apply_binding app_in (env, sigma) =
+  let apply_binding app_in (_, sigma) =
     try_app body   >>= fun (f, args) ->
     try_rel f      >>= fun i ->
     guard (i == 1) >>= fun _ ->
-    let args' = List.map (first_pass env sigma) (Array.to_list args) in
-    Some (ApplyIn (env, prf, hyp) :: List.concat ((first_pass env sigma f) :: args'))
+    let args' = List.map (first_pass env' sigma) (Array.to_list args) in
+    Some (ApplyIn (env, prf, hyp) :: List.concat ((first_pass env' sigma f) :: args'))
   in 
   (* all other cases *)
-  let default app_in (env, sigma) = Some (ApplyIn (env, prf, hyp) :: first_pass env sigma body)
+  let default app_in (_, sigma) = Some (ApplyIn (env, prf, hyp) :: first_pass env' sigma body)
   in
   (apply_binding <|> default) () (env', sigma)
     
 (* Last resort decompile let-in as a pose.  *)
 and pose (n, valu, t, body) (env, sigma) : tact list option =
-  let n' = fresh_name env (Name (expect_name n)) in
-  let env' = push_let_in (n, valu, t) env in
+  let n' = fresh_name env n in
+  let env' = push_let_in (Name n', valu, t) env in
   let decomp_body = first_pass env' sigma body in
   (* If the binding is NEVER used, just skip this. *)
   if noccurn 1 body then Some decomp_body
@@ -261,7 +241,7 @@ and pose (n, valu, t, body) (env, sigma) : tact list option =
 (* Decompile a term into its equivalent tactic list. *)
 let tac_from_term env sigma trm : tact list =
   (* Perform second pass to revise greedy tactic list. *)
-  reflexivity (collapse_intros (first_pass env sigma trm))
+  collapse_intros (first_pass env sigma trm)
 
 (* Generate indentation space before bullet. *)
 let indent level =
@@ -298,8 +278,7 @@ and show_tact (bulletted : bool) level sigma tac : Pp.t =
         let names = String.concat " " (List.map Id.to_string ns) in
         str ("intros " ^ names) ++ fin
      | Apply (env, trm) ->
-        let body_s = prnt env trm in
-        str "apply " ++ body_s ++ fin
+        str "apply " ++ prnt env trm ++ fin
      | Rewrite (env, trm, left) ->
         let s = prnt env trm in
         let arrow = if left then "<- " else "" in
@@ -331,7 +310,9 @@ and show_tact (bulletted : bool) level sigma tac : Pp.t =
      | Revert ns ->
         let names = String.concat " " (List.rev_map Id.to_string ns) in
         str ("revert " ^ names) ++ fin
-     | Symmetry -> str "symmetry" ++ fin)
+     | Symmetry -> str "symmetry" ++ fin
+     | Exists (env, trm) ->
+        str "exists " ++ prnt env trm ++ fin)
     
 (* Represent tactics as a string. *)
 let tac_to_string = show_tact_list 0 
