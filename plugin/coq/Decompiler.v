@@ -1,6 +1,6 @@
 Add LoadPath "coq".
 Require Import Patcher.Patch.
-Require Import List.
+Require Import PeanoNat List.
 Import ListNotations.
 
 (* Basic apply *)
@@ -92,8 +92,53 @@ or_ind (fun H0 : P => or_introl H0)
 (* forall (A : Type) (l : list A), rev (rev l) = l *)
 Decompile List.rev_involutive.
 
+(* forall (n m : nat), n = 0 \/ n <> 0 *)
+(* NOTICE: m is reverted and reintroduced *)
+Decompile (fun n m : nat =>
+nat_ind (fun n0 : nat => nat -> n0 = 0 \/ n0 <> 0)
+  (fun _ : nat => or_introl eq_refl)
+  (fun (n' : nat) (_ : nat -> n' = 0 \/ n' <> 0) (_ : nat)
+   => or_intror (not_eq_sym (O_S n'))) n m).
+
 Theorem explosion : forall P : Prop, False -> P.
 Proof. intros P H. induction H as []. Qed.
+
 Decompile explosion.
 
+Decompile Decidable.dec_and.
+
+(* Exists *)
+Theorem exists_1 : 
+  { x & x + 0 = 0 } ->
+  { x & 0 + x = 0 }.
+Proof.
+intros H.
+induction H as [x p]. 
+- exists x.
+  rewrite (Nat.add_comm x 0) in p.
+  apply p.
+Qed.
+Decompile exists_1.
+
+(* More complicated proof terms. *)
+Theorem example_1 : forall (x : nat) (P : x = x), 
+  x = x /\ x = x.
+Proof.
+intros x P.
+split; apply (eq_sym P).
+Qed.
+Decompile example_1.
+
+Theorem example_2 : 
+  { _ : nat &
+  (forall x y : nat, x = y -> x = y) /\
+  (forall x y : nat, x = y -> y = x) }.
+Proof.
+exists 0. 
+split; intros x y H.
+- apply H.
+- symmetry. 
+  apply H.
+Qed.
+Decompile example_2.
 

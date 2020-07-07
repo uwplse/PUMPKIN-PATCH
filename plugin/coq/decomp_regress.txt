@@ -45,16 +45,10 @@ rewrite <- H0 in H.
 rewrite H0 in H.
 apply H.
 
-Debug:
-intros a b H H0.
-apply (eq_ind b (fun b0 : nat => a = b0)
-                          ((fun x : a = b => x) H) a) in H0.
+Debug: intros a b H H0.
 reflexivity.
 
-Debug:
-intros a b H H0.
-apply (eq_ind b (fun b0 : nat => a = b0) H a) in H0.
-pose H as q'.
+Debug: intros a b H H0.
 reflexivity.
 
 Debug: intros a b H.
@@ -78,7 +72,7 @@ Debug: split.
 
 Debug:
 intro x.
-induction x as [|x0 IHx].
+induction x as [ |x0 IHx].
 - reflexivity.
 - simpl.
   rewrite IHx.
@@ -87,11 +81,9 @@ induction x as [|x0 IHx].
 Debug:
 intros X xs ys zs.
 revert ys zs.
-induction xs as [|a xs0 IHxs].
-- intros ys0 zs0.
-  reflexivity.
-- intros ys0 zs0.
-  simpl.
+induction xs as [ |a xs0 IHxs]; intros ys0 zs0.
+- reflexivity.
+- simpl.
   rewrite 
 (IHxs ys0 zs0).
   reflexivity.
@@ -106,7 +98,7 @@ induction H as [H0|H0].
 
 Debug:
 intros A l.
-induction l as [|a l0 IHl].
+induction l as [ |a l0 IHl].
 - reflexivity.
 - simpl.
   rewrite 
@@ -115,6 +107,55 @@ induction l as [|a l0 IHl].
   rewrite IHl.
   reflexivity.
 
+Debug:
+intros n m.
+revert m.
+induction n as [ |n' H].
+- intro H.
+  left.
+  reflexivity.
+- intro H0.
+  right.
+  apply 
+(not_eq_sym (O_S n')).
+
 Debug: intros P H.
 induction H as [].
 
+Debug:
+intros A B H H0.
+induction H as [H1|H1].
+- induction H0 as [H2|H2].
+  + left.
+    split.
+    * apply H1.
+    * apply H2.
+  + right.
+    intro H3.
+    induction H3 as [H4 H5].
+    * apply H2 in H5.
+      induction H5 as [].
+- induction H0 as [H2|H2]; right; intro H3.
+  + induction H3 as [H4 H5].
+    * apply H1 in H4.
+      induction H4 as [].
+  + induction H3 as [H4 H5].
+    * apply H2 in H5.
+      induction H5 as [].
+
+Debug:
+intro H.
+induction H as [x p].
+- exists x.
+  rewrite 
+(Nat.add_comm x 0) in p.
+  apply p.
+
+Debug: intros x P.
+split; symmetry; apply P.
+
+Debug: exists 0.
+split; intros x y H.
+- apply H.
+- symmetry.
+  apply H.
