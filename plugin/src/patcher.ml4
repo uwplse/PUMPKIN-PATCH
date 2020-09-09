@@ -34,6 +34,10 @@ open Ltac_plugin
 open Nameutils
 open Refactor
 open Decompiler
+
+open Class_tactics
+open Stdarg
+open Tacarg
    
 module Globmap = Globnames.Refmap
 
@@ -150,7 +154,7 @@ let patch_suggest =
     let typ = (Typeops.infer env patch).uj_type in
     let type_s = Printer.pr_constr_env env sigma typ in
     let asrt = str "assert " ++ type_s ++ str ".\n" in
-    let tacs = tac_from_term env sigma patch in
+    let tacs = tac_from_term env sigma [] patch in
     Feedback.msg_info (asrt ++ tac_to_string sigma tacs);
     last_def),
    Tacticals.New.tclIDTAC)
@@ -159,7 +163,13 @@ let patch_suggest =
 let patch_def_global =
   ((fun n _ sigma patch _ ->
     ignore (define_term (Option.get n) sigma patch false)), ())
-  
+
+(* Convert a tactic expression into a semantic tactic. *)
+let parse_tac_str (s : string) : unit Proofview.tactic =
+  let raw = Pcoq.parse_string Pltac.tactic s in
+  let glob = Tacintern.intern_pure_tactic (Tacintern.make_empty_glob_sign ()) raw in
+  Tacinterp.eval_tactic glob
+                  
   
 (* --- Commands --- *)
 
@@ -182,18 +192,20 @@ let patch_proof n d_old d_new cut intern =
 let decompile_tactic trm =
   let (sigma, env) = Pfedit.get_current_context () in
   let trm = EConstr.to_constr sigma trm in
-  let tacs = tac_from_term env sigma trm in
+  let tacs = tac_from_term env sigma [] trm in
   Feedback.msg_info (tac_to_string sigma tacs);
   Tacticals.New.tclIDTAC
-
+  
 (* Decompiles a single term into a tactic list printed to console. *)
-let decompile_command trm =
+let decompile_command trm tacs =
   let (sigma, env) = Pfedit.get_current_context () in
   let sigma, trm = intern env sigma trm in
   let trm = unwrap_definition env trm in
-  let tacs = tac_from_term env sigma trm in
-  Feedback.msg_debug (tac_to_string sigma tacs) 
-
+  let opts = List.map (fun s -> (parse_tac_str s, s)) tacs in
+  let script = tac_from_term env sigma opts trm in
+  Feedback.msg_debug (tac_to_string sigma script)
+  
+  
 let no_path c =
   let l = Constant.label c in
   Constant.make2 (ModPath.MPfile (DirPath.empty)) l
@@ -231,7 +243,7 @@ let decompile_module mod_ref =
     let typ = (Typeops.infer env gconstr).uj_type in
     let typ_s =  Printer.pr_constr_env env sigma typ in
     (* Proof of definition. *)
-    let tacs = tac_from_term env sigma trm' in
+    let tacs = tac_from_term env sigma [] trm' in
     let output = str "Theorem " ++ name ++ str " : " ++
                    typ_s ++ str ".\n" ++
                    str "Proof.\n" ++ tac_to_string sigma tacs ++
@@ -369,14 +381,17 @@ END
 TACTIC EXTEND decompile
 | [ "decompile" constr(trm) ] ->
    [ decompile_tactic trm ]
-END
+     END
+     
 
 (* --- Vernac syntax --- *)
 
 (* Decompile Command *)
 VERNAC COMMAND EXTEND Decompile CLASSIFIED AS SIDEFF
 | [ "Decompile" constr(trm) ] ->
-   [ decompile_command trm ]
+   [ decompile_command trm [] ]
+| [ "Decompile" constr(trm) "with" string_list(l) ] ->
+   [ decompile_command trm l ]
 | [ "Decompile" "Module" reference(mod_ref) ] ->
    [ decompile_module mod_ref ]
 END

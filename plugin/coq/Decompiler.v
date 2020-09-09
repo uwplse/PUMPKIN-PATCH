@@ -134,11 +134,23 @@ Theorem example_2 :
   (forall x y : nat, x = y -> x = y) /\
   (forall x y : nat, x = y -> y = x) }.
 Proof.
-exists 0. 
+exists 0.
 split; intros x y H.
 - apply H.
 - symmetry. 
   apply H.
 Qed.
 Decompile example_2.
+
+Theorem example_3 :
+  forall (X : Type) (xs ys : list X),
+    rev ys = xs -> rev xs = ys.
+Proof.
+intros X xs ys H.
+revert xs ys H. (* should collapse intros/revert *)
+induction xs; intros ys H;
+ simpl; rewrite <- rev_involutive;
+  rewrite H; reflexivity.
+Qed.
+Decompile example_3.
 

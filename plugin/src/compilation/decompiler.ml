@@ -17,12 +17,21 @@ open Utilities
 open Zooming
 open Nameutils
    
+open Ltac_plugin
+open Tacarg
+   
 (*
  * Only in OCaml 4.08.0 onward, so we implement ourselves
  *)
 let filter_map f l =
   let f_somes = List.filter (fun o -> Option.has_some o) (List.map f l) in
   List.map Option.get f_somes
+
+(* Drop the first n elements off a list *)
+let rec drop n xs =
+  if n == 0
+  then xs
+  else drop (n - 1) (List.tl xs)
   
 (* Compare whether all elements of two lists of equal length are equal. *)
 let rec list_eq (cmp : 'a -> 'a -> bool) xs ys : bool =
@@ -30,13 +39,19 @@ let rec list_eq (cmp : 'a -> 'a -> bool) xs ys : bool =
   | [], [] -> true
   | x :: xs', y :: ys' -> cmp x y && list_eq cmp xs' ys'
   | _, _ -> false
-
+          
 (* Compare if all elements of a single list are equal. *)
 let all_eq (cmp : 'a -> 'a -> bool) xs : bool =
   match xs with
   | [] -> true
   | x :: xs' -> List.for_all (fun y -> cmp x y) xs'
-             
+ 
+(* Count length of shared prefix between lists. *)
+let rec count_shared_prefix (cmp : 'a -> 'a -> bool) xs ys  : int =
+  match xs, ys with
+  | x :: xs', y :: ys' ->
+     if cmp x y then 1 + count_shared_prefix cmp xs' ys' else 0
+  | _, _ -> 0
   
 (* Monadic bind on option types. *)
 let (>>=) = Option.bind
@@ -53,7 +68,6 @@ let (<|>) f g x y =
    Serves as an intermediate representation that can be either
    transformed into a string or a sequence of actual tactics. *)
 type tact =
-  | Intro of Id.t
   | Intros of Id.t list
   | Apply of env * types
   (* Proof that x = y if true, y = x if false. *)
@@ -73,12 +87,14 @@ type tact =
   | Split of tact list * tact list list
   | Revert of Id.t list
   | Exists of env * types
-
+  | Auto
+  (* Paste the literal expression into the script. *)
+  | Expr of string
+  
 (* True if both tactics are "equal" (perform the same effect). *)
 let rec compare (tac1 : tact) (tac2 : tact) : bool =
   match tac1, tac2 with
-  | Intro n1, Intro n2 -> Id.equal n1 n2
-  (* Intros *)
+  | Intros ns1, Intros ns2 -> list_eq Id.equal ns1 ns2
   | Apply (_, t1), Apply (_, t2) -> Constr.equal t1 t2
   | Rewrite (_, t1, b1), Rewrite (_, t2, b2) -> b1 == b2 && Constr.equal t1 t2
   | RewriteIn (_, t1, t1', b1), RewriteIn (_, t2, t2', b2) ->
@@ -95,10 +111,11 @@ let rec compare (tac1 : tact) (tac2 : tact) : bool =
   (* Split *)
   | Revert ns1, Revert ns2 -> list_eq Id.equal ns1 ns2
   | Exists (_, t1), Exists (_, t2) -> Constr.equal t1 t2
+  | Auto, Auto -> true
   | _ -> false
 
 (* The longest tactic list prefixing each subgoal, and their remainders. *)
-let rec shared_prefix (goals : tact list list) : tact list * tact list list =
+let rec tact_shared_prefix (goals : tact list list) : tact list * tact list list =
   if goals == [] (* No subgoals *)
      || List.tl goals == [] (* 1 subgoal *)
      || List.exists (fun xs -> xs == []) goals
@@ -107,11 +124,10 @@ let rec shared_prefix (goals : tact list list) : tact list * tact list list =
     let hs = List.map List.hd goals in
     if all_eq compare hs
     then let ts = List.map List.tl goals in
-         let (rest, goals') = shared_prefix ts in
+         let (rest, goals') = tact_shared_prefix ts in
          (List.hd hs :: rest, goals') 
     else ([], goals)
-    
-    
+
 (* Option monad over function application. *)
 let try_app (trm : constr) : (constr * constr array) option =
   match kind trm with
@@ -128,24 +144,6 @@ let try_rel (trm : constr) : int option =
 let guard (b : bool) : unit option =
   if b then Some () else None
 
-  (* Converts "intro n. intro m. ..." into "intros n m ..." *)
-let rec collapse_intros (tacs : tact list) : tact list =
-  List.fold_right (fun tac acc ->
-      match tac with
-      | Intro n ->
-         (match acc with
-          | Intro m :: xs -> Intros [n; m] :: xs
-          | Intros ns :: xs -> Intros (n :: ns) :: xs
-          | _ -> Intro n :: acc)
-      | Induction (x, y, z, prefix, goals) ->
-         [ Induction (x, y, z,
-                      collapse_intros prefix,
-                      List.map collapse_intros goals) ]
-      | Split (prefix, goals) ->
-         [ Split (collapse_intros prefix,
-                  List.map collapse_intros goals) ]
-      | t -> t :: acc) tacs []
-
 (* Inserts "simpl." before every rewrite. *)
 let rec simpl (tacs : tact list) : tact list =
   match tacs with
@@ -156,36 +154,102 @@ let rec simpl (tacs : tact list) : tact list =
      Split (simpl prefix, List.map simpl goals) :: simpl tacs'
   | tac :: tacs' -> tac :: simpl tacs'
                   
-(* Performs the bulk of decompilation on a proof term. 
+(* Combine adjacent intros and revert tactics if possible. *)
+let rec intros_revert (tacs : tact list) : tact list =
+  match tacs with
+  | Intros xs :: Revert ys :: tacs' ->
+     let xs' = List.rev xs in
+     let n = count_shared_prefix Id.equal xs' ys in
+     Intros (take (List.length xs - n) xs) :: Revert (drop n ys) :: intros_revert tacs'
+  | Split (prefix, goals) :: tacs' ->
+     Split (intros_revert prefix, List.map intros_revert goals) :: intros_revert tacs'
+  | Induction (env, x, ns, prefix, goals) :: tacs' ->
+     Induction (env, x, ns, intros_revert prefix, List.map intros_revert goals)
+     :: intros_revert tacs'
+  | tac :: tacs' -> tac :: intros_revert tacs'
+  | [] -> []
+                  
+(* Remove last name of intros if followed by induction on that hypothesis. *)
+let rec intros_induction (tacs : tact list) : tact list =
+  (* this is bugged, see intros. vs intro x. *)
+  match tacs with
+  | Intros [] :: tacs' -> intros_induction tacs'
+  | Intros xs :: Induction (env, x, ns, prefix, goals) :: tacs' ->
+     let prefix' = intros_induction prefix in
+     let goals' = List.map intros_induction goals in
+     let tacs'' = intros_induction tacs' in
+     let rest = Induction (env, x, ns, prefix', goals') :: tacs'' in
+     Option.default (Intros xs :: rest)
+       (guard (xs <> []) >>= fun _ ->
+        let last = List.hd (List.rev xs) in
+        try_rel x >>= fun idx ->
+        let n = expect_name (fst (rel_name_type (lookup_rel idx env))) in
+        guard (Id.equal last n) >>= fun _ ->
+        Some rest)
+  | Split (prefix, goals) :: tacs' ->
+     Split (intros_induction prefix, List.map intros_induction goals) :: intros_induction tacs'
+  | Induction (env, x, ns, prefix, goals) :: tacs' ->
+     Induction (env, x, ns, intros_induction prefix, List.map intros_induction goals)
+     :: intros_induction tacs'
+  | tac :: tacs' -> tac :: intros_induction tacs'
+  | [] -> []   
+
+(* Returns true if the given tactic solves the type
+   of the given term. *)
+let solves env sigma tac trm =
+  try
+    let goal = (Typeops.infer env trm).uj_type in
+    let p = Proof.start sigma [(env, EConstr.of_constr goal)] in
+    let (p', _) = Proof.run_tactic (Global.env()) tac p in
+    let (result, _, _, _, _) = Proof.proof p' in
+    List.length result == 0
+  with _ ->
+    false
+
+(* Given the list of tactics and their corresponding string
+   expressions, try to solve the given goal (type of trm),
+   return None otherwise. *)
+let rec try_solve env sigma opts trm =
+  match opts with
+  | [] -> None
+  | (tac, expr) :: opts' ->
+     if solves env sigma tac trm
+     then Some (Expr expr)
+     else try_solve env sigma opts' trm
+        
+(* Performs the bulk of decompilation on a proof term.
    Returns a list of tactics. *)
-let rec first_pass env sigma trm =
-  (* Apply single beta reduction to terms that *might*
+let rec first_pass env sigma opts trm =
+  (* Apply single reduction to terms that *might*
        be in eta expanded form. *)
   let trm = Reduction.whd_betaiota env trm in
-  let choose f x = Option.default [Apply (env, trm)] (f x (env, sigma)) in
-  match kind trm with
-  (* "fun x => ..." -> "intro x." *)
-  | Lambda (n, t, b) ->
-     let name = fresh_name env n in
-     let env = push_local (Name name, t) env in
-     Intro name :: first_pass env sigma b
-  (* Match on well-known functions used in the proof. *)
-  | App (f, args) ->
-     choose (rewrite <|> induction <|> left <|> right <|> split
-             <|> reflexivity <|> symmetry <|> exists) (f, args)
-  (* Hypothesis transformations or generation tactics. *)
-  | LetIn (n, valu, typ, body) ->
-     choose (rewrite_in <|> apply_in <|> pose) (n, valu, typ, body)
-  (* Remainder of body, simply apply it. *)
-  | _ -> [ Apply (env, trm) ]
-  
+  let solved = try_solve env sigma opts trm in
+  if Option.has_some solved then [Option.get solved]
+  else 
+    let choose f x =
+      Option.default [Apply (env, trm)] (f x (env, sigma, opts)) in
+    match kind trm with
+    (* "fun x => ..." -> "intro x." *)
+    | Lambda (n, t, b) ->
+       let (env', trm', names) = zoom_lambda_names env 0 trm in
+       Intros names :: first_pass env' sigma opts trm'
+    (* Match on well-known functions used in the proof. *)
+    | App (f, args) ->
+       choose (rewrite <|> induction <|> left <|> right <|> split
+               <|> reflexivity <|> symmetry <|> exists) (f, args)
+    (* Hypothesis transformations or generation tactics. *)
+    | LetIn (n, valu, typ, body) ->
+       choose (rewrite_in <|> apply_in <|> pose) (n, valu, typ, body)
+    (* Remainder of body, simply apply it. *)
+    | _ -> [ Apply (env, trm) ]
+         
 (* Application of a equality eliminator. *)
-and rewrite (f, args) (env, sigma) : tact list option =
+and rewrite (f, args) (env, sigma, opts) : tact list option =
   dest_rewrite (mkApp (f, args)) >>= fun rewr -> 
-  Some (Rewrite (env, rewr.eq, rewr.left) :: first_pass env sigma rewr.px)
+  Some (Rewrite (env, rewr.eq, rewr.left) :: first_pass env sigma opts rewr.px)
 
 (* Applying an eliminator for induction on a hypothesis in context. *)
-and induction (f, args) (env, sigma) : tact list option =
+and induction (f, args) (env, sigma, opts) : tact list option =
   guard (is_elim env f) >>= fun _ ->
   guard (not (is_rewrite f)) >>= fun _ ->
   let app = mkApp (f, args) in
@@ -203,7 +267,7 @@ and induction (f, args) (env, sigma) : tact list option =
   else 
     let ind_var = List.nth ind.final_args ind_pos in
     let forget  = List.length ind.final_args - ind_pos - 1 in
-    let zoom_but = arity ind.p - 1 in 
+    let zoom_but = arity ind.p - 1 in
     (* Take final args after inducted value, and revert them. *)
     let rev_idx = filter_map try_rel (take forget (List.rev ind.final_args)) in
     let idx_to_name i = expect_name (fst (rel_name_type (lookup_rel i env))) in
@@ -212,48 +276,48 @@ and induction (f, args) (env, sigma) : tact list option =
     let zooms = List.map (zoom_lambda_names env zoom_but) ind.cs in
     let names = List.map (fun (_, _, names) -> names) zooms in
     let goals = List.map (fun (env, trm, _) ->
-                    simpl (first_pass env sigma trm)) zooms in
-    let (prefix, goals) = shared_prefix goals in  
+                    simpl (first_pass env sigma opts trm)) zooms in
+    let (prefix, goals) = tact_shared_prefix goals in  
     let ind = [ Induction (env, ind_var, names, prefix, goals) ] in
     Some (if reverts == [] then ind else Revert reverts :: ind)
     
 (* Choose left proof to construct or. *)
-and left (f, args) (env, sigma) : tact list option =
+and left (f, args) (env, sigma, opts) : tact list option =
   dest_or_introl (mkApp (f, args)) >>= fun args ->
-  Some (Left :: first_pass env sigma args.ltrm)
+  Some (Left :: first_pass env sigma opts args.ltrm)
 
 (* Choose right proof to construct or. *)
-and right (f, args) (env, sigma) : tact list option =
+and right (f, args) (env, sigma, opts) : tact list option =
   dest_or_intror (mkApp (f, args)) >>= fun args ->
-  Some (Right :: first_pass env sigma args.rtrm)
+  Some (Right :: first_pass env sigma opts args.rtrm)
 
 (* Branch two goals as arguments to conj. *)
-and split (f, args) (env, sigma) : tact list option =
+and split (f, args) (env, sigma, opts) : tact list option =
   dest_conj (mkApp (f, args)) >>= fun args ->
-  let lhs = first_pass env sigma args.ltrm in
-  let rhs = first_pass env sigma args.rtrm in
-  let (prefix, goals) = shared_prefix [ lhs ; rhs ] in
+  let lhs = first_pass env sigma opts args.ltrm in
+  let rhs = first_pass env sigma opts args.rtrm in
+  let (prefix, goals) = tact_shared_prefix [ lhs ; rhs ] in
   Some [ Split (prefix, goals) ]
 
 (* Converts "apply eq_refl." into "reflexivity." *)
-and reflexivity (f, args) (_, _) : tact list option =
+and reflexivity (f, args) _ : tact list option =
   dest_eq_refl_opt (mkApp (f, args)) >>= fun _ ->
   Some [ Reflexivity ]
   
 (* Transform x = y to y = x. *)
-and symmetry (f, args) (env, sigma) : tact list option =
+and symmetry (f, args) (env, sigma, opts) : tact list option =
   guard (equal f eq_sym) >>= fun _ ->
   let sym = dest_eq_sym (mkApp (f, args)) in
-  Some (Symmetry :: first_pass env sigma sym.eq_proof)
+  Some (Symmetry :: first_pass env sigma opts sym.eq_proof)
 
 (* Provide evidence for dependent pair.  *)
-and exists (f, args) (env, sigma) : tact list option =
+and exists (f, args) (env, sigma, opts) : tact list option =
   guard (equal f Sigmautils.existT) >>= fun _ ->
   let exT = Sigmautils.dest_existT (mkApp (f, args)) in
-  Some (Exists (env, exT.index) :: first_pass env sigma exT.unpacked)
+  Some (Exists (env, exT.index) :: first_pass env sigma opts exT.unpacked)
   
 (* Value must be a rewrite on a hypothesis in context. *)
-and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
+and rewrite_in (_, valu, _, body) (env, sigma, opts) : tact list option =
   let valu = Reduction.whd_betaiota env valu in
   try_app valu                   >>= fun (f, args) ->
   dest_rewrite (mkApp (f, args)) >>= fun rewr -> 
@@ -261,10 +325,11 @@ and rewrite_in (_, valu, _, body) (env, sigma) : tact list option =
   guard (noccurn (idx + 1) body) >>= fun _ ->
   let n, t = rel_name_type (lookup_rel idx env) in
   let env' = push_local (n, t) env in
-  Some (RewriteIn (env, rewr.eq, rewr.px, rewr.left) :: first_pass env' sigma body)
+  Some (RewriteIn (env, rewr.eq, rewr.px, rewr.left) ::
+          first_pass env' sigma opts body)
 
 (* Value must be an application with last argument in context. *)
-and apply_in (n, valu, typ, body) (env, sigma) : tact list option =
+and apply_in (n, valu, typ, body) (env, sigma, opts) : tact list option =
   let valu = Reduction.whd_betaiota env valu in
   try_app valu >>= fun (f, args) ->
   let len = Array.length args in
@@ -280,27 +345,28 @@ and apply_in (n, valu, typ, body) (env, sigma) : tact list option =
     try_app body   >>= fun (f, args) ->
     try_rel f      >>= fun i ->
     guard (i == 1) >>= fun _ ->
-    let args' = List.map (first_pass env' sigma) (Array.to_list args) in
-    Some (ApplyIn (env, prf, hyp) :: List.concat ((first_pass env' sigma f) :: args'))
+    let args' = List.map (first_pass env' sigma opts) (Array.to_list args) in
+    Some (ApplyIn (env, prf, hyp) :: List.concat ((first_pass env' sigma opts f) :: args'))
   in 
   (* all other cases *)
-  let default app_in (_, sigma) = Some (ApplyIn (env, prf, hyp) :: first_pass env' sigma body)
+  let default app_in (_, sigma) = Some (ApplyIn (env, prf, hyp)
+                                        :: first_pass env' sigma opts body)
   in
   (apply_binding <|> default) () (env', sigma)
     
 (* Last resort decompile let-in as a pose.  *)
-and pose (n, valu, t, body) (env, sigma) : tact list option =
+and pose (n, valu, t, body) (env, sigma, opts) : tact list option =
   let n' = fresh_name env n in
   let env' = push_let_in (Name n', valu, t) env in
-  let decomp_body = first_pass env' sigma body in
+  let decomp_body = first_pass env' sigma opts body in
   (* If the binding is NEVER used, just skip this. *)
   if noccurn 1 body then Some decomp_body
   else Some (Pose (env, valu, n') :: decomp_body)
        
 (* Decompile a term into its equivalent tactic list. *)
-let tac_from_term env sigma trm : tact list =
+let tac_from_term env sigma opts trm : tact list =
   (* Perform second pass to revise greedy tactic list. *)
-  collapse_intros (first_pass env sigma trm)
+  (intros_revert (first_pass env sigma opts trm))
 
 (* Generate indentation space before bullet. *)
 let indent level =
@@ -347,10 +413,11 @@ and show_tact (bulletted : bool) level sigma (fin : Pp.t) tac : Pp.t =
                     else indent (level + 1) in
   full_indent ++
     (match tac with
-     | Intro n -> str ("intro " ^ Id.to_string n) ++ fin
      | Intros ns ->
-        let names = String.concat " " (List.map Id.to_string ns) in
-        str ("intros " ^ names) ++ fin
+        if ns == [] then str "" else
+          let s = if List.tl ns == [] then "intro" else "intros" in
+          let names = String.concat " " (List.map Id.to_string ns) in
+          str (s ^ " " ^ names) ++ fin
      | Apply (env, trm) ->
         str "apply " ++ prnt env trm ++ fin
      | Rewrite (env, trm, left) ->
@@ -381,11 +448,14 @@ and show_tact (bulletted : bool) level sigma (fin : Pp.t) tac : Pp.t =
      | Split (prefix, goals) ->
         str "split" ++ show_subgoals level sigma prefix goals
      | Revert ns ->
-        let names = String.concat " " (List.rev_map Id.to_string ns) in
-        str ("revert " ^ names) ++ fin
+        if ns == [] then str "" else
+          let names = String.concat " " (List.rev_map Id.to_string ns) in
+          str ("revert " ^ names) ++ fin
      | Symmetry -> str "symmetry" ++ fin
      | Exists (env, trm) ->
-        str "exists " ++ prnt env trm ++ fin)
+        str "exists " ++ prnt env trm ++ fin
+     | Auto -> str "auto" ++ fin
+     | Expr s -> str s ++ fin)
     
 (* Represent tactics as a string. *)
 let tac_to_string = show_tact_list 0 

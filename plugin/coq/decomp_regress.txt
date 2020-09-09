@@ -79,8 +79,7 @@ induction x as [ |x0 IHx].
   reflexivity.
 
 Debug:
-intros X xs ys zs.
-revert ys zs.
+intros X xs.
 induction xs as [ |a xs0 IHxs]; intros ys0 zs0.
 - reflexivity.
 - simpl.
@@ -108,8 +107,7 @@ induction l as [ |a l0 IHl].
   reflexivity.
 
 Debug:
-intros n m.
-revert m.
+intro n.
 induction n as [ |n' H].
 - intro H.
   left.
@@ -159,3 +157,17 @@ split; intros x y H.
 - apply H.
 - symmetry.
   apply H.
+
+Debug:
+intros X xs.
+induction xs as [ |a xs0 IHxs]; intros ys0 H0; simpl.
+- rewrite <- 
+(rev_involutive ys0).
+  simpl.
+  rewrite H0.
+  reflexivity.
+- rewrite <- 
+(rev_involutive ys0).
+  simpl.
+  rewrite H0.
+  reflexivity.
