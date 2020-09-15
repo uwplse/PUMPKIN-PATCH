@@ -171,3 +171,33 @@ induction xs as [ |a xs0 IHxs]; intros ys0 H0; simpl.
   simpl.
   rewrite H0.
   reflexivity.
+
+Debug: auto.
+
+Debug: auto.
+
+Debug: auto.
+
+Debug: auto.
+
+Debug: auto.
+
+Debug: auto.
+
+Debug:
+intros x y z.
+induction x as [ |x0 IHx].
+- auto.
+- simpl.
+  rewrite IHx.
+  auto.
+
+Debug: intro x.
+omega.
+
+Debug: intros x y H.
+intro H0.
+omega.
+
+Debug: intros z H.
+lia.
