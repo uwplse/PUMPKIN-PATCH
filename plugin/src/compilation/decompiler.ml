@@ -194,32 +194,33 @@ let rec intros_induction (tacs : tact list) : tact list =
   | tac :: tacs' -> tac :: intros_induction tacs'
   | [] -> []   
 
-(* Returns true if the given tactic solves the type
-   of the given term. *)
-let solves env sigma tac trm =
-  try
-    let goal = (Typeops.infer env trm).uj_type in
-    let p = Proof.start sigma [(env, EConstr.of_constr goal)] in
-    let (p', _) = Proof.run_tactic (Global.env()) tac p in
-    let (result, _, _, _, _) = Proof.proof p' in
-    List.length result == 0
-  with _ ->
-    false
+(* Returns true if the given tactic solves the goal. *)
+let solves env sigma (tac : unit Proofview.tactic) (goal : constr) =
+  let p = Proof.start sigma [(env, EConstr.of_constr goal)] in
+  let (p', _) = Proof.run_tactic (Global.env()) tac p in
+  let (result, _, _, _, _) = Proof.proof p' in
+  List.length result == 0
 
 (* Given the list of tactics and their corresponding string
-   expressions, try to solve the given goal (type of trm),
+   expressions, try to solve the goal (type of trm),
    return None otherwise. *)
 let rec try_solve env sigma opts trm =
-  match opts with
-  | [] -> None
-  | (tac, expr) :: opts' ->
-     if solves env sigma tac trm
-     then Some (Expr expr)
-     else try_solve env sigma opts' trm
-        
+  try 
+    let goal = (Typeops.infer env trm).uj_type in 
+    match opts with
+    | [] -> None
+    | (tac, expr) :: opts' ->
+       if solves env sigma tac goal
+       then Some (Expr expr)
+       else try_solve env sigma opts' goal
+  with _ -> None
+          
 (* Performs the bulk of decompilation on a proof term.
+   Opts are the optional goal solving tactics that can be inserted into
+     the generated script. If at any point one of these tactics solves the
+     remaining goal, use the provided string representation of that tactic.
    Returns a list of tactics. *)
-let rec first_pass env sigma opts trm =
+let rec first_pass env sigma (opts : (unit Proofview.tactic * string) list) trm =
   (* Apply single reduction to terms that *might*
        be in eta expanded form. *)
   let trm = Reduction.whd_betaiota env trm in
