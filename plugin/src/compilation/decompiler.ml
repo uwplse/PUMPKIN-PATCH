@@ -204,15 +204,17 @@ let solves env sigma (tac : unit Proofview.tactic) (goal : constr) =
 (* Given the list of tactics and their corresponding string
    expressions, try to solve the goal (type of trm),
    return None otherwise. *)
-let rec try_solve env sigma opts trm =
+let try_solve env sigma opts trm =
   try 
-    let goal = (Typeops.infer env trm).uj_type in 
-    match opts with
-    | [] -> None
-    | (tac, expr) :: opts' ->
-       if solves env sigma tac goal
-       then Some (Expr expr)
-       else try_solve env sigma opts' goal
+    let goal = (Typeops.infer env trm).uj_type in
+    let rec aux opts =
+      match opts with
+      | [] -> None
+      | (tac, expr) :: opts' ->
+         if solves env sigma tac goal
+         then Some (Expr expr)
+         else aux opts'
+    in aux opts
   with _ -> None
           
 (* Performs the bulk of decompilation on a proof term.
