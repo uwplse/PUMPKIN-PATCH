@@ -1,6 +1,7 @@
 
 DECLARE PLUGIN "patch"
 
+open Decompiler
 open Constr
 open Names
 open Environ
@@ -33,7 +34,6 @@ open Pp
 open Ltac_plugin
 open Nameutils
 open Refactor
-open Decompiler
 
 open Class_tactics
 open Stdarg
@@ -187,14 +187,6 @@ let patch_proof n d_old d_new cut intern =
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   let search _ _ = search_for_patch old_term opts d in
   patch env n try_invert () search sigma
-
-(* Tactic to test decompilation of a single term into tactics. *)
-let decompile_tactic trm =
-  let (sigma, env) = Pfedit.get_current_context () in
-  let trm = EConstr.to_constr sigma trm in
-  let tacs = tac_from_term env sigma [] trm in
-  Feedback.msg_info (tac_to_string sigma tacs);
-  Tacticals.New.tclIDTAC
   
 (* Decompiles a single term into a tactic list printed to console. *)
 let decompile_command trm tacs =
@@ -256,14 +248,6 @@ let decompile_module mod_ref =
 let intern_tactic env d_old d_new sigma =
   (sigma, (unwrap_definition env (EConstr.to_constr sigma d_old),
            unwrap_definition env (EConstr.to_constr sigma d_new)))
-  
-(* Tactic which computes and names a patch as a new hypothesis. *)
-let patch_proof_tactic n d_old d_new =
-  patch_proof (Some n) d_old d_new None intern_tactic patch_def_hypothesis
-
-(* Tactic which computes a patch and suggests what to do with it. *)
-let suggest_patch_tactic d_old d_new =
-  patch_proof None d_old d_new None intern_tactic patch_suggest
   
 (* Command which computes a patch as a global name. *)
 let patch_proof_command n d_old d_new cut =
@@ -365,23 +349,6 @@ let factor n trm : unit =
       fs
   with _ -> failwith "Could not find lemmas"
 
-              
-(* --- Tactic syntax --- *)
-
-TACTIC EXTEND patch_tactic
-| [ "patch" constr(d_old) constr(d_new) "as" ident(n) ] ->
-   [ patch_proof_tactic n d_old d_new ]
-END
-
-TACTIC EXTEND suggest_tactic
-| [ "suggest" "patch" constr(d_old) constr(d_new) ] ->
-   [ suggest_patch_tactic d_old d_new ]
-END
-
-TACTIC EXTEND decompile
-| [ "decompile" constr(trm) ] ->
-   [ decompile_tactic trm ]
-     END
      
 
 (* --- Vernac syntax --- *)

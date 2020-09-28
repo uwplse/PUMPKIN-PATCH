@@ -10,6 +10,7 @@
 -I src/coq-plugin-lib/src/coq/logicutils/transformation
 -I src/coq-plugin-lib/src/coq/devutils
 -I src/coq-plugin-lib/src/coq/representationutils
+-I src/coq-plugin-lib/src/coq/decompiler
 -I src/representation
 -I src/representation/categories
 -I src/configuration
@@ -159,6 +160,9 @@ src/core/procedures/theorem.mli
 src/core/procedures/theorem.ml
 src/core/procedures/refactor.mli
 src/core/procedures/refactor.ml
+
+src/coq-plugin-lib/src/coq/decompiler/decompiler.mli
+src/coq-plugin-lib/src/coq/decompiler/decompiler.ml
 
 src/patcher.ml4
 src/patch.mlpack
