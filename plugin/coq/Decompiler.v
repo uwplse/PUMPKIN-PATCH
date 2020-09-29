@@ -2,6 +2,7 @@ Add LoadPath "coq".
 Require Import Patcher.Patch.
 Require Import PeanoNat List.
 Import ListNotations.
+Require Import Omega.
 
 (* Basic apply *)
 Decompile 3.
@@ -134,11 +135,53 @@ Theorem example_2 :
   (forall x y : nat, x = y -> x = y) /\
   (forall x y : nat, x = y -> y = x) }.
 Proof.
-exists 0. 
+exists 0.
 split; intros x y H.
 - apply H.
 - symmetry. 
   apply H.
 Qed.
 Decompile example_2.
+
+Theorem example_3 :
+  forall (X : Type) (xs ys : list X),
+    rev ys = xs -> rev xs = ys.
+Proof.
+intros X xs ys H.
+revert xs ys H. (* should collapse intros/revert *)
+induction xs; intros ys H;
+ simpl; rewrite <- rev_involutive;
+  rewrite H; reflexivity.
+Qed.
+Decompile example_3.
+
+(* auto. *)
+Decompile (fun x : nat => x) with "auto".
+Decompile (fun (x : nat) (y : True) => x) with "auto".
+Decompile (fun (x : False) => False_ind True x) with "auto".
+Theorem auto_ex_1 : 0 = 0 \/ 1 = 1. Proof. auto. Qed.
+Decompile auto_ex_1 with "auto".
+Theorem auto_ex_2 : forall (A : Type) (x y : A), x = y -> y = x. Proof. auto. Qed.
+Decompile auto_ex_2 with "auto".
+Theorem auto_ex_3 : 
+  (forall (P Q : Prop), P -> (P -> Q) -> Q) /\ 
+  (forall (P Q R : Prop), (P -> Q) -> (Q -> R) -> (P -> R)).
+Proof. auto. Qed.
+Decompile auto_ex_3 with "auto".
+Theorem auto_ex_4 : forall (x y z : nat), x + (y + z) = (x + y) + z.
+Proof. intros. induction x. auto. simpl. rewrite IHx. auto. Qed.
+Decompile auto_ex_4 with "auto".
+
+(* omega. *)
+Theorem omega_ex_1 : forall x : nat, x >= 0. Proof. intros. omega. Qed.
+Decompile omega_ex_1 with "omega".
+Theorem omega_ex_2 : forall x y : nat, x > y -> x <> y. Proof. intros. omega. Qed.
+Decompile omega_ex_2 with "omega".
+
+(* lia. *)
+Open Scope Z_scope.
+Require Import Lia.
+Theorem lia_ex_1 : forall z : Z, z > 0 -> 2 * z + 1 > z.
+Proof. intros. lia. Qed.
+Decompile lia_ex_1 with "lia".
 
