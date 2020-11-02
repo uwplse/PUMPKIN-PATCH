@@ -148,28 +148,10 @@ let patch_def_hypothesis =
          (sigma, EConstr.of_constr patch) Locusops.nowhere)),
    Tacticals.New.tclIDTAC)
   
-(* Suggest something to do with the generated patch. *)
-let patch_suggest =
-  ((fun _ env sigma patch last_def ->
-    let typ = (Typeops.infer env patch).uj_type in
-    let type_s = Printer.pr_constr_env env sigma typ in
-    let asrt = str "assert " ++ type_s ++ str ".\n" in
-    let tacs = tac_from_term env sigma [] patch in
-    Feedback.msg_info (asrt ++ tac_to_string sigma tacs);
-    last_def),
-   Tacticals.New.tclIDTAC)
-  
 (* Defines a patch globally. *)
 let patch_def_global =
   ((fun n _ sigma patch _ ->
-    ignore (define_term (Option.get n) sigma patch false)), ())
-
-(* Convert a tactic expression into a semantic tactic. *)
-let parse_tac_str (s : string) : unit Proofview.tactic =
-  let raw = Pcoq.parse_string Pltac.tactic s in
-  let glob = Tacintern.intern_pure_tactic (Tacintern.make_empty_glob_sign ()) raw in
-  Tacinterp.eval_tactic glob
-                  
+    ignore (define_term (Option.get n) sigma patch false)), ())                  
   
 (* --- Commands --- *)
 
