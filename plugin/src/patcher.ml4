@@ -1,6 +1,7 @@
 
 DECLARE PLUGIN "patch"
 
+open Decompiler
 open Constr
 open Names
 open Environ
@@ -33,7 +34,10 @@ open Pp
 open Ltac_plugin
 open Nameutils
 open Refactor
-open Decompiler
+
+open Class_tactics
+open Stdarg
+open Tacarg
    
 module Globmap = Globnames.Refmap
 
@@ -144,22 +148,10 @@ let patch_def_hypothesis =
          (sigma, EConstr.of_constr patch) Locusops.nowhere)),
    Tacticals.New.tclIDTAC)
   
-(* Suggest something to do with the generated patch. *)
-let patch_suggest =
-  ((fun _ env sigma patch last_def ->
-    let typ = (Typeops.infer env patch).uj_type in
-    let type_s = Printer.pr_constr_env env sigma typ in
-    let asrt = str "assert " ++ type_s ++ str ".\n" in
-    let tacs = tac_from_term env sigma patch in
-    Feedback.msg_info (asrt ++ tac_to_string sigma tacs);
-    last_def),
-   Tacticals.New.tclIDTAC)
-  
 (* Defines a patch globally. *)
 let patch_def_global =
   ((fun n _ sigma patch _ ->
-    ignore (define_term (Option.get n) sigma patch false)), ())
-  
+    ignore (define_term (Option.get n) sigma patch false)), ())                  
   
 (* --- Commands --- *)
 
@@ -177,23 +169,17 @@ let patch_proof n d_old d_new cut intern =
   let try_invert = not (is_conclusion change || is_hypothesis change) in
   let search _ _ = search_for_patch old_term opts d in
   patch env n try_invert () search sigma
-
-(* Tactic to test decompilation of a single term into tactics. *)
-let decompile_tactic trm =
-  let (sigma, env) = Pfedit.get_current_context () in
-  let trm = EConstr.to_constr sigma trm in
-  let tacs = tac_from_term env sigma trm in
-  Feedback.msg_info (tac_to_string sigma tacs);
-  Tacticals.New.tclIDTAC
-
+  
 (* Decompiles a single term into a tactic list printed to console. *)
-let decompile_command trm =
+let decompile_command trm tacs =
   let (sigma, env) = Pfedit.get_current_context () in
   let sigma, trm = intern env sigma trm in
   let trm = unwrap_definition env trm in
-  let tacs = tac_from_term env sigma trm in
-  Feedback.msg_debug (tac_to_string sigma tacs) 
-
+  let opts = List.map (fun s -> (parse_tac_str s, s)) tacs in
+  let script = tac_from_term env sigma opts trm in
+  Feedback.msg_debug (tac_to_string sigma script)
+  
+  
 let no_path c =
   let l = Constant.label c in
   Constant.make2 (ModPath.MPfile (DirPath.empty)) l
@@ -231,7 +217,7 @@ let decompile_module mod_ref =
     let typ = (Typeops.infer env gconstr).uj_type in
     let typ_s =  Printer.pr_constr_env env sigma typ in
     (* Proof of definition. *)
-    let tacs = tac_from_term env sigma trm' in
+    let tacs = tac_from_term env sigma [] trm' in
     let output = str "Theorem " ++ name ++ str " : " ++
                    typ_s ++ str ".\n" ++
                    str "Proof.\n" ++ tac_to_string sigma tacs ++
@@ -244,14 +230,6 @@ let decompile_module mod_ref =
 let intern_tactic env d_old d_new sigma =
   (sigma, (unwrap_definition env (EConstr.to_constr sigma d_old),
            unwrap_definition env (EConstr.to_constr sigma d_new)))
-  
-(* Tactic which computes and names a patch as a new hypothesis. *)
-let patch_proof_tactic n d_old d_new =
-  patch_proof (Some n) d_old d_new None intern_tactic patch_def_hypothesis
-
-(* Tactic which computes a patch and suggests what to do with it. *)
-let suggest_patch_tactic d_old d_new =
-  patch_proof None d_old d_new None intern_tactic patch_suggest
   
 (* Command which computes a patch as a global name. *)
 let patch_proof_command n d_old d_new cut =
@@ -353,30 +331,16 @@ let factor n trm : unit =
       fs
   with _ -> failwith "Could not find lemmas"
 
-              
-(* --- Tactic syntax --- *)
-
-TACTIC EXTEND patch_tactic
-| [ "patch" constr(d_old) constr(d_new) "as" ident(n) ] ->
-   [ patch_proof_tactic n d_old d_new ]
-END
-
-TACTIC EXTEND suggest_tactic
-| [ "suggest" "patch" constr(d_old) constr(d_new) ] ->
-   [ suggest_patch_tactic d_old d_new ]
-END
-
-TACTIC EXTEND decompile
-| [ "decompile" constr(trm) ] ->
-   [ decompile_tactic trm ]
-END
+     
 
 (* --- Vernac syntax --- *)
 
 (* Decompile Command *)
 VERNAC COMMAND EXTEND Decompile CLASSIFIED AS SIDEFF
 | [ "Decompile" constr(trm) ] ->
-   [ decompile_command trm ]
+   [ decompile_command trm [] ]
+| [ "Decompile" constr(trm) "with" string_list(l) ] ->
+   [ decompile_command trm l ]
 | [ "Decompile" "Module" reference(mod_ref) ] ->
    [ decompile_module mod_ref ]
 END
