@@ -190,14 +190,6 @@ Proof.
   rewrite Z_mod_two_p_eq. apply Zmod_small; auto.
 Qed.
 
-Theorem repr_unsigned_tactic:
-  forall i, repr (unsigned i) = i.
-Proof.
-  patch unsigned_range_old unsigned_range_new as p.
-  intros i. destruct i; simpl; intros. unfold repr. apply mkint_eq.
-  rewrite Z_mod_two_p_eq. apply Zmod_small. apply p. auto.
-Qed.
-
 Hint Resolve repr_unsigned : ints.
 
 End Make.
