@@ -3,7 +3,7 @@ This plugin suite is a collection of plugins for maintaining proofs as
 specifications change over time:
 
 * PUMPKIN PATCH ([paper](http://tlringer.github.io/pdf/pumpkinpaper.pdf), [talk video](http://www.youtube.com/watch?v=p-V9oerg5DU)): example-based proof repair
-* DEVOID ([paper](http://tlringer.github.io/pdf/ornpaper.pdf), [standalone plugin](https://github.com/uwplse/ornamental-search), [talk video](http://www.youtube.com/watch?v=wIuBlOu1IC4)): proof repair across type equivalences (originally just a specific case of this, but since extended)
+* PUMPKIN Pi (formerly DEVOID) ([ITP 2019 paper](http://tlringer.github.io/pdf/ornpaper.pdf), [standalone plugin](https://github.com/uwplse/ornamental-search), [ITP 2019 talk video](http://www.youtube.com/watch?v=wIuBlOu1IC4), PPLDI 2021 draft](https://arxiv.org/abs/2010.00774)): proof repair across type equivalences (originally just a specific case of this, but since extended)
 
 In addition, this plugin suite includes some development tools, like
 the [fix-to-elim](https://github.com/uwplse/fix-to-elim) plugin for automatic
@@ -12,7 +12,7 @@ contributors more broadly. We discuss these briefly at the end of the document.
 
 All of these tools, including DEVOID, are included as dependencies of the 
 main PUMPKIN PATCH plugin, so you can use both at the same time.
-**More information on using DEVOID
+**More information on using PUMPKIN Pi (formerly DEVOID)
 can be found in the the standalone plugin repository. The remainder of this
 document will focus on how to use the main PUMPKIN PATCH plugin.**
 We hope to add an example of using these both together soon.
