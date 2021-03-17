@@ -39,7 +39,7 @@ Require Import FunctionalExtensionality.
 (** We also assert propositional extensionality. *)
 
 Axiom prop_ext: ClassicalFacts.prop_extensionality.
-Implicit Arguments prop_ext.
+Arguments prop_ext : default implicits.
 
 (** * Proof irrelevance *)
 
@@ -50,4 +50,4 @@ Lemma proof_irr: ClassicalFacts.proof_irrelevance.
 Proof.
   exact (ClassicalFacts.ext_prop_dep_proof_irrel_cic prop_ext).
 Qed.
-Implicit Arguments proof_irr.
+Arguments proof_irr : default implicits.
