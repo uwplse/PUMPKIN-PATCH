@@ -3,7 +3,7 @@ This plugin suite is a collection of plugins for maintaining proofs as
 specifications change over time:
 
 * PUMPKIN PATCH ([paper](http://tlringer.github.io/pdf/pumpkinpaper.pdf), [talk video](http://www.youtube.com/watch?v=p-V9oerg5DU)): example-based proof repair
-* PUMPKIN Pi (formerly DEVOID) ([ITP 2019 paper](http://tlringer.github.io/pdf/ornpaper.pdf), [standalone plugin](https://github.com/uwplse/ornamental-search), [ITP 2019 talk video](http://www.youtube.com/watch?v=wIuBlOu1IC4), PPLDI 2021 draft](https://arxiv.org/abs/2010.00774)): proof repair across type equivalences (originally just a specific case of this, but since extended)
+* PUMPKIN Pi (formerly DEVOID) ([ITP 2019 paper](http://tlringer.github.io/pdf/ornpaper.pdf), [standalone plugin](https://github.com/uwplse/ornamental-search), [ITP 2019 talk video](http://www.youtube.com/watch?v=wIuBlOu1IC4), [PLDI 2021 draft](https://arxiv.org/abs/2010.00774)): proof repair across type equivalences (originally just a specific case of this, but since extended)
 
 In addition, this plugin suite includes some development tools, like
 the [fix-to-elim](https://github.com/uwplse/fix-to-elim) plugin for automatic
