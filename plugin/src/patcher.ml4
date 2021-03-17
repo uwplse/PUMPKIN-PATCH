@@ -185,9 +185,8 @@ let no_path c =
   Constant.make2 (ModPath.MPfile (DirPath.empty)) l
   
 (* Decompiles and prints every definition in a module. *)
-let decompile_module mod_ref =
-  let qualid = qualid_of_reference mod_ref in
-  let mod_name = Libnames.pr_reference mod_ref in
+let decompile_module qualid =
+  let mod_name = Libnames.pr_qualid qualid in
   let mod_body = Global.lookup_module (Nametab.locate_module qualid) in
   let (sigma, env) = Pfedit.get_current_context () in
   (* let env = Modops.add_module mod_body env in *)

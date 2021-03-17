@@ -44,5 +44,5 @@ val do_replace_convertible :
 val do_replace_convertible_module :
   Id.t -> (* name of new module *)
   constr_expr list -> (* what to replace *)
-  reference -> (* reference to module to replace subterms of terms within *)
+  qualid -> (* reference to module to replace subterms of terms within *)
   unit
