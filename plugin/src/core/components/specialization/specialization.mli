@@ -2,7 +2,7 @@
 
 (*
  * The default approach (specialize_using specialize_term)
- * is function application followed by betaiota reduction.
+ * is function application followed by betaiotazeta reduction.
  *
  * We expose more advanced specialization approaches so that it is
  * easy to customize how this is called, which is useful
