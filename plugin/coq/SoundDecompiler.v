@@ -5,7 +5,6 @@ Import ListNotations.
 Require Import Omega.
 
 
-
 Theorem ex : forall y : nat, (forall x : nat, 0 = 0) /\
              (forall x : nat, 0 = 0).
 Proof.
@@ -89,9 +88,17 @@ Qed.
 
 Decompile t6.
 
-
-
-
+Theorem t7 : 
+  { x & x + 0 = 0 } ->
+  { x & 0 + x = 0 }.
+Proof.
+intros H.
+induction H as [x p]. 
+- exists x.
+  rewrite (Nat.add_comm x 0) in p.
+  apply p.
+Qed.
+Decompile t7.
 
 Theorem f1 : forall (n : nat), n + O = n.
 Proof.
@@ -102,6 +109,6 @@ induction n.
 Qed.
 
 (* no simpl *)
-Fail Decompile f1.
+Decompile f1.
 
 

@@ -1,0 +1,70 @@
+Debug: intro y.
+split.
+- intro x.
+  reflexivity.
+- intro x.
+  reflexivity.
+
+example_2 = 
+existT
+  (fun z : nat =>
+   (forall x : nat, x = z -> x = z) /\ (forall x : nat, x = z -> z = x)) 0
+  (conj (fun (x : nat) (H : x = 0) => H)
+     (fun (x : nat) (H : x = 0) => eq_sym H))
+     : {z : nat &
+       (forall x : nat, x = z -> x = z) /\ (forall x : nat, x = z -> z = x)}
+Debug:
+exists 0.
+split.
+- intros x H.
+  apply H.
+- intros x H.
+  symmetry.
+  apply H.
+
+Debug: intros A a b H.
+rewrite H.
+reflexivity.
+
+Debug: intros A a b H.
+rewrite <- H.
+reflexivity.
+
+Debug: intros X H.
+induction H as [].
+
+Debug: split.
+- reflexivity.
+- reflexivity.
+
+Debug:
+intro n.
+induction n as [ |n0 IHn].
+- left.
+  reflexivity.
+- right.
+  intro H.
+  inversion H.
+
+Debug:
+intros P Q H.
+induction H as [H0|H0].
+- left.
+  apply H0.
+- right.
+  apply H0.
+
+Debug:
+intro H.
+induction H as [x p].
+exists x.
+rewrite (Nat.add_comm x 0) in p.
+apply p.
+
+Debug:
+intro n.
+induction n as [ |n0 IHn].
+- reflexivity.
+- apply 
+(eq_ind_r (fun n : nat => S n = S n0) eq_refl IHn).
+
