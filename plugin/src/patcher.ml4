@@ -176,7 +176,7 @@ let decompile_command trm tacs =
   let sigma, trm = intern env sigma trm in
   let trm = unwrap_definition env trm in
   let opts = List.map (fun s -> (parse_tac_str s, s)) tacs in
-  let sigma, script = tac_from_term env sigma (fun _ sigma _ -> sigma, opts) trm in
+  let sigma, script = tac_from_term env sigma (fun _ sigma _ _ -> sigma, opts) trm in
   Feedback.msg_debug (tac_to_string sigma script)
   
   
@@ -216,7 +216,7 @@ let decompile_module qualid =
     let typ = (Typeops.infer env gconstr).uj_type in
     let typ_s =  Printer.pr_constr_env env sigma typ in
     (* Proof of definition. *)
-    let sigma, tacs = tac_from_term env sigma (fun _ sigma _ -> sigma, []) trm' in
+    let sigma, tacs = tac_from_term env sigma (fun _ sigma _ _ -> sigma, []) trm' in
     let output = str "Theorem " ++ name ++ str " : " ++
                    typ_s ++ str ".\n" ++
                    str "Proof.\n" ++ tac_to_string sigma tacs ++

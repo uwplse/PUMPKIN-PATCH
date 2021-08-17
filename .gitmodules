@@ -7,3 +7,6 @@
 [submodule "plugin/deps/ornamental-search"]
 	path = plugin/deps/ornamental-search
 	url = https://github.com/uwplse/ornamental-search.git
+[submodule "plugin/deps/fundamental-arithmetics"]
+	path = plugin/deps/fundamental-arithmetics
+	url = https://github.com/coq-contribs/fundamental-arithmetics
