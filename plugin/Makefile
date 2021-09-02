@@ -4,7 +4,7 @@
 ##   \VV/  #                                                                 ##
 ##    //   #                                                                 ##
 ###############################################################################
-## GNUMakefile for Coq 8.8.0
+## GNUMakefile for Coq 8.9.1
 
 # For debugging purposes (must stay here, don't move below)
 INITIAL_VARS := $(.VARIABLES)
@@ -65,20 +65,20 @@ VERBOSE ?=
 # Time the Coq process (set to non empty), and how (see default value)
 TIMED?=
 TIMECMD?=
-# Use /usr/bin/env time on linux, gtime on Mac OS
+# Use command time on linux, gtime on Mac OS
 TIMEFMT?="$* (real: %e, user: %U, sys: %S, mem: %M ko)"
 ifneq (,$(TIMED))
-ifeq (0,$(shell /usr/bin/env time -f $(TIMEFMT) true >/dev/null 2>/dev/null; echo $$?))
-STDTIME?=/usr/bin/env time -f $(TIMEFMT)
+ifeq (0,$(shell command time -f $(TIMEFMT) true >/dev/null 2>/dev/null; echo $$?))
+STDTIME?=command time -f $(TIMEFMT)
 else
 ifeq (0,$(shell gtime -f $(TIMEFMT) true >/dev/null 2>/dev/null; echo $$?))
 STDTIME?=gtime -f $(TIMEFMT)
 else
-STDTIME?=time
+STDTIME?=command time
 endif
 endif
 else
-STDTIME?=/usr/bin/env time -f $(TIMEFMT)
+STDTIME?=command time -f $(TIMEFMT)
 endif
 
 # Coq binaries
@@ -86,7 +86,6 @@ COQC     ?= "$(COQBIN)coqc"
 COQTOP   ?= "$(COQBIN)coqtop"
 COQCHK   ?= "$(COQBIN)coqchk"
 COQDEP   ?= "$(COQBIN)coqdep"
-GALLINA  ?= "$(COQBIN)gallina"
 COQDOC   ?= "$(COQBIN)coqdoc"
 COQMKFILE ?= "$(COQBIN)coq_makefile"
 
@@ -148,7 +147,11 @@ TIME_OF_PRETTY_BUILD_EXTRA_FILES ?= - # also output to the command line
 
 # Flags #######################################################################
 #
-# We define a bunch of variables combining the parameters
+# We define a bunch of variables combining the parameters.
+# To add additional flags to coq, coqchk or coqdoc, set the
+# {COQ,COQCHK,COQDOC}EXTRAFLAGS variable to whatever you want to add.
+# To overwrite the default choice and set your own flags entirely, set the
+# {COQ,COQCHK,COQDOC}FLAGS variable.
 
 SHOW := $(if $(VERBOSE),@true "",@echo "")
 HIDE := $(if $(VERBOSE),,@)
@@ -168,15 +171,22 @@ DYNOBJ:=.cmxs
 DYNLIB:=.cmxs
 endif
 
-COQFLAGS?=-q $(OPT) $(COQLIBS) $(OTHERFLAGS)
-COQCHKFLAGS?=-silent -o $(COQLIBS)
-COQDOCFLAGS?=-interpolate -utf8
+# these variables are meant to be overriden if you want to add *extra* flags
+COQEXTRAFLAGS?=
+COQCHKEXTRAFLAGS?=
+COQDOCEXTRAFLAGS?=
+
+# these flags do NOT contain the libraries, to make them easier to overwrite
+COQFLAGS?=-q $(OPT) $(OTHERFLAGS) $(COQEXTRAFLAGS)
+COQCHKFLAGS?=-silent -o $(COQCHKEXTRAFLAGS)
+COQDOCFLAGS?=-interpolate -utf8 $(COQDOCEXTRAFLAGS)
+
 COQDOCLIBS?=$(COQLIBS_NOML)
 
 # The version of Coq being run and the version of coq_makefile that
 # generated this makefile
 COQ_VERSION:=$(shell $(COQC) --print-version | cut -d " " -f 1)
-COQMAKEFILE_VERSION:=8.8.0
+COQMAKEFILE_VERSION:=8.9.1
 
 COQSRCLIBS?= $(foreach d,$(COQ_SRC_SUBDIRS), -I "$(COQLIB)$(d)")
 
@@ -216,7 +226,7 @@ ifdef DSTROOT
 DESTDIR := $(DSTROOT)
 endif
 
-concat_path = $(if $(1),$(1)/$(subst $(COQMF_WINDRIVE),/,$(2)),$(2))
+concat_path = $(if $(1),$(1)/$(if $(COQMF_WINDRIVE),$(subst $(COQMF_WINDRIVE),/,$(2)),$(2)),$(2))
 
 COQLIBINSTALL = $(call concat_path,$(DESTDIR),$(COQLIB)user-contrib)
 COQDOCINSTALL = $(call concat_path,$(DESTDIR),$(DOCDIR)user-contrib)
@@ -245,7 +255,6 @@ VO = vo
 
 VOFILES = $(VFILES:.v=.$(VO))
 GLOBFILES = $(VFILES:.v=.glob)
-GFILES = $(VFILES:.v=.g)
 HTMLFILES = $(VFILES:.v=.html)
 GHTMLFILES = $(VFILES:.v=.g.html)
 BEAUTYFILES = $(addsuffix .beautified,$(VFILES))
@@ -334,19 +343,19 @@ make-pretty-timed make-pretty-timed-before make-pretty-timed-after::
 print-pretty-timed::
 	$(HIDE)$(COQMAKE_ONE_TIME_FILE) $(TIME_OF_BUILD_FILE) $(TIME_OF_PRETTY_BUILD_FILE) $(TIME_OF_PRETTY_BUILD_EXTRA_FILES)
 print-pretty-timed-diff::
-	$(HIDE)$(COQMAKE_BOTH_TIME_FILES) --sort-by=$(TIMING_SORT_BY) $(TIME_OF_BUILD_BEFORE_FILE) $(TIME_OF_BUILD_AFTER_FILE) $(TIME_OF_PRETTY_BOTH_BUILD_FILE) $(TIME_OF_PRETTY_BUILD_EXTRA_FILES)
+	$(HIDE)$(COQMAKE_BOTH_TIME_FILES) --sort-by=$(TIMING_SORT_BY) $(TIME_OF_BUILD_AFTER_FILE) $(TIME_OF_BUILD_BEFORE_FILE) $(TIME_OF_PRETTY_BOTH_BUILD_FILE) $(TIME_OF_PRETTY_BUILD_EXTRA_FILES)
 ifeq (,$(BEFORE))
 print-pretty-single-time-diff::
-	@echo 'Error: Usage: $(MAKE) print-pretty-single-time-diff BEFORE=path/to/file.v.before-timing AFTER=path/to/file.v.after-timing'
+	@echo 'Error: Usage: $(MAKE) print-pretty-single-time-diff AFTER=path/to/file.v.after-timing BEFORE=path/to/file.v.before-timing'
 	$(HIDE)false
 else
 ifeq (,$(AFTER))
 print-pretty-single-time-diff::
-	@echo 'Error: Usage: $(MAKE) print-pretty-single-time-diff BEFORE=path/to/file.v.before-timing AFTER=path/to/file.v.after-timing'
+	@echo 'Error: Usage: $(MAKE) print-pretty-single-time-diff AFTER=path/to/file.v.after-timing BEFORE=path/to/file.v.before-timing'
 	$(HIDE)false
 else
 print-pretty-single-time-diff::
-	$(HIDE)$(COQMAKE_BOTH_SINGLE_TIMING_FILES) --sort-by=$(TIMING_SORT_BY) $(BEFORE) $(AFTER) $(TIME_OF_PRETTY_BUILD_FILE) $(TIME_OF_PRETTY_BUILD_EXTRA_FILES)
+	$(HIDE)$(COQMAKE_BOTH_SINGLE_TIMING_FILES) --sort-by=$(TIMING_SORT_BY) $(AFTER) $(BEFORE) $(TIME_OF_PRETTY_BUILD_FILE) $(TIME_OF_PRETTY_BUILD_EXTRA_FILES)
 endif
 endif
 pretty-timed:
@@ -371,7 +380,7 @@ real-all: $(VOFILES) $(if $(USEBYTE),bytefiles,optfiles)
 .PHONY: real-all
 
 real-all.timing.diff: $(VOFILES:.vo=.v.timing.diff)
-.PHONE: real-all.timing.diff
+.PHONY: real-all.timing.diff
 
 bytefiles: $(CMOFILES) $(CMAFILES)
 .PHONY: bytefiles
@@ -384,7 +393,7 @@ quick: $(VOFILES:.vo=.vio)
 .PHONY: quick
 
 vio2vo:
-	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) \
+	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) \
 		-schedule-vio2vo $(J) $(VOFILES:%.vo=%.vio)
 .PHONY: vio2vo
 
@@ -396,17 +405,17 @@ quick2vo:
 	done); \
 	echo "VIO2VO: $$VIOFILES"; \
 	if [ -n "$$VIOFILES" ]; then \
-	  $(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) -schedule-vio2vo $(J) $$VIOFILES; \
+	  $(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -schedule-vio2vo $(J) $$VIOFILES; \
 	fi
 .PHONY: quick2vo
 
 checkproofs:
-	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) \
+	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) \
 		-schedule-vio-checking $(J) $(VOFILES:%.vo=%.vio)
 .PHONY: checkproofs
 
 validate: $(VOFILES)
-	$(TIMER) $(COQCHK) $(COQCHKFLAGS) $^
+	$(TIMER) $(COQCHK) $(COQCHKFLAGS) $(COQLIBS) $^
 .PHONY: validate
 
 only: $(TGTS)
@@ -430,8 +439,6 @@ all-mli.tex: $(MLIFILES:.mli=.cmi)
 	$(SHOW)'CAMLDOC -latex $@'
 	$(HIDE)$(CAMLDOC) -latex \
 		-o $@ -m A $(CAMLDEBUG) $(CAMLDOCFLAGS) $(MLIFILES)
-
-gallina: $(GFILES)
 
 all.ps: $(VFILES)
 	$(SHOW)'COQDOC -ps $(GAL)'
@@ -553,7 +560,6 @@ clean::
 	$(HIDE)find . -name .coq-native -type d -empty -delete
 	$(HIDE)rm -f $(VOFILES)
 	$(HIDE)rm -f $(VOFILES:.vo=.vio)
-	$(HIDE)rm -f $(GFILES)
 	$(HIDE)rm -f $(BEAUTYFILES) $(VFILES:=.old)
 	$(HIDE)rm -f all.ps all-gal.ps all.pdf all-gal.pdf all.glob all-mli.tex
 	$(HIDE)rm -f $(VFILES:.v=.glob)
@@ -654,15 +660,15 @@ endif
 
 $(VOFILES): %.vo: %.v
 	$(SHOW)COQC $<
-	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $< $(TIMING_EXTRA)
+	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(TIMING_ARG) $(COQFLAGS) $(COQLIBS) $< $(TIMING_EXTRA)
 
 # FIXME ?merge with .vo / .vio ?
 $(GLOBFILES): %.glob: %.v
-	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $<
+	$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 $(VFILES:.v=.vio): %.vio: %.v
 	$(SHOW)COQC -quick $<
-	$(HIDE)$(TIMER) $(COQC) -quick $(COQDEBUG) $(COQFLAGS) $<
+	$(HIDE)$(TIMER) $(COQC) -quick $(COQDEBUG) $(COQFLAGS) $(COQLIBS) $<
 
 $(addsuffix .timing.diff,$(VFILES)): %.timing.diff : %.before-timing %.after-timing
 	$(SHOW)PYTHON TIMING-DIFF $<
@@ -670,11 +676,7 @@ $(addsuffix .timing.diff,$(VFILES)): %.timing.diff : %.before-timing %.after-tim
 
 $(BEAUTYFILES): %.v.beautified: %.v
 	$(SHOW)'BEAUTIFY $<'
-	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) -beautify $<
-
-$(GFILES): %.g: %.v
-	$(SHOW)'GALLINA $<'
-	$(HIDE)$(GALLINA) $<
+	$(HIDE)$(TIMER) $(COQC) $(COQDEBUG) $(COQFLAGS) $(COQLIBS) -beautify $<
 
 $(TEXFILES): %.tex: %.v
 	$(SHOW)'COQDOC -latex $<'
@@ -764,6 +766,7 @@ printenv::
 	@echo 'OCAMLFIND = $(OCAMLFIND)'
 	@echo 'PP = $(PP)'
 	@echo 'COQFLAGS = $(COQFLAGS)'
+	@echo 'COQLIB = $(COQLIBS)'
 	@echo 'COQLIBINSTALL = $(COQLIBINSTALL)'
 	@echo 'COQDOCINSTALL = $(COQDOCINSTALL)'
 .PHONY:	printenv

@@ -137,5 +137,5 @@ let do_replace_convertible_module n convs mod_ref : unit =
     let sigma, (sub, pf) = replace_convertible false env convs def sigma in
     sigma, sub
   in
-  let m = lookup_module (locate_module (qualid_of_reference mod_ref)) in
+  let m = lookup_module (locate_module mod_ref) in
   ignore (transform_module_structure n replace_in_term m)

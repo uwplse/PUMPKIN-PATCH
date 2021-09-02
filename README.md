@@ -31,7 +31,7 @@ may also be helpful.
 
 ## Building PUMPKIN
 
-The plugin works for Coq 8.8. There are branches for Coq 8.5 and 8.6, which we are no
+The plugin works for Coq 8.9.1. There are branches for Coq 8.5, 8.6, and 8.8, which we are no
 longer maintaining.
 
 ```
