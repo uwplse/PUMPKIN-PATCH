@@ -1,3 +1,5 @@
+NOTE (7/3/2024): This plugin is no longer being actively updated to newer version of Coq. It works with Coq 8.9.
+
 Welcome to the PUMPKIN PATCH proof repair plugin suite!
 This plugin suite is a collection of plugins for maintaining proofs as
 specifications change over time:
