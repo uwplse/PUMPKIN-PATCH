@@ -1,3 +1,6 @@
+NOTE (7/3/2024): This plugin is no longer being actively updated to newer versions of Coq. It works with Coq 8.9. 
+The plugins that it uses ([pumpkin-pi](https://github.com/uwplse/pumpkin-pi), [fix-to-elim](https://github.com/uwplse/fix-to-elim/) and [coq-plugin-lib](https://github.com/uwplse/coq-plugin-lib/)) are still maintained, just not this top-level plugin.
+
 Welcome to the PUMPKIN PATCH proof repair plugin suite!
 This plugin suite is a collection of plugins for maintaining proofs as
 specifications change over time:
